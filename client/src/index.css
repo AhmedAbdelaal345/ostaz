@@ -38,3 +38,18 @@
 .notice-dot.warning{color:#f3b85e;background:#f3b85e}.notice-dot.success{color:#54d39a;background:#54d39a}.notice-dot.info{color:#61c6ff;background:#61c6ff}
 @media (max-width:1050px){.home-widgets{grid-template-columns:repeat(2,minmax(0,1fr))}.widget-alert{grid-column:span 2}}
 @media (max-width:680px){.home-widgets{grid-template-columns:1fr;gap:12px;margin:16px 0}.widget-alert{grid-column:auto}.widget{min-height:200px;padding:17px}.widget-title{font-size:21px}.widget-link{right:17px;bottom:15px}}
+
+/* Settings accordion cleanup */
+.settings-tabs{display:flex;flex-direction:column;gap:7px;width:min(100%,360px);margin-top:16px;padding:8px;border:1px solid rgba(123,174,214,.13);border-radius:16px;background:rgba(10,20,29,.58)}
+.settings-tabs button{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 13px;border:1px solid transparent;border-radius:11px;background:transparent;color:#9fb0bd;font:inherit;font-size:13px;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease}
+.settings-tabs button:hover{background:rgba(76,163,213,.09);color:#eaf5fb}
+.settings-tabs button.selected{background:linear-gradient(90deg,rgba(45,167,235,.2),rgba(45,167,235,.07));border-color:rgba(79,190,250,.35);color:#e9f8ff;box-shadow:inset 3px 0 #40baff}
+.settings-tab-label{display:flex;align-items:center;gap:10px}
+.settings-tab-label svg{color:#68c8f7}
+.settings-tabs button:not(.selected) .settings-tab-label svg{color:#8597a5}
+.settings-tabs .settings-chevron-open{transform:rotate(-90deg);color:#6dceff}
+.settings-tabs button:active{transform:scale(.985)}
+.topbar h1{margin-top:0}
+.settings-tabs + *{margin-top:22px}
+@media (min-width:900px){.settings-tabs{width:320px}.section-title:has(.settings-tabs){align-items:flex-start}.section-title:has(.settings-tabs)>div:first-child{padding-top:8px}}
+@media (max-width:680px){.settings-tabs{width:100%;margin-top:12px}.settings-tabs button{min-height:42px}.settings-tabs + *{margin-top:16px}}
