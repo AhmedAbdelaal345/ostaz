@@ -53,3 +53,39 @@
 .settings-tabs + *{margin-top:22px}
 @media (min-width:900px){.settings-tabs{width:320px}.section-title:has(.settings-tabs){align-items:flex-start}.section-title:has(.settings-tabs)>div:first-child{padding-top:8px}}
 @media (max-width:680px){.settings-tabs{width:100%;margin-top:12px}.settings-tabs button{min-height:42px}.settings-tabs + *{margin-top:16px}}
+
+/* Reference-inspired mobile counters and cards */
+@media (max-width:680px){
+  body,.app-shell,.main{background:#000;color:#f7f7f7}
+  .main{padding:20px 14px 92px}
+  .topbar{padding:4px 2px 18px}
+  .topbar h1{font-size:28px;letter-spacing:-.4px}
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+  .stats-grid .stat{min-height:112px;padding:15px 13px;border-radius:17px;background:#151515;border:1px solid #272727;box-shadow:none}
+  .stats-grid .stat-icon{width:35px;height:35px;background:rgba(235,183,35,.08);border:1px solid rgba(235,183,35,.24);color:#f2c438}
+  .stats-grid .stat span{font-size:11px;color:#a7a7a7}
+  .stats-grid .stat strong{font-size:30px;line-height:1.1;color:#fff;margin:6px 0 3px}
+  .stats-grid .stat small{font-size:10px;color:#777}
+  .home-widgets{margin:12px 0 18px;gap:10px}
+  .widget{min-height:190px;padding:18px;border-radius:18px;background:#151515;border:1px solid #292929;box-shadow:none}
+  .widget-primary{background:#151515;border-color:#3b3215}
+  .widget-heading{color:#f2c438;margin-bottom:20px}
+  .widget-meta b,.widget-title{color:#fff}
+  .metric-row{border-color:#2b2b2b}
+  .metric-row svg,.widget-link{color:#f2c438}
+  .widget-alert{background:#151515}
+  .dashboard-grid{gap:12px}
+  .panel,.plan-card,.group-card,.table-card{background:#151515;border-color:#292929;box-shadow:none;border-radius:18px}
+  .section-title h2{font-size:21px}
+  .settings-tabs{width:100%;padding:5px;background:#151515;border-color:#292929;border-radius:18px;gap:6px}
+  .settings-tabs button{min-height:54px;padding:0 15px;border-radius:13px;color:#b1b1b1}
+  .settings-tabs button.selected{background:#202020;border-color:#4c3e18;box-shadow:inset -3px 0 #f2c438;color:#fff}
+  .settings-tab-label svg,.settings-tabs .settings-chevron-open{color:#f2c438}
+  .plan-banner{background:#151515;border-color:#4c3e18;border-radius:18px}
+  .plans{grid-template-columns:1fr;gap:10px}
+  .plan-card strong{font-size:29px;color:#fff}
+  .plan-card .primary{background:#f2c438;color:#111}
+  .primary{background:#f2c438;color:#111;box-shadow:none}
+  .secondary{background:#1b1b1b;border-color:#353535;color:#eee}
+  .modal{background:#151515;border-color:#3b3215}
+}
