@@ -1,0 +1,12 @@
+{
+  "name": "أستاذي — مساعد المعلم الذكي",
+  "short_name": "أستاذي",
+  "description": "إدارة المجموعات والطلاب والجدول والسجل المالي للمعلم.",
+  "start_url": "/",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "ar",
+  "theme_color": "#080d13",
+  "background_color": "#080d13",
+  "icons": [{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
