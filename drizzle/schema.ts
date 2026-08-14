@@ -39,6 +39,7 @@ export const studyGroups = mysqlTable("study_groups", {
   studentsCount: int("studentsCount").default(0).notNull(),
   day: varchar("day", { length: 30 }).notNull(),
   time: varchar("time", { length: 30 }).notNull(),
+  scheduleJson: text("scheduleJson"),
   fee: decimal("fee", { precision: 10, scale: 2 }).default("0").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

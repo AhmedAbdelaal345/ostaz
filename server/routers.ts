@@ -6,7 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { createGroup, createStudent, deleteGroup, deleteStudent, getTeacherProfile, listGroups, listStudents, saveTeacherProfile, updateGroup, updateStudent } from "./db";
 
-const groupInput = z.object({ name: z.string().min(1), place: z.string().min(1), mode: z.string().min(1), studentsCount: z.number().int().min(0).default(0), day: z.string().min(1), time: z.string().min(1), fee: z.union([z.string(), z.number()]).transform(String) });
+const groupInput = z.object({ name: z.string().min(1), place: z.string().min(1), mode: z.string().min(1), studentsCount: z.number().int().min(0).default(0), day: z.string().min(1), time: z.string().min(1), scheduleJson: z.string().optional().nullable(), fee: z.union([z.string(), z.number()]).transform(String) });
 const studentInput = z.object({ name: z.string().min(1), groupId: z.number().int().nullable().optional(), phone: z.string().optional().nullable(), paid: z.boolean().default(false) });
 const profileInput = z.object({ name: z.string().min(1), phone: z.string().optional().nullable(), subject: z.string().min(1), paymentBank: z.string().optional().nullable(), paymentWallet: z.string().optional().nullable(), paymentNote: z.string().optional().nullable(), contactPhone: z.string().optional().nullable(), contactEmail: z.string().email().optional().or(z.literal("")), contactWhatsapp: z.string().optional().nullable(), messageTemplate: z.string().optional().nullable(), displayMode: z.enum(["ليلي", "عادي", "أوتوماتيك"]).default("ليلي") });
 
