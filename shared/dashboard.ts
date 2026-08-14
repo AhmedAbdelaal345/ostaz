@@ -11,6 +11,10 @@ function timeToMinutes(value: string) {
   return hour * 60 + minute;
 }
 
+export function sortGroupsByTime<T extends DashboardGroup>(groups: T[]) {
+  return [...groups].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+}
+
 export function getNextGroupForDay<T extends DashboardGroup>(groups: T[], day: string) {
-  return groups.filter(group => group.day === day).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))[0];
+  return sortGroupsByTime(groups.filter(group => group.day === day))[0];
 }
