@@ -51,9 +51,68 @@ export const students = mysqlTable("students", {
   groupId: int("groupId"),
   name: varchar("name", { length: 160 }).notNull(),
   phone: varchar("phone", { length: 32 }),
+  guardianName: varchar("guardianName", { length: 160 }),
+  guardianPhone: varchar("guardianPhone", { length: 32 }),
+  studentCode: varchar("studentCode", { length: 80 }),
   paid: boolean("paid").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const centers = mysqlTable("centers", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerUserId: int("ownerUserId").notNull(),
+  name: varchar("name", { length: 180 }).notNull(),
+  phone: varchar("phone", { length: 32 }),
+  address: text("address"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const centerMembers = mysqlTable("center_members", {
+  id: int("id").autoincrement().primaryKey(),
+  centerId: int("centerId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["owner", "teacher", "assistant"]).default("teacher").notNull(),
+  permissionsJson: text("permissionsJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const attendance = mysqlTable("attendance", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  groupId: int("groupId"),
+  lessonDate: timestamp("lessonDate").notNull(),
+  status: mysqlEnum("status", ["present", "late", "absent"]).default("present").notNull(),
+  note: varchar("note", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const financialTransactions = mysqlTable("financial_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId"),
+  groupId: int("groupId"),
+  kind: mysqlEnum("kind", ["subscription", "expense"]).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  dueDate: timestamp("dueDate"),
+  paidAt: timestamp("paidAt"),
+  description: varchar("description", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const assessments = mysqlTable("assessments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  groupId: int("groupId"),
+  title: varchar("title", { length: 180 }).notNull(),
+  period: mysqlEnum("period", ["lesson", "daily", "weekly", "monthly", "term"]).notNull(),
+  score: decimal("score", { precision: 6, scale: 2 }),
+  maxScore: decimal("maxScore", { precision: 6, scale: 2 }),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;

@@ -4,10 +4,12 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createGroup, createStudent, deleteGroup, deleteStudent, getTeacherProfile, listGroups, listStudents, saveTeacherProfile, updateGroup, updateStudent } from "./db";
+import { createGroup, createStudent, createTransaction, deleteGroup, deleteStudent, getTeacherProfile, listAttendance, listGroups, listStudents, listTransactions, markAttendance, saveTeacherProfile, settleTransaction, updateGroup, updateStudent } from "./db";
 
 const groupInput = z.object({ name: z.string().min(1), place: z.string().min(1), mode: z.string().min(1), studentsCount: z.number().int().min(0).default(0), day: z.string().min(1), time: z.string().min(1), scheduleJson: z.string().optional().nullable(), fee: z.union([z.string(), z.number()]).transform(String) });
-const studentInput = z.object({ name: z.string().min(1), groupId: z.number().int().nullable().optional(), phone: z.string().optional().nullable(), paid: z.boolean().default(false) });
+const studentInput = z.object({ name: z.string().min(1), groupId: z.number().int().nullable().optional(), phone: z.string().optional().nullable(), guardianName: z.string().optional().nullable(), guardianPhone: z.string().optional().nullable(), studentCode: z.string().optional().nullable(), paid: z.boolean().default(false) });
+const attendanceInput = z.object({ studentId: z.number().int(), groupId: z.number().int().nullable().optional(), lessonDate: z.coerce.date(), status: z.enum(["present", "late", "absent"]).default("present"), note: z.string().optional().nullable() });
+const transactionInput = z.object({ studentId: z.number().int().nullable().optional(), groupId: z.number().int().nullable().optional(), kind: z.enum(["subscription", "expense"]), amount: z.union([z.string(), z.number()]).transform(String), dueDate: z.coerce.date().nullable().optional(), paidAt: z.coerce.date().nullable().optional(), description: z.string().optional().nullable() });
 const profileInput = z.object({ name: z.string().min(1), phone: z.string().optional().nullable(), subject: z.string().min(1), paymentBank: z.string().optional().nullable(), paymentWallet: z.string().optional().nullable(), paymentNote: z.string().optional().nullable(), contactPhone: z.string().optional().nullable(), contactEmail: z.string().email().optional().or(z.literal("")), contactWhatsapp: z.string().optional().nullable(), messageTemplate: z.string().optional().nullable(), displayMode: z.enum(["ليلي", "عادي", "أوتوماتيك"]).default("ليلي") });
 
 export const appRouter = router({
@@ -22,6 +24,8 @@ export const appRouter = router({
     profile: router({ get: protectedProcedure.query(({ ctx }) => getTeacherProfile(ctx.user.id)), save: protectedProcedure.input(profileInput).mutation(({ ctx, input }) => saveTeacherProfile(ctx.user.id, input)) }),
     groups: router({ list: protectedProcedure.query(({ ctx }) => listGroups(ctx.user.id)), create: protectedProcedure.input(groupInput).mutation(({ ctx, input }) => createGroup(ctx.user.id, input)), update: protectedProcedure.input(z.object({ id: z.number().int(), data: groupInput.partial() })).mutation(({ ctx, input }) => updateGroup(ctx.user.id, input.id, input.data)), delete: protectedProcedure.input(z.object({ id: z.number().int() })).mutation(({ ctx, input }) => deleteGroup(ctx.user.id, input.id)) }),
     students: router({ list: protectedProcedure.query(({ ctx }) => listStudents(ctx.user.id)), create: protectedProcedure.input(studentInput).mutation(({ ctx, input }) => createStudent(ctx.user.id, input)), update: protectedProcedure.input(z.object({ id: z.number().int(), data: studentInput.partial() })).mutation(({ ctx, input }) => updateStudent(ctx.user.id, input.id, input.data)), delete: protectedProcedure.input(z.object({ id: z.number().int() })).mutation(({ ctx, input }) => deleteStudent(ctx.user.id, input.id)) }),
+    attendance: router({ list: protectedProcedure.input(z.object({ lessonDate: z.coerce.date() })).query(({ ctx, input }) => listAttendance(ctx.user.id, input.lessonDate)), mark: protectedProcedure.input(attendanceInput).mutation(({ ctx, input }) => markAttendance(ctx.user.id, input)) }),
+    finance: router({ list: protectedProcedure.query(({ ctx }) => listTransactions(ctx.user.id)), create: protectedProcedure.input(transactionInput).mutation(({ ctx, input }) => createTransaction(ctx.user.id, input)), settle: protectedProcedure.input(z.object({ id: z.number().int() })).mutation(({ ctx, input }) => settleTransaction(ctx.user.id, input.id)) }),
   }),
 });
 export type AppRouter = typeof appRouter;

@@ -15,6 +15,13 @@
       "when": 1786699378504,
       "tag": "0001_silly_ted_forrester",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1787345437610,
+      "tag": "0002_stormy_silhouette",
+      "breakpoints": true
     }
   ]
 }
