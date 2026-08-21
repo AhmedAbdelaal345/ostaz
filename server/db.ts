@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertStudent, InsertStudyGroup, InsertTeacherProfile, InsertUser, assessments, attendance, centerMembers, centers, financialTransactions, students, studyGroups, teacherProfiles, users } from "../drizzle/schema";
+import { InsertStudent, InsertStudyGroup, InsertTeacherProfile, InsertUser, assessments, attendance, behaviorRecords, centerMembers, centers, financialTransactions, students, studyGroups, teacherProfiles, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -33,3 +33,5 @@ export async function getOwnedCenter(userId: number) { const db = await getDb();
 export async function listCenterMembers(userId: number) { const db = await getDb(); if (!db) return []; const center = await getOwnedCenter(userId); if (!center) return []; return db.select().from(centerMembers).where(eq(centerMembers.centerId, center.id)).orderBy(desc(centerMembers.createdAt)); }
 export async function listAssessments(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(assessments).where(eq(assessments.userId, userId)).orderBy(desc(assessments.createdAt)); }
 export async function createAssessment(userId: number, input: Omit<typeof assessments.$inferInsert, "userId" | "id">) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(assessments).values({ ...input, userId }); return { id: Number(result[0].insertId), ...input, userId }; }
+export async function listBehaviorRecords(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(behaviorRecords).where(eq(behaviorRecords.userId, userId)).orderBy(desc(behaviorRecords.createdAt)); }
+export async function createBehaviorRecord(userId: number, input: Omit<typeof behaviorRecords.$inferInsert, "userId" | "id">) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(behaviorRecords).values({ ...input, userId }); return { id: Number(result[0].insertId), ...input, userId }; }

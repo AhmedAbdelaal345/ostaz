@@ -115,6 +115,18 @@ export const assessments = mysqlTable("assessments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const behaviorRecords = mysqlTable("behavior_records", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  groupId: int("groupId"),
+  category: mysqlEnum("category", ["positive", "warning", "note"]).default("note").notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  note: text("note"),
+  points: int("points").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type TeacherProfile = typeof teacherProfiles.$inferSelect;
@@ -123,3 +135,5 @@ export type StudyGroup = typeof studyGroups.$inferSelect;
 export type InsertStudyGroup = typeof studyGroups.$inferInsert;
 export type Student = typeof students.$inferSelect;
 export type InsertStudent = typeof students.$inferInsert;
+export type BehaviorRecord = typeof behaviorRecords.$inferSelect;
+export type InsertBehaviorRecord = typeof behaviorRecords.$inferInsert;
