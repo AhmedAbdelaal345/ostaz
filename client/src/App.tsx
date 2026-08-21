@@ -19,7 +19,7 @@ import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 
 const nav = [
-  ["/", "الرئيسية", Home], ["/attendance", "الحضور", CheckCircle2], ["/groups", "المجموعات", LayoutGrid], ["/finance", "المالية", WalletCards], ["/assessments", "التقييمات", BookOpen], ["/timetable", "الجدول", CalendarDays], ["/stats", "الإحصائيات", BarChart3], ["/settings", "الإعدادات", Settings],
+  ["/", "الرئيسية", Home], ["/attendance", "الحضور", CheckCircle2], ["/groups", "المجموعات", LayoutGrid], ["/finance", "المالية", WalletCards], ["/settings", "الإعدادات", Settings],
 ] as const;
 const subjects = ["لغة عربية", "لغة إنجليزية", "لغة فرنسية", "رياضيات", "علوم", "فيزياء", "كيمياء", "أحياء", "حاسب آلي", "برمجة", "دراسات اجتماعية", "قرآن كريم", "أخرى"];
 const initialGroups = [{ id: 1, name: "الصف الثالث الثانوي", place: "سنتر", mode: "حضوري", students: 18, day: "السبت", time: "06:00 م", fee: 180 }, { id: 2, name: "مجموعة الأونلاين", place: "أونلاين", mode: "عن بُعد", students: 12, day: "الأحد", time: "08:00 م", fee: 150 }];
