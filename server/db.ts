@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertStudent, InsertStudyGroup, InsertTeacherProfile, InsertUser, attendance, financialTransactions, students, studyGroups, teacherProfiles, users } from "../drizzle/schema";
+import { InsertStudent, InsertStudyGroup, InsertTeacherProfile, InsertUser, assessments, attendance, financialTransactions, students, studyGroups, teacherProfiles, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -29,3 +29,5 @@ export async function markAttendance(userId: number, input: Omit<typeof attendan
 export async function listTransactions(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(financialTransactions).where(eq(financialTransactions.userId, userId)).orderBy(desc(financialTransactions.createdAt)); }
 export async function createTransaction(userId: number, input: Omit<typeof financialTransactions.$inferInsert, "userId" | "id">) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(financialTransactions).values({ ...input, userId }); return { id: Number(result[0].insertId), ...input, userId }; }
 export async function settleTransaction(userId: number, id: number) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(financialTransactions).set({ paidAt: new Date() }).where(and(eq(financialTransactions.id, id), eq(financialTransactions.userId, userId))); return true; }
+export async function listAssessments(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(assessments).where(eq(assessments.userId, userId)).orderBy(desc(assessments.createdAt)); }
+export async function createAssessment(userId: number, input: Omit<typeof assessments.$inferInsert, "userId" | "id">) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(assessments).values({ ...input, userId }); return { id: Number(result[0].insertId), ...input, userId }; }
