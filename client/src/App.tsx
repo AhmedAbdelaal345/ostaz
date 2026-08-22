@@ -28,6 +28,37 @@ const nav = [
   ["/", "الرئيسية", Home], ["/attendance", "الحضور", CheckCircle2], ["/groups", "المجموعات", LayoutGrid], ["/finance", "المالية", WalletCards], ["/settings", "الإعدادات", Settings],
 ] as const;
 const subjects = ["لغة عربية", "لغة إنجليزية", "لغة فرنسية", "رياضيات", "علوم", "فيزياء", "كيمياء", "أحياء", "حاسب آلي", "برمجة", "دراسات اجتماعية", "قرآن كريم", "أخرى"];
+type Workspace = "all" | "school" | "center" | "online";
+const workspaces: Array<{ id: Workspace; label: string; place?: string }> = [{ id: "all", label: "الكل" }, { id: "school", label: "المدرسة", place: "مدرسة" }, { id: "center", label: "السنتر", place: "سنتر" }, { id: "online", label: "أونلاين", place: "أونلاين" }];
+function useWorkspace() {
+  const [workspace, setWorkspaceState] = useState<Workspace>(() => (localStorage.getItem("ostazi-workspace") as Workspace) || "all");
+  useEffect(() => { const sync = () => setWorkspaceState((localStorage.getItem("ostazi-workspace") as Workspace) || "all"); window.addEventListener("ostazi-workspace-change", sync); return () => window.removeEventListener("ostazi-workspace-change", sync); }, []);
+  const setWorkspace = (next: Workspace) => { localStorage.setItem("ostazi-workspace", next); setWorkspaceState(next); window.dispatchEvent(new Event("ostazi-workspace-change")); };
+  return [workspace, setWorkspace] as const;
+}
+function WorkspaceSwitcher() {
+  const [workspace, setWorkspace] = useWorkspace();
+  return <div className="workspace-switcher" aria-label="التنقل بين سياقات العمل">{workspaces.map(item => <button type="button" key={item.id} className={workspace === item.id ? "active" : ""} onClick={() => setWorkspace(item.id)}>{item.label}</button>)}</div>;
+}
+function WorkspaceRuntime() {
+  const [workspace] = useWorkspace();
+  useEffect(() => {
+    const place = workspaces.find(item => item.id === workspace)?.place;
+    const apply = () => {
+      document.documentElement.dataset.workspace = workspace;
+      document.querySelectorAll<HTMLElement>(".group-card").forEach(card => { const tag = card.querySelector(".tag")?.textContent?.trim(); card.classList.toggle("workspace-hidden", Boolean(place && tag !== place)); });
+      document.querySelectorAll<HTMLSelectElement>("select").forEach(select => {
+        const label = select.closest("label")?.textContent || "";
+        if (label.includes("نوع المجموعة") && !Array.from(select.options).some(option => option.value === "مدرسة")) select.add(new Option("مدرسة", "مدرسة"));
+      });
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [workspace]);
+  return null;
+}
 const initialGroups = [{ id: 1, name: "الصف الثالث الثانوي", place: "سنتر", mode: "حضوري", students: 18, day: "السبت", time: "06:00 م", fee: 180 }, { id: 2, name: "مجموعة الأونلاين", place: "أونلاين", mode: "عن بُعد", students: 12, day: "الأحد", time: "08:00 م", fee: 150 }];
 const initialStudents = [{ id: 1, name: "سارة أحمد", group: "الصف الثالث الثانوي", phone: "01012345678", paid: true }, { id: 2, name: "عمر خالد", group: "مجموعة الأونلاين", phone: "01123456789", paid: false }, { id: 3, name: "نور محمد", group: "الصف الثالث الثانوي", phone: "01234567890", paid: true }];
 type Group = typeof initialGroups[number] & { schedule?: ScheduleEntry[]; scheduleJson?: string | null; collectionPeriod?: "monthly" | "term" };
@@ -45,7 +76,7 @@ function Shell({ children, profile, setProfile }: { children: React.ReactNode; p
   const [location, setLocation] = useLocation(); const [dark, setDark] = useState(true); const [showProfile, setShowProfile] = useState(!profile);
   useEffect(() => { document.documentElement.classList.toggle("light", !dark); }, [dark]);
   const backup = () => { const data = { profile, groups: JSON.parse(localStorage.getItem("groups") || "[]"), students: JSON.parse(localStorage.getItem("students") || "[]") }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ostazi-backup.json"; a.click(); toast.success("تم تحميل النسخة الاحتياطية"); };
-  return <div className="app-shell" dir="rtl"><aside className="sidebar"><div className="brand"><div className="brand-mark">أ</div><div><b>أستاذي</b><span>مساعد المعلم الذكي</span></div></div><div className="date-chip">الخميس، ١٣ أغسطس ٢٠٢٦</div><nav>{nav.map(([href, label, Icon]) => <Link href={href} key={href}><a className={location === href ? "active" : ""}><Icon size={18}/><span>{label}</span>{location === href && <ChevronLeft size={15} className="nav-arrow"/>}</a></Link>)}</nav><div className="sidebar-bottom"><button onClick={() => setDark(!dark)}><span className="icon-box">{dark ? <Sun size={17}/> : <Moon size={17}/>}</span>{dark ? "الوضع النهاري" : "الوضع الليلي"}</button><button onClick={backup}><span className="icon-box"><Download size={17}/></span>نسخة احتياطية</button><button onClick={() => setLocation("/settings")}><span className="icon-box"><Settings size={17}/></span>الإعدادات</button></div><div className="mini-status"><span className="pulse"/> البيانات محفوظة محليًا</div></aside><main className="main"><header className="topbar"><div><h1>{location === "/" ? `صباح الخير، ${profile?.name || "يا أستاذ"}` : location === "/assessments" ? "الامتحانات الأسبوعية" : nav.find(n => n[0] === location)?.[1]}</h1></div><div className="top-actions"><button className="icon-button" onClick={() => toast.success("لا توجد تنبيهات جديدة")}><Bell size={19}/><i/></button><button className="avatar" onClick={() => setShowProfile(true)}>{profile?.name?.slice(0,1) || "أ"}</button></div></header>{children}</main>{showProfile && <ProfileModal profile={profile} setProfile={setProfile} close={() => setShowProfile(false)} />}</div>;
+  return <div className="app-shell" dir="rtl"><WorkspaceRuntime/><aside className="sidebar"><div className="brand"><div className="brand-mark">أ</div><div><b>أستاذي</b><span>مساعد المعلم الذكي</span></div></div><div className="date-chip">الخميس، ١٣ أغسطس ٢٠٢٦</div><nav>{nav.map(([href, label, Icon]) => <Link href={href} key={href}><a className={location === href ? "active" : ""}><Icon size={18}/><span>{label}</span>{location === href && <ChevronLeft size={15} className="nav-arrow"/>}</a></Link>)}</nav><div className="sidebar-bottom"><button onClick={() => setDark(!dark)}><span className="icon-box">{dark ? <Sun size={17}/> : <Moon size={17}/>}</span>{dark ? "الوضع النهاري" : "الوضع الليلي"}</button><button onClick={backup}><span className="icon-box"><Download size={17}/></span>نسخة احتياطية</button><button onClick={() => setLocation("/settings")}><span className="icon-box"><Settings size={17}/></span>الإعدادات</button></div><div className="mini-status"><span className="pulse"/> البيانات محفوظة محليًا</div></aside><main className="main"><header className="topbar"><div><h1>{location === "/" ? `صباح الخير، ${profile?.name || "يا أستاذ"}` : location === "/assessments" ? "الامتحانات الأسبوعية" : nav.find(n => n[0] === location)?.[1]}</h1><WorkspaceSwitcher/></div><div className="top-actions"><button className="icon-button" onClick={() => toast.success("لا توجد تنبيهات جديدة")}><Bell size={19}/><i/></button><button className="avatar" onClick={() => setShowProfile(true)}>{profile?.name?.slice(0,1) || "أ"}</button></div></header>{children}</main>{showProfile && <ProfileModal profile={profile} setProfile={setProfile} close={() => setShowProfile(false)} />}</div>;
 }
 
 function ProfileModal({ profile, setProfile, close }: { profile: any; setProfile: (p: any) => void; close: () => void }) { const saveProfile = trpc.app.profile.save.useMutation(); const [name, setName] = useState(profile?.name || ""); const [phone, setPhone] = useState(profile?.phone || ""); const [subject, setSubject] = useState(profile?.subject || ""); return <div className="modal-backdrop"><div className="modal"><button className="modal-close" onClick={close}><X size={18}/></button><div className="modal-kicker">ابدأ من هنا</div><h2>بيانات المعلم</h2><p>اكتب معلوماتك مرة واحدة، وسيستخدمها أستاذي في كل المجموعات والرسائل.</p><label>اسم المعلم<input value={name} onChange={e => setName(e.target.value)} placeholder="مثال: أ/ أحمد محمود"/></label><label>رقم الواتساب<input value={phone} onChange={e => setPhone(e.target.value)} placeholder="01xxxxxxxxx"/></label><label>المادة الأساسية<select value={subject} onChange={e => setSubject(e.target.value)}><option value="">اختر المادة</option>{subjects.map(s => <option key={s}>{s}</option>)}</select></label><button className="primary wide" onClick={() => { if (!name || !subject) return toast.error("أكمل الاسم والمادة أولاً"); saveProfile.mutate({ name, phone, subject, displayMode: getDisplayMode(profile) }, { onSuccess: () => { setProfile(mergeTeacherProfile(profile, { name, phone, subject })); close(); toast.success("تم حفظ بياناتك ومزامنتها"); }, onError: () => toast.error("تعذر حفظ البيانات الآن") }); }}>حفظ ومتابعة</button></div></div> }
