@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { flushOfflineQueue, offlineQueueSize } from "@/lib/offlineSync";
+import { getSyncStatus, syncStatusLabel } from "../../../shared/syncStatus";
 
 export function OfflineRuntime() {
   const [online, setOnline] = useState(() => navigator.onLine);
@@ -18,6 +19,8 @@ export function OfflineRuntime() {
     return () => { window.removeEventListener("online", sync); window.removeEventListener("offline", offline); window.removeEventListener("ostazi-offline-queue-change", refresh); };
   }, []);
 
-  const badge = online && !pending && !syncing ? <div className="offline-runtime online"><Cloud size={14}/><span>محفوظ ومتزامن</span></div> : <div className={`offline-runtime ${online ? "syncing" : "offline"}`}>{online ? <RefreshCw size={14} className={syncing ? "spin" : ""}/> : <CloudOff size={14}/>}<span>{online ? (pending ? `جارٍ مزامنة ${pending} تعديل` : "جارٍ المزامنة") : `دون اتصال${pending ? ` · ${pending} تعديل محفوظ` : ""}`}</span></div>;
+  const status = getSyncStatus(online, pending, syncing);
+  const label = syncStatusLabel(status, pending);
+  const badge = <div className={`sync-status-icon ${status}`} role="status" aria-label={label} title={label}>{status === "online" ? <Cloud size={18}/> : status === "offline" ? <CloudOff size={18}/> : <RefreshCw size={18} className="spin"/>}<span className="sr-only">{label}</span></div>;
   return <>{badge}{syncNotice && <div className="offline-sync-notice" role="status"><CheckCircle2 size={18}/><div><b>تمت استعادة الاتصال</b><span>{syncNotice}</span></div></div>}</>;
 }
