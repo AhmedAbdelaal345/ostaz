@@ -1,0 +1,40 @@
+import { useMemo, useState } from "react";
+import { ClipboardCheck, Plus, ScanLine, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+
+type QuestionType = "mcq" | "true_false" | "essay";
+type Question = { id: string; text: string; points: number; options?: string[]; correctAnswer?: number | boolean };
+
+function newQuestion(type: QuestionType): Question {
+  return { id: crypto.randomUUID(), text: "", points: 1, ...(type === "mcq" ? { options: ["", "", "", ""], correctAnswer: 0 } : type === "true_false" ? { correctAnswer: true } : {}) };
+}
+
+function asLocalDateTime(date: Date) { const offset = date.getTimezoneOffset() * 60_000; return new Date(date.getTime() - offset).toISOString().slice(0, 16); }
+
+export function WeeklyQuizPanel({ groups, students }: { groups: Array<any>; students: Array<any> }) {
+  const [groupId, setGroupId] = useState("");
+  const [title, setTitle] = useState("التقييم الأسبوعي");
+  const [questionType, setQuestionType] = useState<QuestionType>("mcq");
+  const [questions, setQuestions] = useState<Question[]>(() => [newQuestion("mcq")]);
+  const [startsAt, setStartsAt] = useState(() => asLocalDateTime(new Date()));
+  const [endsAt, setEndsAt] = useState(() => asLocalDateTime(new Date(Date.now() + 60 * 60 * 1000)));
+  const [selectedQuizId, setSelectedQuizId] = useState("");
+  const [studentCode, setStudentCode] = useState("");
+  const [score, setScore] = useState("");
+  const quizzes = trpc.app.quizzes.list.useQuery();
+  const attempts = trpc.app.quizzes.attempts.useQuery({ quizId: Number(selectedQuizId) || 0 }, { enabled: Boolean(selectedQuizId) });
+  const createQuiz = trpc.app.quizzes.create.useMutation({ onSuccess: () => { quizzes.refetch(); toast.success("تم إنشاء الاختبار الأسبوعي"); setQuestions([newQuestion(questionType)]); }, onError: error => toast.error(error.message) });
+  const gradeEssay = trpc.app.quizzes.gradeByStudentCode.useMutation({ onSuccess: data => { attempts.refetch(); toast.success(`تم رصد ${data.score}/${data.maxScore} للطالب ${data.studentName}`); setStudentCode(""); setScore(""); }, onError: error => toast.error(error.message) });
+  const maxScore = useMemo(() => questions.reduce((total, question) => total + Number(question.points || 0), 0), [questions]);
+
+  const updateQuestion = (id: string, patch: Partial<Question>) => setQuestions(current => current.map(question => question.id === id ? { ...question, ...patch } : question));
+  const setType = (type: QuestionType) => { setQuestionType(type); setQuestions([newQuestion(type)]); };
+  const submit = () => {
+    if (!groupId || !title.trim()) return toast.error("اختر المجموعة واكتب عنوان الاختبار");
+    if (questions.some(question => !question.text.trim() || question.points <= 0 || (questionType === "mcq" && question.options?.some(option => !option.trim())))) return toast.error("أكمل نص ودرجة كل سؤال واختياراته");
+    createQuiz.mutate({ groupId: Number(groupId), title: title.trim(), questionType, questions, startsAt: new Date(startsAt), endsAt: new Date(endsAt), instructions: null });
+  };
+
+  return <section className="weekly-quiz-workspace"><div className="quiz-builder panel"><div className="quiz-builder-head"><div><span className="eyebrow">اختبارات المجموعة</span><h3>إنشاء اختبار أسبوعي إلكتروني</h3><p>حدّد الوقت والقالب، ثم أضف الأسئلة والإجابات الصحيحة ليتم الرصد تلقائيًا.</p></div><ClipboardCheck size={25}/></div><div className="quiz-builder-grid"><label>المجموعة<select value={groupId} onChange={event => setGroupId(event.target.value)}><option value="">اختر المجموعة</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label><label>عنوان الاختبار<input value={title} onChange={event => setTitle(event.target.value)} /></label><label>يفتح في<input type="datetime-local" value={startsAt} onChange={event => setStartsAt(event.target.value)} /></label><label>يغلق في<input type="datetime-local" value={endsAt} onChange={event => setEndsAt(event.target.value)} /></label></div><div className="quiz-template-switch"><button type="button" className={questionType === "mcq" ? "selected" : ""} onClick={() => setType("mcq")}>اختيار من متعدد</button><button type="button" className={questionType === "true_false" ? "selected" : ""} onClick={() => setType("true_false")}>صح أو خطأ</button><button type="button" className={questionType === "essay" ? "selected" : ""} onClick={() => setType("essay")}>مقالي</button></div><div className="quiz-questions">{questions.map((question, index) => <article key={question.id}><div className="quiz-question-head"><b>السؤال {index + 1}</b>{questions.length > 1 && <button type="button" onClick={() => setQuestions(current => current.filter(item => item.id !== question.id))}><Trash2 size={15}/> حذف</button>}</div><label>نص السؤال<input value={question.text} onChange={event => updateQuestion(question.id, { text: event.target.value })} placeholder="اكتب السؤال"/></label>{questionType === "mcq" && <div className="quiz-options">{question.options?.map((option, optionIndex) => <label key={optionIndex}>اختيار {optionIndex + 1}<input value={option} onChange={event => updateQuestion(question.id, { options: question.options?.map((item, itemIndex) => itemIndex === optionIndex ? event.target.value : item) })}/><span><input type="radio" name={`correct-${question.id}`} checked={question.correctAnswer === optionIndex} onChange={() => updateQuestion(question.id, { correctAnswer: optionIndex })}/> الإجابة الصحيحة</span></label>)}</div>}{questionType === "true_false" && <div className="quiz-boolean"><button type="button" className={question.correctAnswer === true ? "selected" : ""} onClick={() => updateQuestion(question.id, { correctAnswer: true })}>صح</button><button type="button" className={question.correctAnswer === false ? "selected" : ""} onClick={() => updateQuestion(question.id, { correctAnswer: false })}>خطأ</button></div>}<label className="question-points">الدرجة<input inputMode="decimal" value={String(question.points)} onChange={event => updateQuestion(question.id, { points: Number(event.target.value) || 0 })}/></label></article>)}</div><div className="quiz-builder-actions"><button type="button" className="secondary" onClick={() => setQuestions(current => [...current, newQuestion(questionType)])}><Plus size={16}/> إضافة سؤال</button><span>المجموع: {maxScore} درجة</span><button type="button" className="primary" disabled={createQuiz.isPending} onClick={submit}>نشر الاختبار</button></div></div><div className="quiz-results panel"><div className="quiz-builder-head"><div><span className="eyebrow">المتابعة والرصد</span><h3>نتائج الاختبارات</h3></div><ScanLine size={23}/></div>{quizzes.data?.length ? <div className="quiz-result-list">{quizzes.data.map(quiz => <button type="button" className={String(quiz.id) === selectedQuizId ? "selected" : ""} key={quiz.id} onClick={() => setSelectedQuizId(String(quiz.id))}><span>{quiz.title}</span><small>{quiz.questionType === "mcq" ? "اختياري" : quiz.questionType === "true_false" ? "صح/خطأ" : "مقالي"} · {quiz.maxScore} درجة</small></button>)}</div> : <p className="quiz-empty">لم تُنشئ اختبارًا أسبوعيًا بعد.</p>}{selectedQuizId && <><div className="essay-grade-bar"><b>تصحيح مقالي بكود الطالب</b><input value={studentCode} onChange={event => setStudentCode(event.target.value)} placeholder="امسح أو اكتب كود الطالب"/><input value={score} onChange={event => setScore(event.target.value)} inputMode="decimal" placeholder="الدرجة"/><button type="button" className="primary" onClick={() => gradeEssay.mutate({ quizId: Number(selectedQuizId), studentCode, score })}>رصد الدرجة</button></div><div className="quiz-attempts">{attempts.data?.length ? attempts.data.map(attempt => <div key={attempt.id}><span>{students.find(student => student.id === attempt.studentId)?.name || `طالب #${attempt.studentId}`}</span><b>{attempt.score ?? "بانتظار التصحيح"}</b></div>) : <p className="quiz-empty">لا توجد محاولات مسلمة بعد.</p>}</div></>}</div></section>;
+}
