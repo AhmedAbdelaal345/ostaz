@@ -29,6 +29,20 @@
       "when": 1787348578243,
       "tag": "0003_zippy_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1787362556994,
+      "tag": "0004_cheerful_stature",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1787362766267,
+      "tag": "0005_fair_meltdown",
+      "breakpoints": true
     }
   ]
 }

@@ -59,6 +59,43 @@ export const students = mysqlTable("students", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const studentAccounts = mysqlTable("student_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull().unique(),
+  phone: varchar("phone", { length: 32 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+});
+
+export const weeklyQuizzes = mysqlTable("weekly_quizzes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  groupId: int("groupId").notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  instructions: text("instructions"),
+  questionType: mysqlEnum("questionType", ["mcq", "true_false", "essay"]).notNull(),
+  questionsJson: text("questionsJson").notNull(),
+  maxScore: decimal("maxScore", { precision: 8, scale: 2 }).notNull(),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const quizAttempts = mysqlTable("quiz_attempts", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quizId").notNull(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  answersJson: text("answersJson").notNull(),
+  score: decimal("score", { precision: 8, scale: 2 }),
+  status: mysqlEnum("status", ["submitted", "graded"]).default("submitted").notNull(),
+  submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+  gradedAt: timestamp("gradedAt"),
+});
+
 export const centers = mysqlTable("centers", {
   id: int("id").autoincrement().primaryKey(),
   ownerUserId: int("ownerUserId").notNull(),
