@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ClipboardCheck, Plus, ScanLine, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { normalizeStudentCode } from "../../../shared/studentCode";
 
 type QuestionType = "mcq" | "true_false" | "essay";
 type Question = { id: string; text: string; points: number; options?: string[]; correctAnswer?: number | boolean };
@@ -26,7 +27,7 @@ export function WeeklyQuizPanel({ groups, students }: { groups: Array<any>; stud
   const attempts = trpc.app.quizzes.attempts.useQuery({ quizId: Number(selectedQuizId) || 0 }, { enabled: Boolean(selectedQuizId) });
   const createQuiz = trpc.app.quizzes.create.useMutation({ onSuccess: () => { quizzes.refetch(); toast.success("تم إنشاء الاختبار الأسبوعي"); setQuestions([newQuestion(questionType)]); }, onError: error => toast.error(error.message) });
   const gradeEssay = trpc.app.quizzes.gradeByStudentCode.useMutation({ onSuccess: data => { attempts.refetch(); toast.success(`تم رصد ${data.score}/${data.maxScore} للطالب ${data.studentName}`); setStudentCode(""); setScore(""); }, onError: error => toast.error(error.message) });
-  const answerOcr = trpc.app.assessments.answerOcr.useMutation({ onSuccess: data => { setStudentCode(data.studentCode || ""); setScore(data.score || ""); toast.success("تمت قراءة الكود والدرجة؛ راجعهما ثم اضغط رصد الدرجة"); }, onError: () => toast.error("تعذر قراءة ورقة الإجابة") });
+  const answerOcr = trpc.app.assessments.answerOcr.useMutation({ onSuccess: data => { setStudentCode(normalizeStudentCode(data.studentCode || "")); setScore(data.score || ""); toast.success("تمت قراءة الكود والدرجة؛ راجعهما ثم اضغط رصد الدرجة"); }, onError: () => toast.error("تعذر قراءة ورقة الإجابة") });
   const maxScore = useMemo(() => questions.reduce((total, question) => total + Number(question.points || 0), 0), [questions]);
 
   const updateQuestion = (id: string, patch: Partial<Question>) => setQuestions(current => current.map(question => question.id === id ? { ...question, ...patch } : question));
