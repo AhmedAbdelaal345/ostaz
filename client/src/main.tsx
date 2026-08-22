@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { COOKIE_NAME, UNAUTHED_ERR_MSG } from '@shared/const';
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { dehydrate, hydrate, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
@@ -8,9 +8,16 @@ import App from "./App";
 import EntityProfile from "./pages/EntityProfile";
 import StudentPortal from "./pages/StudentPortal";
 import { startLogin } from "./const";
+import { OfflineRuntime } from "./components/OfflineRuntime";
+import { enqueueTrpcRequest, flushOfflineQueue } from "./lib/offlineSync";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({ defaultOptions: { queries: { networkMode: "offlineFirst", staleTime: 60_000, retry: 1 } } });
+try {
+  const cached = localStorage.getItem("ostazi-query-cache-v1");
+  if (cached) hydrate(queryClient, JSON.parse(cached));
+  queryClient.getQueryCache().subscribe(() => localStorage.setItem("ostazi-query-cache-v1", JSON.stringify(dehydrate(queryClient))));
+} catch { /* local cache is optional */ }
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
@@ -65,6 +72,10 @@ const trpcClient = trpc.createClient({
         return {};
       },
       fetch(input, init) {
+        if (!navigator.onLine && (init?.method || "GET").toUpperCase() === "POST") {
+          enqueueTrpcRequest(String(input), init);
+          return Promise.reject(new Error("OFFLINE_QUEUED"));
+        }
         return globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
@@ -77,10 +88,15 @@ const trpcClient = trpc.createClient({
 const pathname = window.location.pathname;
 const RootApp = pathname.startsWith("/student/") ? StudentPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => undefined));
+}
+
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
       <RootApp />
+      <OfflineRuntime />
     </QueryClientProvider>
   </trpc.Provider>
 );

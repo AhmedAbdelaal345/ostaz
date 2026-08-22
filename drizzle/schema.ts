@@ -41,6 +41,7 @@ export const studyGroups = mysqlTable("study_groups", {
   time: varchar("time", { length: 30 }).notNull(),
   scheduleJson: text("scheduleJson"),
   fee: decimal("fee", { precision: 10, scale: 2 }).default("0").notNull(),
+  collectionPeriod: mysqlEnum("collectionPeriod", ["monthly", "term"]).default("monthly").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -55,6 +56,7 @@ export const students = mysqlTable("students", {
   guardianPhone: varchar("guardianPhone", { length: 32 }),
   studentCode: varchar("studentCode", { length: 80 }),
   paid: boolean("paid").default(false).notNull(),
+  paidAmount: decimal("paidAmount", { precision: 10, scale: 2 }).default("0").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -137,6 +139,17 @@ export const financialTransactions = mysqlTable("financial_transactions", {
   paidAt: timestamp("paidAt"),
   description: varchar("description", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const pushSubscriptions = mysqlTable("push_subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  endpoint: text("endpoint").notNull(),
+  p256dh: varchar("p256dh", { length: 255 }).notNull(),
+  auth: varchar("auth", { length: 255 }).notNull(),
+  contentEncoding: varchar("contentEncoding", { length: 32 }).default("aes128gcm").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export const assessments = mysqlTable("assessments", {
