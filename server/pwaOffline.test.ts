@@ -10,5 +10,8 @@ describe("PWA offline worker", () => {
     expect(worker).toContain("self.addEventListener('notificationclick'");
     const entry = readFileSync(resolve(process.cwd(), "client/src/main.tsx"), "utf8");
     expect(entry).toContain('navigator.serviceWorker.register("/sw.js")');
+    const offlineRuntime = readFileSync(resolve(process.cwd(), "client/src/components/OfflineRuntime.tsx"), "utf8");
+    expect(offlineRuntime).toContain("تمت استعادة الاتصال");
+    expect(offlineRuntime).toContain("result.sent");
   });
 });
