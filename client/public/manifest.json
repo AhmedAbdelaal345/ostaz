@@ -1,12 +1,12 @@
 {
-  "name": "أستاذي — مساعد المعلم الذكي",
-  "short_name": "أستاذي",
+  "name": "El Mister | المستر",
+  "short_name": "El Mister",
   "description": "إدارة المجموعات والطلاب والجدول والسجل المالي للمعلم.",
   "start_url": "/",
   "display": "standalone",
   "dir": "rtl",
   "lang": "ar",
-  "theme_color": "#080d13",
-  "background_color": "#080d13",
-  "icons": [{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "theme_color": "#071b46",
+  "background_color": "#06142f",
+  "icons": [{"src":"/manus-storage/el-mister-logo_65d8a1da.jpg","sizes":"1024x1024","type":"image/jpeg","purpose":"any maskable"}]
 }

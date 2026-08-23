@@ -3,6 +3,7 @@ import { COOKIE_NAME, UNAUTHED_ERR_MSG } from '@shared/const';
 import { dehydrate, hydrate, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
+import { useEffect, useState } from "react";
 import superjson from "superjson";
 import App from "./App";
 import EntityProfile from "./pages/EntityProfile";
@@ -87,6 +88,13 @@ const trpcClient = trpc.createClient({
 
 const pathname = window.location.pathname;
 const RootApp = pathname.startsWith("/student/") ? StudentPortal : pathname.startsWith("/teacher/") ? TeacherPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
+const EL_MISTER_LOGO = "/manus-storage/el-mister-logo_65d8a1da.jpg";
+
+function BrandStartup({ children }: { children: React.ReactNode }) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => { const timer = window.setTimeout(() => setVisible(false), 900); return () => window.clearTimeout(timer); }, []);
+  return <>{visible && <div className="brand-startup" role="status" aria-label="جارٍ فتح El Mister"><div className="brand-startup-glow"/><img src={EL_MISTER_LOGO} alt="El Mister"/><div><strong>El Mister</strong><span>المستر</span></div></div>}{children}</>;
+}
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => undefined));
@@ -95,7 +103,7 @@ if ("serviceWorker" in navigator) {
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <RootApp />
+      <BrandStartup><RootApp /></BrandStartup>
       <OfflineRuntime />
     </QueryClientProvider>
   </trpc.Provider>
