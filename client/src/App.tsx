@@ -26,6 +26,7 @@ import { WeeklyQuizPanel } from "./components/WeeklyQuizPanel";
 import { ContextReports } from "./components/ContextReports";
 import { OfflineRuntime } from "./components/OfflineRuntime";
 import { ChangeLogPanel } from "./components/ChangeLogPanel";
+import { SchoolWorkspacePanel } from "./components/SchoolWorkspacePanel";
 
 const nav = [
   ["/", "الرئيسية", Home], ["/attendance", "الحضور", CheckCircle2], ["/groups", "المجموعات", LayoutGrid], ["/finance", "المالية", WalletCards], ["/settings", "الإعدادات", Settings],
@@ -40,8 +41,9 @@ function useWorkspace() {
   return [workspace, setWorkspace] as const;
 }
 function WorkspaceSwitcher() {
-  const [workspace, setWorkspace] = useWorkspace();
-  return <div className="workspace-switcher" aria-label="التنقل بين سياقات العمل">{workspaces.map(item => <button type="button" key={item.id} className={workspace === item.id ? "active" : ""} onClick={() => setWorkspace(item.id)}>{item.label}</button>)}</div>;
+  const [workspace, setWorkspace] = useWorkspace(); const [, setLocation] = useLocation();
+  const selectWorkspace = (next: Workspace) => { setWorkspace(next); if (next === "school") setLocation("/"); };
+  return <div className="workspace-switcher" aria-label="التنقل بين سياقات العمل">{workspaces.map(item => <button type="button" key={item.id} className={workspace === item.id ? "active" : ""} onClick={() => selectWorkspace(item.id)}>{item.label}</button>)}</div>;
 }
 function WorkspaceRuntime() {
   const [workspace] = useWorkspace();
@@ -148,6 +150,8 @@ function Page({ profile }: { profile: any }) { const auth = useAuth(); const boo
 
 function LiveTracker({ groups }: { groups: Group[] }) { const [now, setNow] = useState(() => new Date()); const notifiedRef = useRef(""); useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(timer); }, []); const todayName = now.toLocaleDateString("ar-EG", { weekday: "long" }) as typeof WEEK_DAYS[number]; const weekStart = new Date(now); weekStart.setHours(0, 0, 0, 0); const dayIndex = WEEK_DAYS.indexOf(todayName); weekStart.setDate(weekStart.getDate() - (dayIndex >= 0 ? dayIndex : 0)); const scheduledLessons = groups.flatMap(group => scheduleForGroup(group).map(item => ({ ...group, ...item }))).map(lesson => { const clock = parseClockTime(lesson.time); const hour = Number(clock.hour) % 12 + (clock.period === "م" ? 12 : 0); const date = new Date(weekStart); const lessonDayIndex = WEEK_DAYS.indexOf(lesson.day as typeof WEEK_DAYS[number]); date.setDate(date.getDate() + (lessonDayIndex >= 0 ? lessonDayIndex : 0)); date.setHours(hour, 0, 0, 0); if (date.getTime() < now.getTime() - 60 * 60 * 1000) date.setDate(date.getDate() + 7); return { lesson, date }; }).sort((a, b) => a.date.getTime() - b.date.getTime()); const current = scheduledLessons.find(item => now.getTime() >= item.date.getTime() && now.getTime() < item.date.getTime() + 60 * 60 * 1000); const next = scheduledLessons.find(item => item.date.getTime() >= now.getTime()); const active = current || next; const remaining = next ? Math.max(0, Math.ceil((next.date.getTime() - now.getTime()) / 60_000)) : 0; const reminderKey = next ? `${next.lesson.id}-${next.date.getTime()}` : ""; useEffect(() => { if (next && remaining === 5 && notifiedRef.current !== reminderKey) { notifiedRef.current = reminderKey; toast.info(`تبقى 5 دقائق على حصة ${next.lesson.name}`); } }, [next, remaining, reminderKey]); return <div className="live-tracker panel"><div className="tracker-icon"><CheckCircle2 size={21}/></div><div className="tracker-copy"><span className="eyebrow">المؤشر المباشر</span><h3>{current ? "الحصة الحالية" : next ? "الحصة القادمة" : "اليوم الدراسي"}</h3><p>{active ? `${active.lesson.name} · ${active.lesson.place}` : "لا توجد حصة مجدولة"}</p></div><div className="tracker-time"><strong>{current ? "مستمرة" : next ? formatRemainingLessonTime(remaining) : "—"}</strong><small>{active ? `${active.lesson.day} · ${active.lesson.time}` : "العودة للجدول"}</small></div></div> }
 function HomePage({ profile, groups, students, onAdd, modal, close, addGroup }: any) {
+  const [workspace] = useWorkspace();
+  if (workspace === "school") return <SchoolWorkspacePanel />;
   const now = new Date();
   const todayName = now.toLocaleDateString("ar-EG", { weekday: "long" });
   const todayDate = now.toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" });

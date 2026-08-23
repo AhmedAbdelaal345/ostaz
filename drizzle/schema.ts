@@ -26,6 +26,8 @@ export const teacherProfiles = mysqlTable("teacher_profiles", {
   contactEmail: varchar("contactEmail", { length: 320 }),
   contactWhatsapp: varchar("contactWhatsapp", { length: 320 }),
   messageTemplate: text("messageTemplate"),
+  schoolScheduleJson: text("schoolScheduleJson"),
+  weeklyEvaluationJson: text("weeklyEvaluationJson"),
   displayMode: mysqlEnum("displayMode", ["ليلي", "عادي", "أوتوماتيك"]).default("ليلي").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
