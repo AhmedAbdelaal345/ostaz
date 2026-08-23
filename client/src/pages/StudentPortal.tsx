@@ -22,7 +22,7 @@ export default function StudentPortal() {
   const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<string, string | number | boolean | null>>({});
   const [editingProfile, setEditingProfile] = useState(false);
-  const student = trpc.studentAuth.me.useQuery(undefined, { retry: false });
+  const student = trpc.studentAuth.me.useQuery(undefined, { retry: false, staleTime: 0, refetchOnMount: "always" });
   const quizzes = trpc.studentQuiz.available.useQuery(undefined, { enabled: Boolean(student.data), retry: false });
   const register = trpc.studentAuth.register.useMutation({ onSuccess: () => { student.refetch(); setLocation("/student/profile"); toast.success("تم إنشاء حسابك وربطه بسجلك الدراسي"); }, onError: error => toast.error(error.message) });
   const login = trpc.studentAuth.login.useMutation({ onSuccess: () => { student.refetch(); setLocation("/student/profile"); toast.success("مرحبًا بك في بروفايل الطالب"); }, onError: error => toast.error(error.message) });
@@ -31,7 +31,7 @@ export default function StudentPortal() {
   const isRegister = location === "/student/register";
   const activeQuestions = useMemo(() => selectedQuiz ? (selectedQuiz.questions || []) as QuizQuestion[] : [], [selectedQuiz]);
 
-  useEffect(() => { if (!student.isLoading && !student.data && location === "/student/profile") setLocation("/student/login"); }, [location, setLocation, student.data, student.isLoading]);
+  useEffect(() => { if (student.isFetchedAfterMount && !student.isFetching && !student.data && location === "/student/profile") setLocation("/student/login"); }, [location, setLocation, student.data, student.isFetchedAfterMount, student.isFetching]);
   const submitCredentials = () => { if (!phone.trim() || password.length < 8) return toast.error("اكتب رقم الهاتف وكلمة مرور من 8 أحرف على الأقل"); (isRegister ? register : login).mutate({ phone, password }); };
 
   if (selectedQuiz) {

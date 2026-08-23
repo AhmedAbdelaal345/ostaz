@@ -21,6 +21,13 @@ function isSecureRequest(req: Request) {
   return protoList.some(proto => proto.trim().toLowerCase() === "https");
 }
 
+function isLocalRequest(req: Request) {
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const rawHost = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost || req.headers.host || req.hostname || "";
+  const hostname = rawHost.split(",")[0]?.trim().replace(/^\[|\]$/g, "").split(":")[0]?.toLowerCase() || "";
+  return LOCAL_HOSTS.has(hostname) || isIpAddress(hostname);
+}
+
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
@@ -39,10 +46,14 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  // Browsers reject SameSite=None cookies unless they are also Secure. Behind a
+  // TLS proxy req.protocol can look like HTTP, so public hostnames must still
+  // receive the Secure shape; local HTTP development uses Lax instead.
+  const secure = isSecureRequest(req) || !isLocalRequest(req);
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    sameSite: secure ? "none" : "lax",
+    secure,
   };
 }
