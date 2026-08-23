@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("./db", async () => {
+  const actual = await vi.importActual<typeof import("./db")>("./db");
+  return { ...actual, listGroups: vi.fn().mockResolvedValue([]), listStudents: vi.fn().mockResolvedValue([]) };
+});
+
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
