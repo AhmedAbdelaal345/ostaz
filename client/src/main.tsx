@@ -90,6 +90,15 @@ const pathname = window.location.pathname;
 const RootApp = pathname.startsWith("/student/") ? StudentPortal : pathname.startsWith("/teacher/") ? TeacherPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
 const EL_MISTER_LOGO = "/manus-storage/el-mister-logo_65d8a1da.jpg";
 
+function DirectAccessGuard({ children }: { children: React.ReactNode }) {
+  const session = trpc.auth.me.useQuery(undefined, { retry: false });
+  useEffect(() => {
+    const keepsOwnSession = pathname.startsWith("/student/") || pathname.startsWith("/teacher/");
+    if (!keepsOwnSession && !session.isLoading && !session.data) window.location.replace("/teacher/login");
+  }, [session.isLoading, session.data]);
+  return <>{children}</>;
+}
+
 function BrandStartup({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(true);
   useEffect(() => { const timer = window.setTimeout(() => setVisible(false), 900); return () => window.clearTimeout(timer); }, []);
@@ -103,7 +112,7 @@ if ("serviceWorker" in navigator) {
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <BrandStartup><RootApp /></BrandStartup>
+      <DirectAccessGuard><BrandStartup><RootApp /></BrandStartup></DirectAccessGuard>
       <OfflineRuntime />
     </QueryClientProvider>
   </trpc.Provider>
