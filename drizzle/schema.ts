@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal, uniqueIndex } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -193,6 +193,36 @@ export const behaviorRecords = mysqlTable("behavior_records", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const yearWorkTerms = mysqlTable("year_work_terms", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  term: mysqlEnum("term", ["first", "second"]).notNull(),
+  grade: varchar("grade", { length: 120 }).notNull(),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt").notNull(),
+  monthsJson: text("monthsJson").notNull(),
+  studentIdsJson: text("studentIdsJson").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const yearWorkScores = mysqlTable("year_work_scores", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  termId: int("termId").notNull(),
+  studentId: int("studentId").notNull(),
+  monthKey: varchar("monthKey", { length: 7 }).notNull(),
+  homeWork: int("homeWork").default(0).notNull(),
+  activity: int("activity").default(0).notNull(),
+  weeklyEvaluation: int("weeklyEvaluation").default(0).notNull(),
+  performanceTasks: int("performanceTasks").default(0).notNull(),
+  behavior: int("behavior").default(0).notNull(),
+  attendance: int("attendance").default(0).notNull(),
+  monthlyExam: int("monthlyExam").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ uniqueStudentMonth: uniqueIndex("year_work_scores_term_student_month").on(table.termId, table.studentId, table.monthKey) }));
+
 export const changeLogs = mysqlTable("change_logs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -215,3 +245,7 @@ export type BehaviorRecord = typeof behaviorRecords.$inferSelect;
 export type InsertBehaviorRecord = typeof behaviorRecords.$inferInsert;
 export type ChangeLog = typeof changeLogs.$inferSelect;
 export type InsertChangeLog = typeof changeLogs.$inferInsert;
+export type YearWorkTerm = typeof yearWorkTerms.$inferSelect;
+export type InsertYearWorkTerm = typeof yearWorkTerms.$inferInsert;
+export type YearWorkScore = typeof yearWorkScores.$inferSelect;
+export type InsertYearWorkScore = typeof yearWorkScores.$inferInsert;
