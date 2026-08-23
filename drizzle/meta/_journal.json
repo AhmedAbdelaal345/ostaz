@@ -57,6 +57,13 @@
       "when": 1787365196952,
       "tag": "0007_green_sauron",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1787481739123,
+      "tag": "0008_exotic_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

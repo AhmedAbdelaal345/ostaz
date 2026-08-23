@@ -12,6 +12,7 @@ describe("protected app procedures", () => {
   it("reject unauthenticated data access", async () => {
     const caller = appRouter.createCaller(context(null));
     await expect(caller.app.groups.list()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.app.changeLog.list()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 
   it("returns a PDF payload only for an authenticated user", async () => {

@@ -177,6 +177,16 @@ export const behaviorRecords = mysqlTable("behavior_records", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const changeLogs = mysqlTable("change_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  category: mysqlEnum("category", ["student", "group", "attendance", "finance", "assessment", "settings"]).notNull(),
+  action: mysqlEnum("action", ["created", "updated", "deleted", "recorded", "settled"]).notNull(),
+  entityName: varchar("entityName", { length: 180 }).notNull(),
+  details: varchar("details", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type TeacherProfile = typeof teacherProfiles.$inferSelect;
@@ -187,3 +197,5 @@ export type Student = typeof students.$inferSelect;
 export type InsertStudent = typeof students.$inferInsert;
 export type BehaviorRecord = typeof behaviorRecords.$inferSelect;
 export type InsertBehaviorRecord = typeof behaviorRecords.$inferInsert;
+export type ChangeLog = typeof changeLogs.$inferSelect;
+export type InsertChangeLog = typeof changeLogs.$inferInsert;
