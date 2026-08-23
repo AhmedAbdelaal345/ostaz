@@ -1,5 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
+import { getUserById } from "../db";
+import { getTeacherSession } from "../teacherAuth";
 import { sdk } from "./sdk";
 
 export type TrpcContext = {
@@ -18,6 +20,11 @@ export async function createContext(
   } catch (error) {
     // Authentication is optional for public procedures.
     user = null;
+  }
+
+  if (!user) {
+    const teacherSession = await getTeacherSession(opts.req);
+    if (teacherSession) user = (await getUserById(teacherSession.userId)) ?? null;
   }
 
   return {

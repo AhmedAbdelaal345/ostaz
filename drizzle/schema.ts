@@ -18,6 +18,7 @@ export const teacherProfiles = mysqlTable("teacher_profiles", {
   name: varchar("name", { length: 160 }).notNull(),
   phone: varchar("phone", { length: 32 }),
   subject: varchar("subject", { length: 120 }).notNull(),
+  avatarUrl: varchar("avatarUrl", { length: 512 }),
   paymentBank: varchar("paymentBank", { length: 160 }),
   paymentWallet: varchar("paymentWallet", { length: 64 }),
   paymentNote: text("paymentNote"),
@@ -55,6 +56,9 @@ export const students = mysqlTable("students", {
   guardianName: varchar("guardianName", { length: 160 }),
   guardianPhone: varchar("guardianPhone", { length: 32 }),
   studentCode: varchar("studentCode", { length: 80 }),
+  age: int("age"),
+  grade: varchar("grade", { length: 120 }),
+  avatarUrl: varchar("avatarUrl", { length: 512 }),
   paid: boolean("paid").default(false).notNull(),
   paidAmount: decimal("paidAmount", { precision: 10, scale: 2 }).default("0").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -64,6 +68,16 @@ export const students = mysqlTable("students", {
 export const studentAccounts = mysqlTable("student_accounts", {
   id: int("id").autoincrement().primaryKey(),
   studentId: int("studentId").notNull().unique(),
+  phone: varchar("phone", { length: 32 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+});
+
+export const teacherAccounts = mysqlTable("teacher_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
   phone: varchar("phone", { length: 32 }).notNull().unique(),
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

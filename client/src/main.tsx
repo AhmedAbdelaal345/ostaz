@@ -7,7 +7,7 @@ import superjson from "superjson";
 import App from "./App";
 import EntityProfile from "./pages/EntityProfile";
 import StudentPortal from "./pages/StudentPortal";
-import { startLogin } from "./const";
+import TeacherPortal from "./pages/TeacherPortal";
 import { OfflineRuntime } from "./components/OfflineRuntime";
 import { enqueueTrpcRequest, flushOfflineQueue } from "./lib/offlineSync";
 import "./index.css";
@@ -27,7 +27,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  startLogin();
+  window.location.assign("/teacher/login");
 };
 
 queryClient.getQueryCache().subscribe(event => {
@@ -86,7 +86,7 @@ const trpcClient = trpc.createClient({
 });
 
 const pathname = window.location.pathname;
-const RootApp = pathname.startsWith("/student/") ? StudentPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
+const RootApp = pathname.startsWith("/student/") ? StudentPortal : pathname.startsWith("/teacher/") ? TeacherPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => undefined));

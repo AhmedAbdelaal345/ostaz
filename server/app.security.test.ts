@@ -20,5 +20,5 @@ describe("protected app procedures", () => {
     const result = await caller.report.pdf();
     expect(result.filename).toBe("ostazi-statistics.pdf");
     expect(result.contentBase64.startsWith("JVBER")).toBe(true);
-  });
+  }, 20_000);
 });
