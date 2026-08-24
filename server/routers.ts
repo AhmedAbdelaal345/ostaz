@@ -31,7 +31,7 @@ const teacherCredentialsInput = z.object({ phone: z.string().min(7).max(32), pas
 const teacherRegistrationInput = teacherCredentialsInput.extend({ name: z.string().min(2).max(160), subject: z.string().min(2).max(120) });
 const avatarInput = z.object({ imageDataUrl: z.string().regex(/^data:image\/(png|jpeg|jpg|webp);base64,/, "صيغة الصورة غير مدعومة").max(4_000_000) });
 const studentSelfProfileInput = z.object({ age: z.number().int().min(3).max(120).nullable().optional(), grade: z.string().max(120).nullable().optional() });
-const studentAssistantInput = z.object({ message: z.string().trim().min(1).max(600) });
+const studentAssistantInput = z.object({ message: z.string().trim().min(1).max(600), language: z.enum(["ar", "en"]).default("ar") });
 const yearWorkTermInput = z.object({ id: z.number().int().positive().optional(), term: z.enum(["first", "second"]), grade: z.string().min(1).max(120), startsAt: z.coerce.date(), endsAt: z.coerce.date(), months: z.array(z.string().regex(/^\d{4}-\d{2}$/)).min(1).max(8), studentIds: z.array(z.number().int().positive()).max(500) }).refine(input => input.endsAt >= input.startsAt, { message: "يجب أن يكون تاريخ نهاية الترم بعد تاريخ بدايته", path: ["endsAt"] });
 const yearWorkScoreInput = z.object({ termId: z.number().int().positive(), studentId: z.number().int().positive(), monthKey: z.string().regex(/^\d{4}-\d{2}$/), homeWork: z.number().int().min(0).max(5), activity: z.number().int().min(0).max(5), weeklyEvaluation: z.number().int().min(0).max(5), performanceTasks: z.number().int().min(0).max(5), behavior: z.number().int().min(0).max(5), attendance: z.number().int().min(0).max(5), monthlyExam: z.number().int().min(0).max(100).default(0) });
 
@@ -93,16 +93,16 @@ export const appRouter = router({
       if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "سجل دخول الطالب مطلوب." });
       const context = await getStudentAssistantContext(session.studentId);
       if (!context) throw new TRPCError({ code: "NOT_FOUND", message: "تعذر العثور على بيانات الطالب." });
-      const question = input.message.toLowerCase();
-      if (/درج|اختبار|نتيج/.test(question)) { const rows = context.academic.latestAssessments; return { answer: rows.length ? `آخر درجاتك المسجلة: ${rows.map(row => `${row.title}: ${row.score ?? "—"}/${row.maxScore ?? "—"}`).join("، ")}.` : "لا توجد درجات مسجلة لك حتى الآن." }; }
-      if (/غيا|غبت|حضور/.test(question)) return { answer: `عدد أيام الغياب المسجلة لك هو ${context.academic.absencesCount} يوم من إجمالي ${context.academic.attendanceRecords} سجل حضور.` };
-      if (/متبق|مستحق|فلوس|مبلغ|دفع|اشتراك/.test(question)) return { answer: context.academic.remainingAmount > 0 ? `المبلغ المتبقي عليك هو ${context.academic.remainingAmount} ${context.academic.currency}.` : "لا يوجد مبلغ متبقٍ مسجل عليك حاليًا." };
+      const question = input.message.toLowerCase(); const english = input.language === "en";
+      if (/درج|اختبار|نتيج|score|exam|result/.test(question)) { const rows = context.academic.latestAssessments; return { answer: rows.length ? (english ? `Your latest recorded scores: ${rows.map(row => `${row.title}: ${row.score ?? "—"}/${row.maxScore ?? "—"}`).join(", ")}.` : `آخر درجاتك المسجلة: ${rows.map(row => `${row.title}: ${row.score ?? "—"}/${row.maxScore ?? "—"}`).join("، ")}.`) : (english ? "No scores have been recorded for you yet." : "لا توجد درجات مسجلة لك حتى الآن.") }; }
+      if (/غيا|غبت|حضور|absence|attendance/.test(question)) return { answer: english ? `You have ${context.academic.absencesCount} recorded absence days out of ${context.academic.attendanceRecords} attendance records.` : `عدد أيام الغياب المسجلة لك هو ${context.academic.absencesCount} يوم من إجمالي ${context.academic.attendanceRecords} سجل حضور.` };
+      if (/متبق|مستحق|فلوس|مبلغ|دفع|اشتراك|due|owe|payment|subscription|money/.test(question)) return { answer: context.academic.remainingAmount > 0 ? (english ? `Your remaining amount due is ${context.academic.remainingAmount} ${context.academic.currency}.` : `المبلغ المتبقي عليك هو ${context.academic.remainingAmount} ${context.academic.currency}.`) : (english ? "There is no remaining amount due for you right now." : "لا يوجد مبلغ متبقٍ مسجل عليك حاليًا.") };
       try {
-        const result = await invokeLLM({ model: "gemini-3-flash-preview", maxTokens: 420, messages: [{ role: "system", content: `أنت مساعد رسائل ودي للطالب باللغة العربية. أجب بإيجاز وبأسلوب واضح عن أسئلة الطالب المتعلقة بالمعلم والمجموعة والمواعيد والحضور والواجب والاختبارات. استخدم بيانات السياق فقط ولا تخترع مواعيد أو معلومات. لا تكشف أي بيانات عن طلاب آخرين أو أموال أو كلمات مرور أو معلومات شخصية. إذا لم توجد المعلومة، قل للطالب أن يتواصل مع المعلم. بيانات السياق المسموح بها: ${JSON.stringify(context)}` }, { role: "user", content: input.message }] });
+        const result = await invokeLLM({ model: "gemini-3-flash-preview", maxTokens: 420, messages: [{ role: "system", content: `${english ? "You are a friendly student-message assistant. Answer briefly and clearly in English about the teacher, group, schedules, attendance, homework, and exams." : "أنت مساعد رسائل ودي للطالب باللغة العربية. أجب بإيجاز وبأسلوب واضح عن أسئلة الطالب المتعلقة بالمعلم والمجموعة والمواعيد والحضور والواجب والاختبارات."} Use only the supplied context; never invent schedules or information. Never reveal data about other students, money, passwords, or personal information. If information is absent, tell the student to contact their teacher. Allowed context: ${JSON.stringify(context)}` }, { role: "user", content: input.message }] });
         const answer = result.choices[0]?.message.content;
-        return { answer: typeof answer === "string" && answer.trim() ? answer.trim() : "لا أملك هذه المعلومة حاليًا؛ من فضلك تواصل مع المعلم." };
+        return { answer: typeof answer === "string" && answer.trim() ? answer.trim() : (english ? "I do not have that information right now. Please contact your teacher." : "لا أملك هذه المعلومة حاليًا؛ من فضلك تواصل مع المعلم.") };
       } catch {
-        return { answer: "تعذر الوصول للمساعد الآن. يمكنك سؤال المعلم مباشرة أو المحاولة لاحقًا." };
+        return { answer: english ? "The assistant is unavailable right now. Please ask your teacher directly or try again later." : "تعذر الوصول للمساعد الآن. يمكنك سؤال المعلم مباشرة أو المحاولة لاحقًا." };
       }
     }),
   }),

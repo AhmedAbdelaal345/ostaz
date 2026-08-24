@@ -12,8 +12,11 @@ describe("مساعد رسائل الطالب", () => {
     expect(router).toContain("studentAssistant: router");
     expect(router).toContain("سجل دخول الطالب مطلوب");
     expect(router).toContain("latestAssessments");
-    expect(router).toContain("لا تكشف أي بيانات عن طلاب آخرين");
+    expect(router).toContain("Never reveal data about other students");
+    expect(router).toContain("language: z.enum");
+    expect(router).toContain("Your latest recorded scores");
     expect(view).toContain("ما آخر درجاتي في الاختبارات؟");
+    expect(view).toContain("When are my lessons?");
     expect(view).toContain("كم المبلغ المتبقي عليّ؟");
   });
 });
