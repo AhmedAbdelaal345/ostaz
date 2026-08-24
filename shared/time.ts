@@ -6,6 +6,7 @@ export function parseClockTime(value?: string): ClockTime {
   return { hour, period: match?.[2] === "ص" ? "ص" : "م" };
 }
 
-export function formatClockTime(time: ClockTime) {
-  return `${String(Math.min(12, Math.max(1, Number(time.hour) || 7))).padStart(2, "0")}:00 ${time.period}`;
+export function formatClockTime(time: ClockTime, language: "ar" | "en" = "ar") {
+  const period = language === "en" ? (time.period === "ص" ? "AM" : "PM") : time.period;
+  return `${String(Math.min(12, Math.max(1, Number(time.hour) || 7))).padStart(2, "0")}:00 ${period}`;
 }

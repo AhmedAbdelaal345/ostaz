@@ -25,13 +25,91 @@ const dictionary = {
   },
 } as const;
 
+/**
+ * Legacy screens were authored before the language context existed. Keeping
+ * their source text in Arabic preserves the primary RTL experience, while this
+ * catalogue translates the static interface copy when English is selected.
+ * It deliberately matches complete phrases only, never student/teacher data.
+ */
+const legacyEnglishText: Record<string, string> = {
+  "المستر لإدارة التعليم": "Education management", "تم تحميل النسخة الاحتياطية": "Backup downloaded", "لا توجد تنبيهات جديدة": "No new notifications",
+  "اختر صورة PNG أو JPG أو WEBP بحجم لا يتجاوز 2.5 ميجابايت": "Choose a PNG, JPG, or WEBP image no larger than 2.5 MB", "تم تحديث الصورة الشخصية": "Profile photo updated", "أكمل الاسم والمادة أولاً": "Complete the name and subject first", "تم حفظ الملف وتفعيل دخول الهاتف": "Profile saved and phone sign-in enabled", "تم حفظ بياناتك ومزامنتها": "Your details were saved and synced", "تعذر حفظ بياناتك الآن": "Your details could not be saved right now",
+  "الصورة الشخصية للمعلم": "Teacher profile photo", "تغيير الصورة": "Change photo", "ملفك الشخصي": "Your profile", "بيانات المعلم": "Teacher details", "هذه البيانات تظهر في مساحة المعلم ورسائله.": "These details appear in the teacher workspace and messages.", "اسم المعلم": "Teacher name", "مثال: أ/ أحمد محمود": "Example: Mr Ahmed Mahmoud", "رقم الهاتف / واتساب": "Phone / WhatsApp", "المادة الأساسية": "Main subject", "اختر المادة": "Choose a subject", "كلمة مرور دخول الهاتف": "Phone sign-in password", "اتركها فارغة إن لم ترد تغييرها": "Leave it blank to keep it unchanged", "8 أحرف على الأقل": "At least 8 characters", "حفظ وتفعيل دخول الهاتف": "Save and enable phone sign-in", "حفظ التعديلات": "Save changes",
+  "تم تنزيل تقرير PDF": "PDF report downloaded", "بطاقة طالب": "Student card", "كود الطالب:": "Student code:", "ولي الأمر:": "Guardian:", "بدون هاتف": "No phone", "الحساب مسدد": "Account settled", "فتح بروفايل الطالب": "Open student profile", "رسالة WhatsApp": "WhatsApp message", "طباعة البطاقة": "Print card",
+  "تعذر تشغيل الكاميرا": "Camera could not be started", "لم يتم العثور على طالب بهذا الكود": "No student was found with this code", "تسجيل لحظي": "Instant check-in", "تسجيل حضور سريع": "Quick attendance check-in", "امسح QR أو اكتب كود الطالب لتسجيل حضوره في حصة اليوم.": "Scan the QR code or enter the student code to record attendance for today's lesson.", "كود الطالب": "Student code", "تسجيل": "Check in", "إيقاف الكاميرا": "Stop camera", "فتح الكاميرا": "Open camera", "وجّه الكاميرا إلى كود الطالب": "Point the camera at the student code", "المتصفح لا يدعم المسح التلقائي؛ استخدم الإدخال اليدوي": "This browser does not support automatic scanning; use manual entry",
+  "حاضر": "Present", "غائب": "Absent", "متأخر": "Late", "حضور حصة اليوم": "Today's lesson attendance", "المتأخرون يظهرون أولًا": "Late students appear first", "بروفايل المجموعة": "Group profile", "لم يُسجل بعد": "Not recorded yet", "مسدد": "Settled", "واتساب": "WhatsApp", "لا يوجد طلاب مرتبطون بهذه المجموعة بعد.": "No students are linked to this group yet.",
+  "عام": "General", "اكتب مبلغًا صحيحًا": "Enter a valid amount", "مصروف تشغيلي": "Operating expense", "اشتراك طالب": "Student subscription", "الخزينة والمستحقات": "Treasury and dues", "السجل المالي": "Financial ledger", "مزامنة سحابية": "Cloud sync", "تصدير السجل PDF": "Export ledger PDF", "تصفية حسب": "Filter by", "كل المجموعات والبرايفت": "All groups and private lessons", "البرايفت فقط": "Private lessons only", "المجموعات فقط": "Groups only", "اختار المجموعة": "Choose group", "كل المجموعات": "All groups", "الفترة المالية": "Financial period", "كل الشهور": "All months", "مدفوع": "Paid", "متبقي": "Outstanding", "إيرادات محصلة": "Collected income", "اشتراكات مسددة": "Paid subscriptions", "المصروفات": "Expenses", "تشغيلية": "Operating", "صافي الخزينة": "Net balance", "إيرادات ناقص مصروفات": "Income minus expenses", "متأخرات": "Overdue", "حالة تحتاج متابعة": "Needs follow-up", "إضافة حركة": "Add transaction", "تسجيل اشتراك أو مصروف": "Record a subscription or expense", "اشتراك": "Subscription", "مصروف": "Expense", "الطالب": "Student", "اختر الطالب": "Choose a student", "المجموعة": "Group", "اختر المجموعة": "Choose group", "موعد الاستحقاق": "Due date", "المبلغ": "Amount", "الوصف": "Description", "ملاحظة اختيارية": "Optional note", "حفظ الحركة": "Save transaction", "المتابعة": "Follow-up", "المستحقات المتأخرة": "Overdue dues", "تحصيل": "Collect", "لا توجد مستحقات متأخرة": "No overdue dues", "الحركات المطابقة": "Matching transactions", "حركة": "transaction", "بدون استحقاق": "No due date", "لا توجد سجلات دفع مطابقة": "No matching payment records",
+  "متابعة الطالب": "Student follow-up", "السلوك والملاحظات": "Behaviour and notes", "سجل سحابي": "Cloud record", "إضافة سجل سريع": "Add quick record", "ملاحظة جديدة": "New note", "نوع الملاحظة": "Note type", "إيجابي": "Positive", "تنبيه": "Warning", "ملاحظة": "Note", "العنوان": "Title", "مثال: مشاركة مميزة": "Example: Excellent participation", "التفاصيل": "Details", "اكتب ملاحظة مختصرة للمتابعة": "Write a brief follow-up note", "النقاط": "Points", "حفظ الملاحظة": "Save note", "السجل": "History", "آخر ملاحظات الطلاب": "Latest student notes", "لم تُسجل ملاحظات سلوكية بعد": "No behaviour notes have been recorded yet",
+  "إعدادات اليوم": "Day settings", "ضبط اليوم المدرسي": "Configure the school day", "تحكم في طابور الصباح ومدة الحصص والفسحة لتخصيص العداد المباشر.": "Set assembly, lesson duration, and break time to customize the live tracker.", "طابور الصباح": "Morning assembly", "مدة الحصة بالدقائق": "Lesson duration in minutes", "الفسحة بعد حصة": "Break after lesson", "مدة الفسحة بالدقائق": "Break duration in minutes", "حفظ إعدادات اليوم": "Save day settings",
+  "OCR بالذكاء الاصطناعي": "AI OCR", "اقرأ جدولًا ورقيًا": "Read a paper timetable", "التقط صورة واضحة للجدول، ثم راجع الخانات يدويًا قبل حفظها داخل النظام.": "Take a clear timetable photo, then review the entries manually before saving.", "جارٍ التحليل...": "Analysing...", "اختيار صورة الجدول": "Choose timetable image", "الحصة": "Lesson", "أوف": "Off", "نشطة": "Active",
+  "تقييمات الطلاب": "Student assessments", "إنشاء تقييم": "Create assessment", "الدرجة": "Score", "الدرجة الكلية": "Maximum score", "حفظ التقييم": "Save assessment", "التقييمات": "Assessments", "لا توجد تقييمات بعد": "No assessments yet", "عرض تقرير الأداء": "View performance report", "تنزيل تقرير الأداء": "Download performance report",
+  "إضافة مجموعة": "Add group", "إضافة طالب": "Add student", "بحث": "Search", "بحث بالاسم أو الهاتف أو الكود": "Search by name, phone, or code", "لا توجد مجموعات": "No groups", "المزيد": "More", "تعديل": "Edit", "حذف": "Delete", "إغلاق": "Close", "عودة": "Back", "حفظ": "Save", "إلغاء": "Cancel", "اليوم": "Today", "الحصص المجدولة": "Scheduled lessons", "لا توجد حصص مجدولة اليوم": "No lessons are scheduled today", "عرض الجدول": "View timetable", "اختبارات سريعة": "Quick actions", "ماذا تريد أن تنجز؟": "What would you like to do?", "إنشاء امتحان أسبوعي": "Create weekly exam", "طالب جديد": "New student", "عرض الإحصائيات": "View statistics",
+  "بيانات المجموعة": "Group details", "اسم المجموعة": "Group name", "مكان المجموعة": "Group location", "نوع المجموعة": "Group type", "حضوري": "In person", "عن بُعد": "Remote", "رسوم الاشتراك": "Subscription fee", "شهري": "Monthly", "بالترم": "Per term", "مواعيد المجموعة": "Group times", "طلاب المجموعة": "Group students", "لا يوجد طلاب في هذه المجموعة": "There are no students in this group", "تم حفظ المجموعة": "Group saved", "تم حذف المجموعة": "Group deleted", "تم حفظ الطالب": "Student saved", "تم حذف الطالب": "Student deleted",
+  "إعدادات التطبيق": "App settings", "ذكّرني": "Remind me", "المواد التعليمية": "Learning materials", "المكافآت والنقاط": "Rewards and points", "وضع المدرسة": "School mode", "أعمال السنة": "Year work", "إدارة المركز": "Center management", "النسخ الاحتياطي": "Backup", "استعادة البيانات": "Restore data", "رفع ملف": "Upload file", "تصدير Excel": "Export Excel", "استيراد Excel": "Import Excel", "لا توجد بيانات بعد": "No data yet", "جارٍ الحفظ...": "Saving...", "جارٍ التحميل...": "Loading...", "تعذر الحفظ": "Could not save", "حدث خطأ، حاول مرة أخرى": "Something went wrong. Please try again.",
+  "المؤشر المباشر": "Live tracker", "الحصة الحالية": "Current lesson", "الحصة القادمة": "Next lesson", "اليوم الدراسي": "School day", "لا توجد حصة مجدولة": "No lesson is scheduled", "مستمرة": "In progress", "العودة للجدول": "Back to timetable", "الأحد": "Sunday", "الاثنين": "Monday", "الثلاثاء": "Tuesday", "الأربعاء": "Wednesday", "الخميس": "Thursday", "الجمعة": "Friday", "السبت": "Saturday",
+  "تسجيل الدخول": "Sign in", "إنشاء حساب": "Create account", "تسجيل الخروج": "Sign out", "رقم الهاتف": "Phone number", "كلمة المرور": "Password", "تأكيد كلمة المرور": "Confirm password", "الاسم": "Name", "العمر": "Age", "الصف الدراسي": "Grade", "تحديث البيانات": "Update details", "الحساب والأجهزة": "Account and devices", "الأجهزة المتصلة": "Connected devices", "آخر تسجيل دخول": "Last sign-in", "إنهاء الجلسة": "End session",
+  "الرصيد": "Balance", "نقاط": "points", "طلب استبدال": "Request redemption", "طلبات الاستبدال": "Redemption requests", "اعتماد": "Approve", "رفض": "Reject", "سجل النقاط": "Points history", "مكافأة": "Reward", "خصم اشتراك الشهر القادم": "Next-month subscription discount", "ملزمة مجانية": "Free booklet", "هدية عينية": "Physical gift", "خصم اشتراك التطبيق": "App subscription discount"
+  ,"معاينة امتحان الطالب": "Student exam preview", "معاينة الطالب": "Student preview", "التقييم الأسبوعي": "Weekly assessment", "المجموعة المختارة": "Selected group", "من": "out of", "إغلاق المعاينة": "Close preview", "هذه معاينة فقط؛ لن تُحفظ أي إجابات أو تُنشر للطلاب.": "This is a preview only. No answers will be saved or published to students.", "السؤال": "Question", "درجة": "points", "اكتب نص السؤال هنا": "Write the question text here", "الاختيار": "Option", "صح": "True", "خطأ": "False", "اكتب إجابتك هنا...": "Write your answer here...", "إجابات تجريبية:": "Sample answers:", "العودة إلى التعديل": "Back to editing", "تم إنشاء الاختبار الأسبوعي": "Weekly exam created", "تمت قراءة الكود والدرجة؛ راجعهما ثم اضغط رصد الدرجة": "The code and score were read. Review them, then record the score.", "تعذر قراءة ورقة الإجابة": "Answer sheet could not be read", "اختر المجموعة واكتب عنوان الاختبار": "Choose a group and enter an exam title", "أكمل نص ودرجة كل سؤال واختياراته": "Complete each question's text, score, and options", "اختر الاختبار المقال أولًا": "Choose the essay exam first", "اختبارات المجموعة": "Group exams", "إنشاء اختبار أسبوعي إلكتروني": "Create an online weekly exam", "حدّد الوقت والقالب، ثم راجع شكله كطالب قبل النشر.": "Set the time and template, then review it as a student before publishing.", "عنوان الاختبار": "Exam title", "يفتح في": "Opens at", "يغلق في": "Closes at", "اختيار من متعدد": "Multiple choice", "صح أو خطأ": "True or false", "مقالي": "Essay", "نص السؤال": "Question text", "اكتب السؤال": "Write the question", "الإجابة الصحيحة": "Correct answer", "إضافة سؤال": "Add question", "المجموع:": "Total:", "نشر الاختبار": "Publish exam", "المتابعة والرصد": "Follow-up and marking", "نتائج الاختبارات": "Exam results", "اختياري": "Multiple choice", "صح/خطأ": "True/False", "لم تُنشئ اختبارًا أسبوعيًا بعد.": "You have not created a weekly exam yet.", "تصحيح": "Marking", "يدوي": "Manual", "بكود الطالب": "by student code", "جارٍ قراءة الورقة...": "Reading sheet...", "مسح ورقة الإجابة": "Scan answer sheet", "كود الطالب (4 أرقام)": "Student code (4 digits)", "رصد الدرجة": "Record score", "بانتظار التصحيح": "Awaiting marking", "لا توجد محاولات مسلمة بعد.": "No submitted attempts yet."
+};
+
+const originalAttributes = new WeakMap<Element, Map<string, string>>();
+
+function translateLegacyText(source: string, language: AppLanguage) {
+  if (language === "ar") return source;
+  const trimmed = source.trim();
+  const translated = legacyEnglishText[trimmed];
+  return translated ? source.replace(trimmed, translated) : source;
+}
+
+function LegacyTextLocalization() {
+  const { language } = useLanguage();
+  useEffect(() => {
+    let frame = 0;
+    const apply = () => {
+      frame = 0;
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let current: Node | null;
+      while ((current = walker.nextNode())) {
+        const parent = current.parentElement;
+        if (!parent || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName) || parent.closest("[contenteditable='true']")) continue;
+        const source = (current as Text & { __elMisterSource?: string }).__elMisterSource ?? current.nodeValue ?? "";
+        (current as Text & { __elMisterSource?: string }).__elMisterSource = source;
+        const next = translateLegacyText(source, language);
+        if (current.nodeValue !== next) current.nodeValue = next;
+      }
+      document.querySelectorAll<HTMLElement>("[placeholder], [aria-label], [title], [alt]").forEach(element => {
+        const saved = originalAttributes.get(element) ?? new Map<string, string>();
+        ["placeholder", "aria-label", "title", "alt"].forEach(attribute => {
+          const currentValue = element.getAttribute(attribute);
+          if (currentValue === null) return;
+          const source = saved.get(attribute) ?? currentValue;
+          saved.set(attribute, source);
+          const next = translateLegacyText(source, language);
+          if (currentValue !== next) element.setAttribute(attribute, next);
+        });
+        originalAttributes.set(element, saved);
+      });
+    };
+    const schedule = () => { if (!frame) frame = window.requestAnimationFrame(apply); };
+    apply();
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    return () => { observer.disconnect(); if (frame) window.cancelAnimationFrame(frame); };
+  }, [language]);
+  return null;
+}
+
 type TranslationKey = keyof typeof dictionary.ar;
 type LanguageContextValue = { language: AppLanguage; setLanguage: (language: AppLanguage) => void; t: (key: TranslationKey) => string; isRtl: boolean };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<AppLanguage>(() => localStorage.getItem("el-mister-language") === "en" ? "en" : "ar");
+  const [language, setLanguage] = useState<AppLanguage>(() => {
+    const requested = new URLSearchParams(window.location.search).get("lang");
+    if (requested === "en" || requested === "ar") return requested;
+    return localStorage.getItem("el-mister-language") === "en" ? "en" : "ar";
+  });
   useEffect(() => {
     const isRtl = language === "ar";
     document.documentElement.lang = language;
@@ -40,7 +118,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("el-mister-language", language);
   }, [language]);
   const value = useMemo(() => ({ language, setLanguage, t: (key: TranslationKey) => dictionary[language][key], isRtl: language === "ar" }), [language]);
-  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+  return <LanguageContext.Provider value={value}>{children}<LegacyTextLocalization /></LanguageContext.Provider>;
 }
 
 export function useLanguage() {

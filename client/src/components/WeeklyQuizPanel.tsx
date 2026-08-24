@@ -3,6 +3,7 @@ import { ClipboardCheck, Eye, Plus, ScanLine, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { normalizeStudentCode } from "../../../shared/studentCode";
+import { useLanguage } from "../contexts/LanguageContext";
 
 type QuestionType = "mcq" | "true_false" | "essay";
 type Question = { id: string; text: string; points: number; options?: string[]; correctAnswer?: number | boolean };
@@ -59,8 +60,9 @@ function StudentQuizPreview({
 }
 
 export function WeeklyQuizPanel({ groups, students }: { groups: Array<any>; students: Array<any> }) {
+  const { language } = useLanguage();
   const [groupId, setGroupId] = useState("");
-  const [title, setTitle] = useState("التقييم الأسبوعي");
+  const [title, setTitle] = useState(() => language === "en" ? "Weekly assessment" : "التقييم الأسبوعي");
   const [questionType, setQuestionType] = useState<QuestionType>("mcq");
   const [questions, setQuestions] = useState<Question[]>(() => [newQuestion("mcq")]);
   const [startsAt, setStartsAt] = useState(() => asLocalDateTime(new Date()));
