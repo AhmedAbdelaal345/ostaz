@@ -77,10 +77,12 @@ const trpcClient = trpc.createClient({
           enqueueTrpcRequest(String(input), init);
           return Promise.reject(new Error("OFFLINE_QUEUED"));
         }
-        return globalThis.fetch(input, {
+        const request = globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
         });
+        if ((init?.method || "GET").toUpperCase() !== "POST") return request;
+        return request.catch(error => { enqueueTrpcRequest(String(input), init); return Promise.reject(error); });
       },
     }),
   ],
@@ -106,7 +108,15 @@ function BrandStartup({ children }: { children: React.ReactNode }) {
 }
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => undefined));
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await registration.update();
+      window.dispatchEvent(new Event("ostazi-service-worker-ready"));
+    } catch (error) {
+      console.warn("[PWA] تعذر تسجيل عامل الخدمة", error);
+    }
+  });
 }
 
 createRoot(document.getElementById("root")!).render(

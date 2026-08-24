@@ -6,7 +6,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createAccountSession, createAssessment, createBehaviorRecord, createGroup, createPhoneTeacher, createQuizAttempt, createStudent, createStudentAccount, createTransaction, createWeeklyQuiz, deleteGroup, deleteStudent, findStudentByPhone, getGroupDetail, getOwnedCenter, getQuizForStudent, getSchoolWorkspace, getStudentAccountById, getStudentAccountByPhone, getStudentDetail, getStudentPortalData, getTeacherAccountByPhone, getTeacherAccountByUserId, getTeacherProfile, getWeeklyQuiz, getYearWorkWorkspace, gradeQuizAttempt, listAccountSessions, listAssessments, listAttendance, listBehaviorRecords, listCenterMembers, listChangeLogs, listGroups, listQuizAttempts, listStudentQuizzes, listStudents, listTransactions, listWeeklyQuizzes, listYearWorkTerms, markAttendance, normalizeStudentPhone, normalizeTeacherPhone, revokeAccountSession, revokeOtherAccountSessions, savePushSubscription, saveSchoolWorkspace, saveTeacherProfile, saveYearWorkScore, saveYearWorkTerm, settleTransaction, touchStudentAccount, touchTeacherAccount, updateGroup, updateStudent, updateStudentSelfProfile, updateTeacherAvatar, upsertTeacherAccount } from "./db";
+import { createAccountSession, createAssessment, createBehaviorRecord, createGroup, createPhoneTeacher, createQuizAttempt, createStudent, createStudentAccount, createTransaction, createWeeklyQuiz, deleteGroup, deleteStudent, findStudentByPhone, getGroupDetail, getOwnedCenter, getQuizForStudent, getSchoolWorkspace, getStudentAccountById, getStudentAccountByPhone, getStudentAssistantContext, getStudentDetail, getStudentPortalData, getTeacherAccountByPhone, getTeacherAccountByUserId, getTeacherProfile, getWeeklyQuiz, getYearWorkWorkspace, gradeQuizAttempt, listAccountSessions, listAssessments, listAttendance, listBehaviorRecords, listCenterMembers, listChangeLogs, listGroups, listQuizAttempts, listStudentQuizzes, listStudents, listTransactions, listWeeklyQuizzes, listYearWorkTerms, markAttendance, normalizeStudentPhone, normalizeTeacherPhone, revokeAccountSession, revokeOtherAccountSessions, savePushSubscription, saveSchoolWorkspace, saveTeacherProfile, saveYearWorkScore, saveYearWorkTerm, settleTransaction, touchStudentAccount, touchTeacherAccount, updateGroup, updateStudent, updateStudentSelfProfile, updateTeacherAvatar, upsertTeacherAccount } from "./db";
 import { createStudentSession, getStudentSession, hashStudentPassword, STUDENT_SESSION_COOKIE, STUDENT_SESSION_MAX_AGE_MS, verifyStudentPassword } from "./studentAuth";
 import { createTeacherSession, getTeacherSession, TEACHER_SESSION_COOKIE, TEACHER_SESSION_MAX_AGE_MS } from "./teacherAuth";
 import { storagePut } from "./storage";
@@ -29,6 +29,7 @@ const teacherCredentialsInput = z.object({ phone: z.string().min(7).max(32), pas
 const teacherRegistrationInput = teacherCredentialsInput.extend({ name: z.string().min(2).max(160), subject: z.string().min(2).max(120) });
 const avatarInput = z.object({ imageDataUrl: z.string().regex(/^data:image\/(png|jpeg|jpg|webp);base64,/, "صيغة الصورة غير مدعومة").max(4_000_000) });
 const studentSelfProfileInput = z.object({ age: z.number().int().min(3).max(120).nullable().optional(), grade: z.string().max(120).nullable().optional() });
+const studentAssistantInput = z.object({ message: z.string().trim().min(1).max(600) });
 const yearWorkTermInput = z.object({ id: z.number().int().positive().optional(), term: z.enum(["first", "second"]), grade: z.string().min(1).max(120), startsAt: z.coerce.date(), endsAt: z.coerce.date(), months: z.array(z.string().regex(/^\d{4}-\d{2}$/)).min(1).max(8), studentIds: z.array(z.number().int().positive()).max(500) }).refine(input => input.endsAt >= input.startsAt, { message: "يجب أن يكون تاريخ نهاية الترم بعد تاريخ بدايته", path: ["endsAt"] });
 const yearWorkScoreInput = z.object({ termId: z.number().int().positive(), studentId: z.number().int().positive(), monthKey: z.string().regex(/^\d{4}-\d{2}$/), homeWork: z.number().int().min(0).max(5), activity: z.number().int().min(0).max(5), weeklyEvaluation: z.number().int().min(0).max(5), performanceTasks: z.number().int().min(0).max(5), behavior: z.number().int().min(0).max(5), attendance: z.number().int().min(0).max(5), monthlyExam: z.number().int().min(0).max(100).default(0) });
 
@@ -75,6 +76,25 @@ export const appRouter = router({
       revokeOthers: publicProcedure.mutation(async ({ ctx }) => { const current = await getStudentSession(ctx.req); if (!current?.sessionId) throw new TRPCError({ code: "UNAUTHORIZED", message: "أعد تسجيل الدخول لإدارة الأجهزة." }); await revokeOtherAccountSessions({ currentSessionId: current.sessionId, accountType: "student", accountId: current.accountId }); return { success: true }; }),
     }),
     logout: publicProcedure.mutation(async ({ ctx }) => { const current = await getStudentSession(ctx.req); if (current?.sessionId) await revokeAccountSession({ id: current.sessionId, accountType: "student", accountId: current.accountId }); const cookieOptions = getSessionCookieOptions(ctx.req); ctx.res.clearCookie(STUDENT_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 }); return { success: true } as const; }),
+  }),
+  studentAssistant: router({
+    ask: publicProcedure.input(studentAssistantInput).mutation(async ({ ctx, input }) => {
+      const session = await getStudentSession(ctx.req);
+      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "سجل دخول الطالب مطلوب." });
+      const context = await getStudentAssistantContext(session.studentId);
+      if (!context) throw new TRPCError({ code: "NOT_FOUND", message: "تعذر العثور على بيانات الطالب." });
+      const question = input.message.toLowerCase();
+      if (/درج|اختبار|نتيج/.test(question)) { const rows = context.academic.latestAssessments; return { answer: rows.length ? `آخر درجاتك المسجلة: ${rows.map(row => `${row.title}: ${row.score ?? "—"}/${row.maxScore ?? "—"}`).join("، ")}.` : "لا توجد درجات مسجلة لك حتى الآن." }; }
+      if (/غيا|غبت|حضور/.test(question)) return { answer: `عدد أيام الغياب المسجلة لك هو ${context.academic.absencesCount} يوم من إجمالي ${context.academic.attendanceRecords} سجل حضور.` };
+      if (/متبق|مستحق|فلوس|مبلغ|دفع|اشتراك/.test(question)) return { answer: context.academic.remainingAmount > 0 ? `المبلغ المتبقي عليك هو ${context.academic.remainingAmount} ${context.academic.currency}.` : "لا يوجد مبلغ متبقٍ مسجل عليك حاليًا." };
+      try {
+        const result = await invokeLLM({ model: "gemini-3-flash-preview", maxTokens: 420, messages: [{ role: "system", content: `أنت مساعد رسائل ودي للطالب باللغة العربية. أجب بإيجاز وبأسلوب واضح عن أسئلة الطالب المتعلقة بالمعلم والمجموعة والمواعيد والحضور والواجب والاختبارات. استخدم بيانات السياق فقط ولا تخترع مواعيد أو معلومات. لا تكشف أي بيانات عن طلاب آخرين أو أموال أو كلمات مرور أو معلومات شخصية. إذا لم توجد المعلومة، قل للطالب أن يتواصل مع المعلم. بيانات السياق المسموح بها: ${JSON.stringify(context)}` }, { role: "user", content: input.message }] });
+        const answer = result.choices[0]?.message.content;
+        return { answer: typeof answer === "string" && answer.trim() ? answer.trim() : "لا أملك هذه المعلومة حاليًا؛ من فضلك تواصل مع المعلم." };
+      } catch {
+        return { answer: "تعذر الوصول للمساعد الآن. يمكنك سؤال المعلم مباشرة أو المحاولة لاحقًا." };
+      }
+    }),
   }),
   studentQuiz: router({
     available: publicProcedure.query(async ({ ctx }) => { const session = await getStudentSession(ctx.req); if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "سجل دخول الطالب مطلوب." }); const rows = await listStudentQuizzes(session.studentId); return rows.map(row => ({ ...row, questions: (JSON.parse(row.questionsJson) as Array<Record<string, unknown>>).map(({ correctAnswer, ...question }) => question) })); }),

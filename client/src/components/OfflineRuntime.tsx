@@ -16,6 +16,7 @@ export function OfflineRuntime() {
     window.addEventListener("online", sync);
     window.addEventListener("offline", offline);
     window.addEventListener("ostazi-offline-queue-change", refresh);
+    if (navigator.onLine && offlineQueueSize()) void sync();
     return () => { window.removeEventListener("online", sync); window.removeEventListener("offline", offline); window.removeEventListener("ostazi-offline-queue-change", refresh); };
   }, []);
 

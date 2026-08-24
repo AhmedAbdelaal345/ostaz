@@ -241,23 +241,26 @@ function PushEnableButton() {
   const subscribe = trpc.app.push.subscribe.useMutation();
   const test = trpc.app.push.test.useMutation();
   const [working, setWorking] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission>(() => "Notification" in window ? Notification.permission : "default");
   const enable = async () => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return toast.error("هذا المتصفح لا يدعم إشعارات Push");
+    if (Notification.permission === "denied") return toast.error("الإشعارات مرفوضة من المتصفح. فعّلها من إعدادات الموقع ثم أعد المحاولة.");
     if (!key.data?.publicKey) return toast.error("مفاتيح الإشعارات غير جاهزة حاليًا");
     setWorking(true);
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") return toast.error("لم يتم السماح بالإشعارات");
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toPushKey(key.data.publicKey) });
+      const nextPermission = await Notification.requestPermission();
+      setPermission(nextPermission);
+      if (nextPermission !== "granted") return toast.error("لم يتم السماح بالإشعارات");
+      const registration = await navigator.serviceWorker.getRegistration("/") || await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      const subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toPushKey(key.data.publicKey) });
       const json = subscription.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error("INVALID_SUBSCRIPTION");
       await subscribe.mutateAsync({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth, contentEncoding: "aes128gcm" });
       const result = await test.mutateAsync();
       toast.success(result.delivered ? "تم تفعيل الإشعارات وإرسال اختبار" : "تم حفظ اشتراك الجهاز؛ سيصل الاختبار عند توفر خدمة Push");
-    } catch { toast.error("تعذر تفعيل الإشعارات على هذا الجهاز"); } finally { setWorking(false); }
+    } catch { toast.error("تعذر تفعيل الإشعارات على هذا الجهاز. تأكد من السماح بالإشعارات وإعادة فتح التطبيق."); } finally { setWorking(false); }
   };
-  return <><SectionTitle kicker="تنبيهات الخلفية" title="إشعارات Push"/><p>فعّل التنبيهات ليصلك إشعار حتى عند إغلاق التطبيق، مثل مراجعة المتأخرين أو المستحقات.</p><button className="primary" disabled={working || key.isLoading} onClick={enable}><Bell size={16}/>{working ? "جارٍ التفعيل..." : "تفعيل إشعارات Push"}</button></>;
+  return <><SectionTitle kicker="تنبيهات الخلفية" title="إشعارات Push"/><p>فعّل التنبيهات ليصلك إشعار حتى عند إغلاق التطبيق، مثل مراجعة المتأخرين أو المستحقات.</p><div className="push-permission-state">حالة الإذن: <b>{permission === "granted" ? "مفعّل" : permission === "denied" ? "محظور من المتصفح" : "بانتظار موافقتك"}</b></div><button className="primary" disabled={working || key.isLoading || permission === "denied"} onClick={enable}><Bell size={16}/>{working ? "جارٍ التفعيل..." : permission === "granted" ? "تحديث اشتراك الإشعارات" : "تفعيل إشعارات Push"}</button></>;
 }
 
 function SettingsPage({ profile, groups, students, setGroups, setStudents }: any) {
