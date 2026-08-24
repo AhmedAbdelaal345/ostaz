@@ -113,6 +113,13 @@
       "when": 1787605018386,
       "tag": "0015_legal_molecule_man",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1787606498852,
+      "tag": "0016_freezing_katie_power",
+      "breakpoints": true
     }
   ]
 }

@@ -211,6 +211,19 @@ export const automationSchedules = mysqlTable("automation_schedules", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const personalReminders = mysqlTable("personal_reminders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 240 }).notNull(),
+  note: text("note"),
+  remindAt: timestamp("remindAt").notNull(),
+  recurrence: mysqlEnum("recurrence", ["once", "daily", "weekly"]).default("once").notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  lastDeliveredAt: timestamp("lastDeliveredAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const assessments = mysqlTable("assessments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
