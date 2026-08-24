@@ -6,7 +6,7 @@
   "display": "standalone",
   "dir": "rtl",
   "lang": "ar",
-  "theme_color": "#071b46",
-  "background_color": "#06142f",
+  "theme_color": "#000000",
+  "background_color": "#000000",
   "icons": [{"src":"/manus-storage/el-mister-logo_65d8a1da.jpg","sizes":"1024x1024","type":"image/jpeg","purpose":"any maskable"}]
 }

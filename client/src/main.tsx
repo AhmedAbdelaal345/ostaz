@@ -11,6 +11,7 @@ import StudentPortal from "./pages/StudentPortal";
 import TeacherPortal from "./pages/TeacherPortal";
 import { OfflineRuntime } from "./components/OfflineRuntime";
 import { enqueueTrpcRequest, flushOfflineQueue } from "./lib/offlineSync";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import "./index.css";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { networkMode: "offlineFirst", staleTime: 60_000, retry: 1 } } });
@@ -122,8 +123,8 @@ if ("serviceWorker" in navigator) {
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <DirectAccessGuard><BrandStartup><RootApp /></BrandStartup></DirectAccessGuard>
-      <OfflineRuntime />
+      <LanguageProvider><DirectAccessGuard><BrandStartup><RootApp /></BrandStartup></DirectAccessGuard>
+      <OfflineRuntime /></LanguageProvider>
     </QueryClientProvider>
   </trpc.Provider>
 );
