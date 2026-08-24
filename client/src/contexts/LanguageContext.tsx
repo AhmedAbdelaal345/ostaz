@@ -63,12 +63,19 @@ Object.assign(legacyEnglishText, {
   "مساعد أعمال السنة خاص بالمدرسة": "Year work assistant is for School only", "اختر سياق المدرسة أولًا للوصول إلى كشف درجات الترم والغياب اليومي.": "Choose the School context first to access the term gradebook and daily attendance.", "الانتقال إلى المدرسة": "Go to School"
 });
 
+Object.assign(legacyEnglishText, {
+  "تم حفظ بياناتك الدراسية": "Your academic details were saved", "تم تحديث الصورة الشخصية": "Profile photo updated", "اختر صورة PNG أو JPG أو WEBP بحجم لا يتجاوز 2.5 ميجابايت": "Choose a PNG, JPG, or WEBP image up to 2.5 MB", "بياناتي": "My details", "تعديل البروفايل": "Edit profile", "تغيير الصورة": "Change photo", "مثال: الصف الثالث الإعدادي": "Example: Grade 9", "حفظ البيانات": "Save details", "تم إنشاء حسابك وربطه بسجلك الدراسي": "Your account was created and linked to your academic record", "مرحبًا بك في بروفايل الطالب": "Welcome to your student profile", "تم تسليم الإجابات للمراجعة": "Answers submitted for review", "تم رصد نتيجتك:": "Your score has been recorded:",
+  "عودة إلى البروفايل": "Back to profile", "اختبار المجموعة": "Group exam", "أجب عن جميع الأسئلة ثم سلّم الاختبار قبل انتهاء الوقت.": "Answer all questions and submit before time runs out.", "انتهى وقت الاختبار": "Exam time is over", "تسليم الاختبار": "Submit exam", "جارٍ التسليم...": "Submitting...", "جارٍ التحقق من جلسة الطالب...": "Checking your student session...", "بروفايل الطالب": "Student profile", "لم تُربط مجموعة بعد": "No group linked yet", "كود الطالب:": "Student code:", "سنة": "years", "العمر غير مضاف": "Age not added", "الصف غير مضاف": "Grade not added", "تعديل": "Edit", "خروج": "Sign out", "المجموعة": "Group", "نسبة الحضور": "Attendance rate", "المستحقات": "Dues", "متابعة": "follow-up", "مسدد": "Paid", "اختباراتك": "Your exams", "الاختبارات الأسبوعية": "Weekly exams", "جارٍ تحميل الاختبارات...": "Loading exams...", "بدء الاختبار": "Start exam", "لم يبدأ": "Not started", "مغلق": "Closed", "لا توجد اختبارات أسبوعية متاحة حاليًا.": "No weekly exams are available right now.", "نتائجي": "My results", "آخر التقييمات": "Latest assessments", "لم تُسجل تقييمات بعد.": "No assessments recorded yet.",
+  "يناير": "January", "فبراير": "February", "مارس": "March", "أبريل": "April", "مايو": "May", "يونيو": "June", "يوليو": "July", "أغسطس": "August", "سبتمبر": "September", "أكتوبر": "October", "نوفمبر": "November", "ديسمبر": "December"
+});
+
 const originalAttributes = new WeakMap<Element, Map<string, string>>();
 
 function translateLegacyText(source: string, language: AppLanguage) {
   if (language === "ar") return source;
   const trimmed = source.trim();
   if (trimmed.startsWith("اليوم ·")) return source.replace(trimmed, `Today · ${new Date().toLocaleDateString("en-GB")}`);
+  if (source.includes("ج.م")) return source.replaceAll("ج.م", "EGP");
   const translated = legacyEnglishText[trimmed];
   return translated ? source.replace(trimmed, translated) : source;
 }
