@@ -15,14 +15,16 @@ export async function sendPushToUser(userId: number, payload: { title: string; b
   if (!isPushConfigured()) throw new Error("PUSH_NOT_CONFIGURED");
   webpush.setVapidDetails(ENV.vapidSubject, ENV.vapidPublicKey, ENV.vapidPrivateKey);
   const subscriptions = await listPushSubscriptions(userId);
-  let delivered = 0;
+  let delivered = 0; let failed = 0;
   for (const subscription of subscriptions) {
     try {
       await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, JSON.stringify(payload), { contentEncoding: subscription.contentEncoding as "aes128gcm" });
       delivered += 1;
     } catch (error: any) {
+      failed += 1;
       if (error?.statusCode === 404 || error?.statusCode === 410) await deletePushSubscription(userId, subscription.endpoint);
+      else console.warn("[Push] delivery failed", userId, error?.statusCode || error?.message || error);
     }
   }
-  return { delivered, subscriptions: subscriptions.length };
+  return { delivered, failed, subscriptions: subscriptions.length };
 }

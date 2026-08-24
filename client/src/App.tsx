@@ -253,6 +253,16 @@ function PushEnableButton() {
   const test = trpc.app.push.test.useMutation();
   const [working, setWorking] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>(() => "Notification" in window ? Notification.permission : "default");
+  const isIos = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+  const saveSubscription = async (registration: ServiceWorkerRegistration, refresh = false) => {
+    let subscription = await registration.pushManager.getSubscription();
+    if (refresh && subscription) { await subscription.unsubscribe(); subscription = null; }
+    subscription ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toPushKey(key.data!.publicKey) });
+    const json = subscription.toJSON();
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error("INVALID_SUBSCRIPTION");
+    await subscribe.mutateAsync({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth, contentEncoding: "aes128gcm" });
+  };
   const enable = async () => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return toast.error("هذا المتصفح لا يدعم إشعارات Push");
     if (Notification.permission === "denied") return toast.error("الإشعارات مرفوضة من المتصفح. فعّلها من إعدادات الموقع ثم أعد المحاولة.");
@@ -263,17 +273,17 @@ function PushEnableButton() {
       setPermission(nextPermission);
       if (nextPermission !== "granted") return toast.error("لم يتم السماح بالإشعارات");
       const registration = await navigator.serviceWorker.getRegistration("/") || await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      const subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toPushKey(key.data.publicKey) });
-      const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error("INVALID_SUBSCRIPTION");
-      await subscribe.mutateAsync({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth, contentEncoding: "aes128gcm" });
-      const result = await test.mutateAsync();
-      toast.success(result.delivered ? "تم تفعيل الإشعارات وإرسال اختبار" : "تم حفظ اشتراك الجهاز؛ سيصل الاختبار عند توفر خدمة Push");
-    } catch { toast.error("تعذر تفعيل الإشعارات على هذا الجهاز. تأكد من السماح بالإشعارات وإعادة فتح التطبيق."); } finally { setWorking(false); }
+      await navigator.serviceWorker.ready;
+      await saveSubscription(registration);
+      let result = await test.mutateAsync();
+      if (!result.delivered) { await saveSubscription(registration, true); result = await test.mutateAsync(); }
+      if (result.delivered) toast.success("تم تفعيل الإشعارات وإرسال اختبار. سيصلك حتى عند إغلاق التطبيق.");
+      else toast.error("لم يصل اختبار Push إلى الجهاز. تحقّق من إذن إشعارات iPhone وتثبيت التطبيق على الشاشة الرئيسية ثم أعد التفعيل.");
+    } catch { toast.error("تعذر تفعيل الإشعارات على هذا الجهاز. تأكد من السماح بالإشعارات وتثبيت التطبيق إن كان iPhone."); } finally { setWorking(false); }
   };
   const pushReady = Boolean(key.data?.publicKey);
   const { t } = useLanguage();
-  return <><SectionTitle kicker={t("notifications")} title={t("pushTitle")}/><p>{t("pushHint")}</p><div className="push-permission-state">{t("permission")}: <b>{permission === "granted" ? t("enabled") : permission === "denied" ? t("blocked") : t("waiting")}</b></div>{key.isError && <div className="integration-note">{t("pushNeedsSetup")}</div>}<button className="primary" disabled={working || key.isLoading || key.isError || permission === "denied"} onClick={enable}><Bell size={16}/>{working ? (permission === "granted" ? t("updatePush") : t("enablePush")) : !pushReady ? t("pushUnavailable") : permission === "granted" ? t("updatePush") : t("enablePush")}</button></>;
+  return <><SectionTitle kicker={t("notifications")} title={t("pushTitle")}/><p>{t("pushHint")}</p><div className="push-permission-state">{t("permission")}: <b>{permission === "granted" ? t("enabled") : permission === "denied" ? t("blocked") : t("waiting")}</b></div>{isIos && !isStandalone && <div className="integration-note">للوصول إلى تنبيه عند إغلاق التطبيق على iPhone: افتح قائمة المشاركة في Safari ثم اختر «إضافة إلى الشاشة الرئيسية»، وافتح النسخة المثبتة وفعّل الإشعارات منها.</div>}{key.isError && <div className="integration-note">{t("pushNeedsSetup")}</div>}<button className="primary" disabled={working || key.isLoading || key.isError || permission === "denied"} onClick={enable}><Bell size={16}/>{working ? (permission === "granted" ? t("updatePush") : t("enablePush")) : !pushReady ? t("pushUnavailable") : permission === "granted" ? t("updatePush") : t("enablePush")}</button></>;
 }
 
 function SettingsPage({ profile, groups, students, setGroups, setStudents }: any) {
