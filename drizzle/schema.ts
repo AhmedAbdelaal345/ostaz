@@ -112,6 +112,19 @@ export const weeklyQuizzes = mysqlTable("weekly_quizzes", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const learningMaterials = mysqlTable("learning_materials", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  groupId: int("groupId").notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  materialType: mysqlEnum("materialType", ["audio", "image", "pdf"]).notNull(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  storageUrl: varchar("storageUrl", { length: 512 }).notNull(),
+  mimeType: varchar("mimeType", { length: 80 }).notNull(),
+  sizeBytes: int("sizeBytes").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const quizAttempts = mysqlTable("quiz_attempts", {
   id: int("id").autoincrement().primaryKey(),
   quizId: int("quizId").notNull(),
