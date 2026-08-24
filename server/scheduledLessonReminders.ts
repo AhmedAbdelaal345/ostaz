@@ -1,8 +1,9 @@
 import type { Request, Response } from "express";
-import { getAutomationScheduleByTaskUid, claimLessonReminder, listEnabledLessonReminders } from "./db";
+import { getAutomationScheduleByTaskUid, claimLessonReminder, isLessonReminderDue, listEnabledLessonReminders } from "./db";
 import { getLessonEndingReminder } from "../shared/lessonReminder";
 import { sendPushToUser } from "./push";
 import { sdk } from "./_core/sdk";
+import { shouldConfirmPushDelivery } from "../shared/pushDelivery";
 
 export async function runScheduledLessonReminders(req: Request, res: Response) {
   try {
@@ -16,9 +17,10 @@ export async function runScheduledLessonReminders(req: Request, res: Response) {
       try {
         const settings = row.profile.schoolScheduleJson ? JSON.parse(row.profile.schoolScheduleJson) : null;
         const reminder = settings ? getLessonEndingReminder(settings) : null;
-        if (!reminder || !(await claimLessonReminder(row.reminder.userId, reminder.key))) continue;
-        claimed += 1;
+        if (!reminder || !(await isLessonReminderDue(row.reminder.userId, reminder.key))) continue;
         const outcome = await sendPushToUser(row.reminder.userId, reminder);
+        if (!shouldConfirmPushDelivery(outcome) || !(await claimLessonReminder(row.reminder.userId, reminder.key))) continue;
+        claimed += 1;
         delivered += outcome.delivered;
       } catch (error) {
         console.warn("[LessonReminder] skipped user", row.reminder.userId, error instanceof Error ? error.message : error);

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { claimPersonalReminderDelivery, getAutomationScheduleByTaskUid, listDuePersonalReminders } from "./db";
 import { isPushConfigured, sendPushToUser } from "./push";
 import { sdk } from "./_core/sdk";
+import { shouldConfirmPushDelivery } from "../shared/pushDelivery";
 
 export async function runScheduledPersonalReminders(req: Request, res: Response) {
   try {
@@ -14,10 +15,11 @@ export async function runScheduledPersonalReminders(req: Request, res: Response)
     let claimed = 0; let delivered = 0;
     for (const reminder of due) {
       try {
+        const outcome = await sendPushToUser(reminder.userId, { title: "ذكّرني", body: reminder.note ? `${reminder.title} — ${reminder.note}` : reminder.title, url: "/settings/reminders" });
+        if (!shouldConfirmPushDelivery(outcome)) continue;
         const claimedReminder = await claimPersonalReminderDelivery(reminder.id);
         if (!claimedReminder) continue;
         claimed += 1;
-        const outcome = await sendPushToUser(claimedReminder.userId, { title: "ذكّرني", body: claimedReminder.note ? `${claimedReminder.title} — ${claimedReminder.note}` : claimedReminder.title, url: "/settings/reminders" });
         delivered += outcome.delivered;
       } catch (error) {
         console.warn("[PersonalReminder] skipped reminder", reminder.id, error instanceof Error ? error.message : error);
