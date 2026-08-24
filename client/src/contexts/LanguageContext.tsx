@@ -6,7 +6,7 @@ const dictionary = {
   ar: {
     home: "الرئيسية", attendance: "الحضور", groups: "المجموعات", finance: "المالية", settings: "الإعدادات",
     all: "الكل", school: "المدرسة", center: "السنتر", online: "أونلاين",
-    personalWorkspace: "مساحة المعلم الشخصية", lightMode: "الوضع النهاري", darkMode: "الوضع الليلي", backup: "نسخة احتياطية",
+    personalWorkspace: "مساحة المعلم الشخصية", brandSubtitle: "المستر لإدارة التعليم", lightMode: "الوضع النهاري", darkMode: "الوضع الليلي", backup: "نسخة احتياطية",
     reports: "تقارير", notifications: "التنبيهات", profile: "الملف الشخصي", greeting: "مرحبًا،", teacher: "يا أستاذ",
     weeklyExams: "الامتحانات الأسبوعية", contextReports: "تقارير السياقات", language: "اللغة", arabic: "العربية", english: "English",
     controlCenter: "مركز التحكم", appSettings: "الإعدادات", languageTitle: "لغة التطبيق", languageText: "اختر لغة الواجهة واتجاهها. سيُحفظ اختيارك على هذا الجهاز.",
@@ -16,7 +16,7 @@ const dictionary = {
   en: {
     home: "Home", attendance: "Attendance", groups: "Groups", finance: "Finance", settings: "Settings",
     all: "All", school: "School", center: "Center", online: "Online",
-    personalWorkspace: "Teacher workspace", lightMode: "Light mode", darkMode: "Dark mode", backup: "Backup",
+    personalWorkspace: "Teacher workspace", brandSubtitle: "Education management", lightMode: "Light mode", darkMode: "Dark mode", backup: "Backup",
     reports: "Reports", notifications: "Notifications", profile: "Profile", greeting: "Welcome,", teacher: "Teacher",
     weeklyExams: "Weekly exams", contextReports: "Context reports", language: "Language", arabic: "Arabic", english: "English",
     controlCenter: "Control center", appSettings: "Settings", languageTitle: "App language", languageText: "Choose the interface language and direction. Your choice is saved on this device.",
@@ -54,11 +54,21 @@ const legacyEnglishText: Record<string, string> = {
   ,"معاينة امتحان الطالب": "Student exam preview", "معاينة الطالب": "Student preview", "التقييم الأسبوعي": "Weekly assessment", "المجموعة المختارة": "Selected group", "من": "out of", "إغلاق المعاينة": "Close preview", "هذه معاينة فقط؛ لن تُحفظ أي إجابات أو تُنشر للطلاب.": "This is a preview only. No answers will be saved or published to students.", "السؤال": "Question", "درجة": "points", "اكتب نص السؤال هنا": "Write the question text here", "الاختيار": "Option", "صح": "True", "خطأ": "False", "اكتب إجابتك هنا...": "Write your answer here...", "إجابات تجريبية:": "Sample answers:", "العودة إلى التعديل": "Back to editing", "تم إنشاء الاختبار الأسبوعي": "Weekly exam created", "تمت قراءة الكود والدرجة؛ راجعهما ثم اضغط رصد الدرجة": "The code and score were read. Review them, then record the score.", "تعذر قراءة ورقة الإجابة": "Answer sheet could not be read", "اختر المجموعة واكتب عنوان الاختبار": "Choose a group and enter an exam title", "أكمل نص ودرجة كل سؤال واختياراته": "Complete each question's text, score, and options", "اختر الاختبار المقال أولًا": "Choose the essay exam first", "اختبارات المجموعة": "Group exams", "إنشاء اختبار أسبوعي إلكتروني": "Create an online weekly exam", "حدّد الوقت والقالب، ثم راجع شكله كطالب قبل النشر.": "Set the time and template, then review it as a student before publishing.", "عنوان الاختبار": "Exam title", "يفتح في": "Opens at", "يغلق في": "Closes at", "اختيار من متعدد": "Multiple choice", "صح أو خطأ": "True or false", "مقالي": "Essay", "نص السؤال": "Question text", "اكتب السؤال": "Write the question", "الإجابة الصحيحة": "Correct answer", "إضافة سؤال": "Add question", "المجموع:": "Total:", "نشر الاختبار": "Publish exam", "المتابعة والرصد": "Follow-up and marking", "نتائج الاختبارات": "Exam results", "اختياري": "Multiple choice", "صح/خطأ": "True/False", "لم تُنشئ اختبارًا أسبوعيًا بعد.": "You have not created a weekly exam yet.", "تصحيح": "Marking", "يدوي": "Manual", "بكود الطالب": "by student code", "جارٍ قراءة الورقة...": "Reading sheet...", "مسح ورقة الإجابة": "Scan answer sheet", "كود الطالب (4 أرقام)": "Student code (4 digits)", "رصد الدرجة": "Record score", "بانتظار التصحيح": "Awaiting marking", "لا توجد محاولات مسلمة بعد.": "No submitted attempts yet."
 };
 
+Object.assign(legacyEnglishText, {
+  "معاينة قبل القراءة": "Preview before reading", "تأكد من وضوح الجدول": "Confirm that the timetable is clear", "لن تُرسل الصورة للذكاء الاصطناعي إلا بعد التأكيد. يمكنك إلغاء العملية واختيار صورة أخرى.": "The image will not be sent to AI until you confirm. You can cancel and choose another image.", "معاينة جدول المدرسة": "School timetable preview", "صورة الجدول": "Timetable image", "اختيار صورة أخرى": "Choose another image", "جارٍ القراءة...": "Reading...", "إرسال للذكاء الاصطناعي": "Send to AI",
+  "مراجعة يدويّة": "Manual review", "راجِع النتائج قبل الاعتماد": "Review results before approval", "عدّل اليوم أو رقم الحصة أو المادة أو الفصل. اختر «فترة» عندما يكون النشاط مدته ضعف مدة الحصة.": "Edit the day, lesson number, subject, or classroom. Choose Period when an activity lasts twice a lesson length.", "فترة ×2": "Period ×2", "المادة أو النشاط": "Subject or activity", "الفصل": "Classroom", "حذف الخانة": "Delete row", "إضافة خانة": "Add row", "اعتماد وحفظ الجدول": "Approve and save timetable",
+  "مساعد أعمال السنة": "Year work assistant", "تم حفظ جدول المدرسة والتقييم الأسبوعي": "School timetable and weekly assessment saved", "تم حفظ إعداد تذكير نهاية الحصة.": "End-of-lesson reminder setting saved.", "تقييم أسبوعي": "Weekly assessment", "لم تُستخرج خانات واضحة؛ اختر صورة أوضح أو أضفها يدويًا.": "No clear entries were extracted. Choose a clearer image or add them manually.", "اكتملت القراءة. راجع النتائج قبل الاعتماد.": "Reading is complete. Review the results before approval.", "احفظ مواعيد المدرسة الأساسية أولاً، ثم ارفع صورة الجدول.": "Save the core school times first, then upload the timetable image.", "تم اعتماد النتائج وحفظ جدول المدرسة.": "Results approved and school timetable saved.",
+  "إدارة الحضور": "Attendance management", "الحضور السريع": "Quick attendance", "إدارة التشغيل": "Operations", "المجموعات الدراسية": "Study groups", "ابحث باسم المجموعة أو الطالب...": "Search by group or student name...", "مسح البحث": "Clear search", "تصفية المكان": "Location filter", "تصفية الطلاب": "Student filter", "بها طلاب": "With students", "فارغة": "Empty", "مسح الكل": "Clear all", "مجموعة": "group", "طالب": "student", "لا يوجد طلاب مضافون بعد.": "No students have been added yet.", "إخفاء التفاصيل": "Hide details", "لا توجد نتائج مطابقة": "No matching results", "جرّب تعديل البحث أو مسح الفلاتر للوصول إلى النتائج.": "Try changing the search or clearing filters.", "أنشئ مجموعتك الأولى لتنظيم اليوم الدراسي.": "Create your first group to organize your teaching day.", "مسح البحث والتصفية": "Clear search and filters", "أضف أول مجموعة": "Add first group",
+  "مدرسة": "School", "سنتر": "Center", "أونلاين": "Online", "الكل": "All", "الخميس": "Thursday", "الترم": "Term", "شهري": "Monthly", "الجنيه": "EGP", "ج.م": "EGP", "نتيجة آخر تسجيل": "Latest check-in result", "توجد مبالغ مستحقة": "There are outstanding dues", "تحصيل المبلغ": "Collect payment", "رسالة ولي الأمر": "Guardian message", "الحساب مسدد": "Account settled",
+  "مساعد أعمال السنة خاص بالمدرسة": "Year work assistant is for School only", "اختر سياق المدرسة أولًا للوصول إلى كشف درجات الترم والغياب اليومي.": "Choose the School context first to access the term gradebook and daily attendance.", "الانتقال إلى المدرسة": "Go to School"
+});
+
 const originalAttributes = new WeakMap<Element, Map<string, string>>();
 
 function translateLegacyText(source: string, language: AppLanguage) {
   if (language === "ar") return source;
   const trimmed = source.trim();
+  if (trimmed.startsWith("اليوم ·")) return source.replace(trimmed, `Today · ${new Date().toLocaleDateString("en-GB")}`);
   const translated = legacyEnglishText[trimmed];
   return translated ? source.replace(trimmed, translated) : source;
 }
