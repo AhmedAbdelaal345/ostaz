@@ -224,6 +224,30 @@ export const personalReminders = mysqlTable("personal_reminders", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const studentPointLedger = mysqlTable("student_point_ledger", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  source: mysqlEnum("source", ["attendance", "homework", "high_score", "redemption", "manual"]).notNull(),
+  points: int("points").notNull(),
+  note: varchar("note", { length: 320 }),
+  referenceKey: varchar("referenceKey", { length: 180 }).unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const rewardRedemptions = mysqlTable("reward_redemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  rewardType: mysqlEnum("rewardType", ["next_subscription_discount", "free_booklet", "gift", "app_subscription_discount"]).notNull(),
+  pointsCost: int("pointsCost").notNull(),
+  discountAmount: decimal("discountAmount", { precision: 10, scale: 2 }),
+  note: varchar("note", { length: 320 }),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const assessments = mysqlTable("assessments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
