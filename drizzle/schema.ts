@@ -87,6 +87,16 @@ export const teacherAccounts = mysqlTable("teacher_accounts", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const accountSessions = mysqlTable("account_sessions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  accountType: mysqlEnum("accountType", ["teacher", "student"]).notNull(),
+  accountId: int("accountId").notNull(),
+  deviceName: varchar("deviceName", { length: 220 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+  revokedAt: timestamp("revokedAt"),
+});
+
 export const weeklyQuizzes = mysqlTable("weekly_quizzes", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -249,3 +259,5 @@ export type YearWorkTerm = typeof yearWorkTerms.$inferSelect;
 export type InsertYearWorkTerm = typeof yearWorkTerms.$inferInsert;
 export type YearWorkScore = typeof yearWorkScores.$inferSelect;
 export type InsertYearWorkScore = typeof yearWorkScores.$inferInsert;
+export type AccountSession = typeof accountSessions.$inferSelect;
+export type InsertAccountSession = typeof accountSessions.$inferInsert;

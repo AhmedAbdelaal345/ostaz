@@ -3,6 +3,7 @@ import { BookOpen, Camera, CheckCircle2, Clock3, LockKeyhole, LogIn, LogOut, Pen
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { StudentAccountSecurityPanel } from "@/components/StudentAccountSecurityPanel";
 
 type QuizQuestion = { id: string; text: string; points: number; options?: string[] };
 
@@ -31,7 +32,8 @@ export default function StudentPortal() {
   const isRegister = location === "/student/register";
   const activeQuestions = useMemo(() => selectedQuiz ? (selectedQuiz.questions || []) as QuizQuestion[] : [], [selectedQuiz]);
 
-  useEffect(() => { if (student.isFetchedAfterMount && !student.isFetching && !student.data && location === "/student/profile") setLocation("/student/login"); }, [location, setLocation, student.data, student.isFetchedAfterMount, student.isFetching]);
+  useEffect(() => { if (student.isFetchedAfterMount && !student.isFetching && !student.data && (location === "/student/profile" || location === "/student/security")) setLocation("/student/login"); }, [location, setLocation, student.data, student.isFetchedAfterMount, student.isFetching]);
+  useEffect(() => { if (!student.data || location !== "/student/profile") return; const actions = document.querySelector(".student-profile-actions"); if (!actions || actions.querySelector(".student-security-link")) return; const button = document.createElement("button"); button.type = "button"; button.className = "student-edit student-security-link"; button.textContent = "الأجهزة"; button.addEventListener("click", () => setLocation("/student/security")); actions.prepend(button); return () => button.remove(); }, [location, setLocation, student.data]);
   const submitCredentials = () => { if (!phone.trim() || password.length < 8) return toast.error("اكتب رقم الهاتف وكلمة مرور من 8 أحرف على الأقل"); (isRegister ? register : login).mutate({ phone, password }); };
 
   if (selectedQuiz) {
@@ -40,6 +42,7 @@ export default function StudentPortal() {
   }
 
   if (location === "/student/login" || location === "/student/register") return <main className="student-portal auth" dir="rtl"><section className="student-auth-card"><div className="student-logo">أ</div><span className="student-kicker">بوابة الطالب</span><h1>{isRegister ? "إنشاء حساب الطالب" : "دخول الطالب"}</h1><p>{isRegister ? "استخدم رقم الهاتف المسجل لدى المعلم واختر كلمة المرور بنفسك." : "أدخل رقم هاتفك وكلمة المرور للانتقال إلى بياناتك فقط."}</p><label>رقم هاتف الطالب<input inputMode="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="01xxxxxxxxx"/></label><label>كلمة المرور<input type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="8 أحرف على الأقل"/></label><button type="button" className="student-primary" disabled={register.isPending || login.isPending} onClick={submitCredentials}>{isRegister ? <><UserRound size={17}/> إنشاء الحساب</> : <><LogIn size={17}/> دخول آمن</>}</button><button type="button" className="student-link" onClick={() => setLocation(isRegister ? "/student/login" : "/student/register")}>{isRegister ? "لديك حساب؟ سجّل الدخول" : "لا تملك حسابًا؟ أنشئ حسابك"}</button><small><ShieldCheck size={14}/> لا تظهر لك سوى بياناتك المرتبطة بسجل المعلم.</small></section></main>;
+  if (location === "/student/security") return <StudentAccountSecurityPanel onBack={() => setLocation("/student/profile")}/>;
   if (!student.data) return <main className="student-portal auth" dir="rtl"><section className="student-auth-card"><div className="student-logo">أ</div><p>جارٍ التحقق من جلسة الطالب...</p></section></main>;
 
   const profile = student.data; const dueRows = profile.transactions.filter((row: any) => row.kind === "subscription" && !row.paidAt); const attendanceRate = profile.attendance.length ? Math.round((profile.attendance.filter((row: any) => row.status === "present" || row.status === "late").length / profile.attendance.length) * 100) : 0;
