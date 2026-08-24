@@ -44,7 +44,7 @@ const nav = [
 const subjects = ["لغة عربية", "لغة إنجليزية", "لغة فرنسية", "رياضيات", "علوم", "فيزياء", "كيمياء", "أحياء", "حاسب آلي", "برمجة", "دراسات اجتماعية", "قرآن كريم", "أخرى"];
 type Workspace = "all" | "school" | "center" | "online";
 const workspaces: Array<{ id: Workspace; label: string; place?: string }> = [{ id: "all", label: "الكل" }, { id: "school", label: "المدرسة", place: "مدرسة" }, { id: "center", label: "السنتر", place: "سنتر" }, { id: "online", label: "أونلاين", place: "أونلاين" }];
-const localizedDay = (day: string, language: "ar" | "en") => language === "en" ? ({ "الأحد": "Sunday", "الاثنين": "Monday", "الثلاثاء": "Tuesday", "الأربعاء": "Wednesday", "الخميس": "Thursday", "الجمعة": "Friday", "السبت": "Saturday" }[day] || day) : day;
+const localizedDay = (day: string, language: "ar" | "en") => language === "en" ? ({ "الأحد": "Sunday", "الاثنين": "Monday", "الإثنين": "Monday", "الثلاثاء": "Tuesday", "الأربعاء": "Wednesday", "الخميس": "Thursday", "الجمعة": "Friday", "السبت": "Saturday" }[day] || day) : day;
 const localizedPlace = (place: string, language: "ar" | "en") => language === "en" ? ({ "مدرسة": "School", "سنتر": "Center", "أونلاين": "Online" }[place] || place) : place;
 function useWorkspace() {
   const [workspace, setWorkspaceState] = useState<Workspace>(() => (localStorage.getItem("ostazi-workspace") as Workspace) || "all");
