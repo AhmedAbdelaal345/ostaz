@@ -178,6 +178,26 @@ export const pushSubscriptions = mysqlTable("push_subscriptions", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const lessonReminders = mysqlTable("lesson_reminders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  enabled: boolean("enabled").default(false).notNull(),
+  scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }).unique(),
+  lastReminderKey: varchar("last_reminder_key", { length: 180 }),
+  lastDeliveredAt: timestamp("last_delivered_at"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const automationSchedules = mysqlTable("automation_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  kind: varchar("kind", { length: 80 }).notNull().unique(),
+  scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }).unique(),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const assessments = mysqlTable("assessments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
