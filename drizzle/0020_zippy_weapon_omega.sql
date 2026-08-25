@@ -1,0 +1,1 @@
+ALTER TABLE `quiz_attempts` MODIFY COLUMN `status` enum('in_progress','submitted','graded','locked') NOT NULL DEFAULT 'in_progress';

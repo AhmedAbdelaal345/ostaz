@@ -1,0 +1,11 @@
+import { MonitorSmartphone, RotateCcw, ShieldAlert } from "lucide-react";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+export function TeacherDeviceBindingsPanel() {
+  const { language } = useLanguage();
+  const devices = trpc.app.devices.list.useQuery(undefined, { retry: false });
+  const release = trpc.app.devices.release.useMutation({ onSuccess: () => { devices.refetch(); toast.success(language === "ar" ? "تم فك ربط المتصفح." : "Browser binding released."); }, onError: error => toast.error(error.message) });
+  return <section className="teacher-device-bindings"><div className="learning-hub-head"><MonitorSmartphone size={26}/><div><span>{language === "ar" ? "إدارة ربط المتصفح" : "Browser binding management"}</span><h1>{language === "ar" ? "طلبات فك الارتباط" : "Release requests"}</h1><p>{language === "ar" ? "لا يظهر إلا طلابك. فك الارتباط يجعل الطالب يربط متصفحًا جديدًا عند الدخول التالي." : "Only your students appear here. Releasing lets a student bind a new browser on the next sign-in."}</p></div></div><div className="teacher-device-list">{devices.isLoading ? <p>{language === "ar" ? "جارٍ تحميل الأجهزة…" : "Loading devices…"}</p> : devices.data?.length ? devices.data.map((row: any) => <article key={row.id}><span><MonitorSmartphone size={19}/></span><div><b>{row.studentName}</b><small>{row.deviceName}</small>{row.status === "release_requested" && <em>{language === "ar" ? "طلب فك ارتباط" : "Release requested"}</em>}</div><button className="secondary" type="button" disabled={release.isPending} onClick={() => release.mutate({ studentId: row.studentId })}><RotateCcw size={15}/>{language === "ar" ? "فك الارتباط" : "Release"}</button></article>) : <p className="student-empty">{language === "ar" ? "لا توجد متصفحات مرتبطة بعد." : "No browser bindings yet."}</p>}</div><aside className="learning-limit-note"><ShieldAlert size={20}/><p>{language === "ar" ? "هذا ربط متصفح محلي فقط، وليس قفلًا أصليًا للهاتف. حذف بيانات المتصفح قد يزيل المعرّف، لذلك لا يُعرض كحماية مطلقة." : "This is browser-local binding only, not a native phone lock. Clearing browser data can remove the identifier, so it is not presented as absolute protection."}</p></aside></section>;
+}

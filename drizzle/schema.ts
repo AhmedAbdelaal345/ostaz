@@ -132,7 +132,7 @@ export const quizAttempts = mysqlTable("quiz_attempts", {
   studentId: int("studentId").notNull(),
   answersJson: text("answersJson").notNull(),
   score: decimal("score", { precision: 8, scale: 2 }),
-  status: mysqlEnum("status", ["submitted", "graded"]).default("submitted").notNull(),
+  status: mysqlEnum("status", ["in_progress", "submitted", "graded", "locked"]).default("in_progress").notNull(),
   submittedAt: timestamp("submittedAt").defaultNow().notNull(),
   gradedAt: timestamp("gradedAt"),
 });
