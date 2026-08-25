@@ -259,6 +259,184 @@ export const studentSubscriptionCredits = mysqlTable("student_subscription_credi
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const groupDiscussionMessages = mysqlTable("group_discussion_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  groupId: int("groupId").notNull(),
+  authorType: mysqlEnum("authorType", ["teacher", "assistant", "student"]).notNull(),
+  authorStudentId: int("authorStudentId"),
+  body: text("body").notNull(),
+  deletedAt: timestamp("deletedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const groupAnnouncements = mysqlTable("group_announcements", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  groupId: int("groupId").notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  body: text("body").notNull(),
+  audience: mysqlEnum("audience", ["students", "guardians", "all"]).default("all").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const videoLessons = mysqlTable("video_lessons", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  groupId: int("groupId").notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  description: text("description"),
+  sourceType: mysqlEnum("sourceType", ["upload", "external", "live"]).notNull(),
+  storageKey: varchar("storageKey", { length: 512 }),
+  storageUrl: varchar("storageUrl", { length: 512 }),
+  externalUrl: varchar("externalUrl", { length: 1024 }),
+  accessCodeHash: varchar("accessCodeHash", { length: 255 }),
+  watermarkEnabled: boolean("watermarkEnabled").default(true).notNull(),
+  status: mysqlEnum("status", ["draft", "published"]).default("draft").notNull(),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const assignments = mysqlTable("assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  groupId: int("groupId").notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  instructions: text("instructions"),
+  dueAt: timestamp("dueAt"),
+  status: mysqlEnum("status", ["draft", "published", "closed"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const assignmentSubmissions = mysqlTable("assignment_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  assignmentId: int("assignmentId").notNull(),
+  studentId: int("studentId").notNull(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  storageUrl: varchar("storageUrl", { length: 512 }).notNull(),
+  mimeType: varchar("mimeType", { length: 80 }).notNull(),
+  reviewNote: text("reviewNote"),
+  score: decimal("score", { precision: 6, scale: 2 }),
+  status: mysqlEnum("status", ["submitted", "reviewed"]).default("submitted").notNull(),
+  submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+}, table => ({ uniqueAssignmentStudent: uniqueIndex("assignment_submissions_assignment_student").on(table.assignmentId, table.studentId) }));
+
+export const quizFocusEvents = mysqlTable("quiz_focus_events", {
+  id: int("id").autoincrement().primaryKey(),
+  quizAttemptId: int("quizAttemptId").notNull(),
+  studentId: int("studentId").notNull(),
+  eventType: mysqlEnum("eventType", ["visibility_hidden", "window_blur", "fullscreen_exit"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const studentDeviceBindings = mysqlTable("student_device_bindings", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull().unique(),
+  deviceIdHash: varchar("deviceIdHash", { length: 128 }).notNull(),
+  deviceName: varchar("deviceName", { length: 220 }).notNull(),
+  status: mysqlEnum("status", ["active", "release_requested"]).default("active").notNull(),
+  releaseRequestedAt: timestamp("releaseRequestedAt"),
+  boundAt: timestamp("boundAt").defaultNow().notNull(),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+});
+
+export const parentAccounts = mysqlTable("parent_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  phone: varchar("phone", { length: 32 }).notNull(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ uniqueParentPhone: uniqueIndex("parent_accounts_user_phone").on(table.userId, table.phone) }));
+
+export const parentStudentLinks = mysqlTable("parent_student_links", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),
+  studentId: int("studentId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ uniqueParentStudent: uniqueIndex("parent_student_links_parent_student").on(table.parentId, table.studentId) }));
+
+export const centerRooms = mysqlTable("center_rooms", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  capacity: int("capacity").notNull(),
+  seatMapJson: text("seatMapJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const seatReservations = mysqlTable("seat_reservations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  groupId: int("groupId").notNull(),
+  roomId: int("roomId").notNull(),
+  studentId: int("studentId").notNull(),
+  sessionAt: timestamp("sessionAt").notNull(),
+  seatNumber: varchar("seatNumber", { length: 24 }).notNull(),
+  status: mysqlEnum("status", ["reserved", "cancelled", "attended"]).default("reserved").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ uniqueStudentSession: uniqueIndex("seat_reservations_student_session").on(table.studentId, table.sessionAt), uniqueSeatSession: uniqueIndex("seat_reservations_room_seat_session").on(table.roomId, table.seatNumber, table.sessionAt) }));
+
+export const storeProducts = mysqlTable("store_products", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  stockQuantity: int("stockQuantity").default(0).notNull(),
+  fulfillment: mysqlEnum("fulfillment", ["pickup", "delivery", "both"]).default("pickup").notNull(),
+  imageUrl: varchar("imageUrl", { length: 512 }),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const storeOrders = mysqlTable("store_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  orderNumber: varchar("orderNumber", { length: 32 }).notNull().unique(),
+  fulfillment: mysqlEnum("fulfillment", ["pickup", "delivery"]).notNull(),
+  deliveryAddress: text("deliveryAddress"),
+  totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum("status", ["pending", "confirmed", "ready", "out_for_delivery", "fulfilled", "cancelled"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const storeOrderItems = mysqlTable("store_order_items", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull(),
+  productId: int("productId").notNull(),
+  titleSnapshot: varchar("titleSnapshot", { length: 180 }).notNull(),
+  unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull(),
+  quantity: int("quantity").notNull(),
+});
+
+export const walletLedger = mysqlTable("wallet_ledger", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  source: mysqlEnum("source", ["kiosk_code", "manual", "store_order", "adjustment"]).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  note: varchar("note", { length: 320 }),
+  referenceKey: varchar("referenceKey", { length: 180 }).unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const walletTopupCodes = mysqlTable("wallet_topup_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  codeHash: varchar("codeHash", { length: 128 }).notNull().unique(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum("status", ["unused", "redeemed", "void"]).default("unused").notNull(),
+  redeemedByStudentId: int("redeemedByStudentId"),
+  redeemedAt: timestamp("redeemedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const assessments = mysqlTable("assessments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
