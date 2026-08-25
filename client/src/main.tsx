@@ -8,6 +8,7 @@ import superjson from "superjson";
 import App from "./App";
 import EntityProfile from "./pages/EntityProfile";
 import StudentPortal from "./pages/StudentPortal";
+import ParentPortal from "./pages/ParentPortal";
 import TeacherPortal from "./pages/TeacherPortal";
 import { OfflineRuntime } from "./components/OfflineRuntime";
 import { enqueueTrpcRequest, flushOfflineQueue } from "./lib/offlineSync";
@@ -90,13 +91,13 @@ const trpcClient = trpc.createClient({
 });
 
 const pathname = window.location.pathname;
-const RootApp = pathname.startsWith("/student/") ? StudentPortal : pathname.startsWith("/teacher/") ? TeacherPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
+const RootApp = pathname.startsWith("/student/") ? StudentPortal : pathname.startsWith("/parent/") ? ParentPortal : pathname.startsWith("/teacher/") ? TeacherPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
 const EL_MISTER_LOGO = "/manus-storage/el-mister-logo_65d8a1da.jpg";
 
 function DirectAccessGuard({ children }: { children: React.ReactNode }) {
   const session = trpc.auth.me.useQuery(undefined, { retry: false, staleTime: 0, refetchOnMount: "always" });
   useEffect(() => {
-    const keepsOwnSession = pathname.startsWith("/student/") || pathname.startsWith("/teacher/");
+    const keepsOwnSession = pathname.startsWith("/student/") || pathname.startsWith("/parent/") || pathname.startsWith("/teacher/");
     if (!keepsOwnSession && session.isFetchedAfterMount && !session.isFetching && !session.data) window.location.replace("/teacher/login");
   }, [session.isFetchedAfterMount, session.isFetching, session.data]);
   return <>{children}</>;
