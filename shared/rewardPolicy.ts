@@ -11,3 +11,7 @@ export const rewardTypes = Object.keys(rewardCatalog) as RewardType[];
 export function rewardPointsCost(type: RewardType) {
   return rewardCatalog[type].points;
 }
+
+export function requiresStudentSubscriptionCredit(type: RewardType) {
+  return type === "next_subscription_discount";
+}

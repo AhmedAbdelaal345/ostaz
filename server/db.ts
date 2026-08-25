@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, isNull, lte, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertStudent, InsertStudyGroup, InsertTeacherProfile, InsertUser, accountSessions, assessments, attendance, automationSchedules, behaviorRecords, centerMembers, centers, changeLogs, financialTransactions, learningMaterials, lessonReminders, personalReminders, pushSubscriptions, quizAttempts, rewardRedemptions, studentAccounts, studentPointLedger, students, studyGroups, teacherAccounts, teacherProfiles, users, weeklyQuizzes, yearWorkScores, yearWorkTerms } from "../drizzle/schema";
+import { InsertStudent, InsertStudyGroup, InsertTeacherProfile, InsertUser, accountSessions, assessments, attendance, automationSchedules, behaviorRecords, centerMembers, centers, changeLogs, financialTransactions, learningMaterials, lessonReminders, personalReminders, pushSubscriptions, quizAttempts, rewardRedemptions, studentAccounts, studentPointLedger, studentSubscriptionCredits, students, studyGroups, teacherAccounts, teacherProfiles, users, weeklyQuizzes, yearWorkScores, yearWorkTerms } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { getNextReminderDate, shouldDeliverPersonalReminder } from "../shared/personalReminder";
-import { rewardPointsCost, type RewardType } from "../shared/rewardPolicy";
+import { requiresStudentSubscriptionCredit, rewardPointsCost, type RewardType } from "../shared/rewardPolicy";
+import { selectApplicableCredits } from "../shared/subscriptionCredit";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() { if (!_db && process.env.DATABASE_URL) { try { _db = drizzle(process.env.DATABASE_URL); } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; } } return _db; }
@@ -103,8 +104,49 @@ export async function listRewardRedemptions(userId: number) { const db = await g
 export async function getStudentRewardSummary(userId: number, studentId: number) { const [balance, ledger, requests] = await Promise.all([getStudentPointBalance(userId, studentId), listStudentPointLedger(userId, studentId), (async () => { const db = await getDb(); if (!db) return []; return db.select().from(rewardRedemptions).where(and(eq(rewardRedemptions.userId, userId), eq(rewardRedemptions.studentId, studentId))).orderBy(desc(rewardRedemptions.createdAt)); })()]); return { balance, ledger, requests }; }
 export async function getStudentRewardSummaryForStudent(studentId: number) { const db = await getDb(); if (!db) return null; const student = (await db.select({ userId: students.userId }).from(students).where(eq(students.id, studentId)).limit(1))[0]; if (!student) return null; return getStudentRewardSummary(student.userId, studentId); }
 export async function requestRewardRedemption(userId: number, studentId: number, input: { rewardType: RewardType; note?: string | null }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const student = (await db.select({ id: students.id, name: students.name }).from(students).where(and(eq(students.id, studentId), eq(students.userId, userId))).limit(1))[0]; if (!student) throw new Error("STUDENT_NOT_FOUND"); const pointsCost = rewardPointsCost(input.rewardType); const balance = await getStudentPointBalance(userId, studentId); if (balance < pointsCost) throw new Error("INSUFFICIENT_POINTS"); const result = await db.insert(rewardRedemptions).values({ userId, studentId, rewardType: input.rewardType, pointsCost, note: input.note ?? null }); return Number(result[0].insertId); }
-export async function processRewardRedemption(userId: number, id: number, status: "approved" | "rejected", discountAmount?: string | null) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const request = (await db.select().from(rewardRedemptions).where(and(eq(rewardRedemptions.id, id), eq(rewardRedemptions.userId, userId))).limit(1))[0]; if (!request) throw new Error("REWARD_REQUEST_NOT_FOUND"); if (request.status !== "pending") throw new Error("REWARD_REQUEST_ALREADY_PROCESSED"); if (status === "approved") { const balance = await getStudentPointBalance(userId, request.studentId); if (balance < request.pointsCost) throw new Error("INSUFFICIENT_POINTS"); await db.insert(studentPointLedger).values({ userId, studentId: request.studentId, source: "redemption", points: -request.pointsCost, note: `استبدال مكافأة: ${request.rewardType}`, referenceKey: `reward:${request.id}` }); }
-  await db.update(rewardRedemptions).set({ status, discountAmount: discountAmount ?? null, processedAt: new Date() }).where(and(eq(rewardRedemptions.id, id), eq(rewardRedemptions.userId, userId), eq(rewardRedemptions.status, "pending"))); await recordChange(userId, { category: "student", action: "updated", entityName: `طلب مكافأة #${id}`, details: status === "approved" ? "تم اعتماد استبدال النقاط" : "تم رفض طلب استبدال النقاط" }); return true; }
+export async function processRewardRedemption(userId: number, id: number, status: "approved" | "rejected", discountAmount?: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const request = (await db.select().from(rewardRedemptions).where(and(eq(rewardRedemptions.id, id), eq(rewardRedemptions.userId, userId))).limit(1))[0];
+  if (!request) throw new Error("REWARD_REQUEST_NOT_FOUND");
+  if (request.status !== "pending") throw new Error("REWARD_REQUEST_ALREADY_PROCESSED");
+  const creditAmount = Number(discountAmount || 0);
+  if (status === "approved") {
+    const balance = await getStudentPointBalance(userId, request.studentId);
+    if (balance < request.pointsCost) throw new Error("INSUFFICIENT_POINTS");
+    if (requiresStudentSubscriptionCredit(request.rewardType) && (!Number.isFinite(creditAmount) || creditAmount <= 0)) throw new Error("DISCOUNT_AMOUNT_REQUIRED");
+    await db.insert(studentPointLedger).values({ userId, studentId: request.studentId, source: "redemption", points: -request.pointsCost, note: `استبدال مكافأة: ${request.rewardType}`, referenceKey: `reward:${request.id}` });
+    if (requiresStudentSubscriptionCredit(request.rewardType)) await db.insert(studentSubscriptionCredits).values({ userId, studentId: request.studentId, rewardRedemptionId: request.id, amount: String(creditAmount) });
+  }
+  await db.update(rewardRedemptions).set({ status, discountAmount: requiresStudentSubscriptionCredit(request.rewardType) ? String(creditAmount) : null, processedAt: new Date() }).where(and(eq(rewardRedemptions.id, id), eq(rewardRedemptions.userId, userId), eq(rewardRedemptions.status, "pending")));
+  await recordChange(userId, { category: "student", action: "updated", entityName: `طلب مكافأة #${id}`, details: status === "approved" ? "تم اعتماد استبدال النقاط" : "تم رفض طلب استبدال النقاط" });
+  return true;
+}
+
+export async function collectSubscriptionPayment(userId: number, input: { studentId: number; groupId: number; cashAmount: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [student, group] = await Promise.all([
+    db.select().from(students).where(and(eq(students.id, input.studentId), eq(students.userId, userId))).limit(1),
+    db.select().from(studyGroups).where(and(eq(studyGroups.id, input.groupId), eq(studyGroups.userId, userId))).limit(1),
+  ]);
+  const studentRow = student[0]; const groupRow = group[0];
+  if (!studentRow || !groupRow || studentRow.groupId !== groupRow.id) throw new Error("STUDENT_GROUP_NOT_FOUND");
+  const cashAmount = Number(input.cashAmount);
+  const remaining = Math.max(0, Number(groupRow.fee) - Number(studentRow.paidAmount || 0));
+  if (!Number.isFinite(cashAmount) || cashAmount <= 0 || cashAmount > remaining) throw new Error("INVALID_PAYMENT_AMOUNT");
+  const availableCredits = await db.select().from(studentSubscriptionCredits).where(and(eq(studentSubscriptionCredits.userId, userId), eq(studentSubscriptionCredits.studentId, studentRow.id), eq(studentSubscriptionCredits.status, "available"))).orderBy(studentSubscriptionCredits.createdAt);
+  const selection = selectApplicableCredits(availableCredits.map(credit => Number(credit.amount)), Math.max(0, remaining - cashAmount));
+  const appliedCredits = selection.selectedIndexes.map(index => availableCredits[index]);
+  const newPaidAmount = Number(studentRow.paidAmount || 0) + cashAmount + selection.applied;
+  const now = new Date();
+  if (appliedCredits.length) await db.update(studentSubscriptionCredits).set({ status: "applied", appliedAt: now }).where(sql`${studentSubscriptionCredits.id} IN (${sql.join(appliedCredits.map(credit => sql`${credit.id}`), sql`, `)})`);
+  await db.update(students).set({ paidAmount: String(newPaidAmount), paid: newPaidAmount >= Number(groupRow.fee) }).where(and(eq(students.id, studentRow.id), eq(students.userId, userId)));
+  const description = `دفعة ${groupRow.collectionPeriod === "term" ? "ترم" : "شهرية"} — ${groupRow.name}${selection.applied ? ` + خصم نقاط ${selection.applied} ج.م` : ""}`;
+  const result = await db.insert(financialTransactions).values({ userId, studentId: studentRow.id, groupId: groupRow.id, kind: "subscription", amount: String(cashAmount), paidAt: now, dueDate: null, description });
+  await recordChange(userId, { category: "finance", action: "recorded", entityName: studentRow.name, details: `تحصيل ${cashAmount} ج.م مع رصيد مكافآت ${selection.applied} ج.م` });
+  return { transactionId: Number(result[0].insertId), cashAmount, appliedCredit: selection.applied, paidAmount: newPaidAmount, settled: newPaidAmount >= Number(groupRow.fee) };
+}
 export async function createPersonalReminder(userId: number, input: { title: string; note?: string | null; remindAt: Date; recurrence: "once" | "daily" | "weekly" }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(personalReminders).values({ userId, title: input.title, note: input.note ?? null, remindAt: input.remindAt, recurrence: input.recurrence }); const id = Number(result[0].insertId); await recordChange(userId, { category: "settings", action: "created", entityName: input.title, details: "تم إنشاء تذكير شخصي" }); return id; }
 export async function updatePersonalReminder(userId: number, id: number, input: Partial<{ title: string; note: string | null; remindAt: Date; recurrence: "once" | "daily" | "weekly"; completed: boolean }>) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const rows = await db.select({ id: personalReminders.id, title: personalReminders.title }).from(personalReminders).where(and(eq(personalReminders.id, id), eq(personalReminders.userId, userId))).limit(1); if (!rows[0]) throw new Error("REMINDER_NOT_FOUND"); await db.update(personalReminders).set(input).where(and(eq(personalReminders.id, id), eq(personalReminders.userId, userId))); await recordChange(userId, { category: "settings", action: "updated", entityName: input.title || rows[0].title, details: input.completed ? "تم إكمال التذكير" : "تم تعديل التذكير" }); return true; }
 export async function deletePersonalReminder(userId: number, id: number) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const rows = await db.select({ title: personalReminders.title }).from(personalReminders).where(and(eq(personalReminders.id, id), eq(personalReminders.userId, userId))).limit(1); if (!rows[0]) throw new Error("REMINDER_NOT_FOUND"); await db.delete(personalReminders).where(and(eq(personalReminders.id, id), eq(personalReminders.userId, userId))); await recordChange(userId, { category: "settings", action: "deleted", entityName: rows[0].title, details: "تم حذف التذكير" }); return true; }

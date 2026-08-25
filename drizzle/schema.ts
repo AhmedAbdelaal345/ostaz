@@ -248,6 +248,17 @@ export const rewardRedemptions = mysqlTable("reward_redemptions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const studentSubscriptionCredits = mysqlTable("student_subscription_credits", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  studentId: int("studentId").notNull(),
+  rewardRedemptionId: int("rewardRedemptionId").notNull().unique(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum("status", ["available", "applied"]).default("available").notNull(),
+  appliedAt: timestamp("appliedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const assessments = mysqlTable("assessments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),

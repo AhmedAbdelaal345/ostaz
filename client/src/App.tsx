@@ -228,8 +228,7 @@ function FormModal({ type, close, onSubmit, groups = [], initial }: any) {
 
 function GroupCollections({ group, students }: { group: Group; students: Student[] }) {
   const utils = trpc.useUtils();
-  const updateStudent = trpc.app.students.update.useMutation({ onSuccess: () => utils.app.bootstrap.invalidate() });
-  const createTransaction = trpc.app.finance.create.useMutation({ onSuccess: () => utils.app.finance.list.invalidate() });
+  const collectSubscription = trpc.app.finance.collectSubscription.useMutation({ onSuccess: () => { utils.app.bootstrap.invalidate(); utils.app.finance.list.invalidate(); } });
   const groupStudents = studentsForGroup(students, group.name);
   const recordPayment = async (student: Student) => {
     const remaining = Math.max(0, Number(group.fee) - Number(student.paidAmount || 0));
@@ -237,14 +236,10 @@ function GroupCollections({ group, students }: { group: Group; students: Student
     if (raw === null) return;
     const amount = Number(raw);
     if (!Number.isFinite(amount) || amount <= 0) return toast.error("اكتب مبلغ دفعة صحيحًا");
-    const newPaidAmount = Number(student.paidAmount || 0) + amount;
     try {
-      await Promise.all([
-        updateStudent.mutateAsync({ id: student.id, data: { paidAmount: newPaidAmount, paid: newPaidAmount >= Number(group.fee), groupId: group.id } }),
-        createTransaction.mutateAsync({ kind: "subscription", amount: String(amount), studentId: student.id, groupId: group.id, paidAt: new Date(), dueDate: null, description: `دفعة ${group.collectionPeriod === "term" ? "ترم" : "شهرية"} — ${group.name}` }),
-      ]);
-      toast.success(`تم تسجيل دفعة ${amount} ج.م لـ ${student.name}`);
-    } catch { toast.error("تعذر تسجيل الدفعة، حاول مرة أخرى"); }
+      const receipt = await collectSubscription.mutateAsync({ studentId: student.id, groupId: group.id, cashAmount: String(amount) });
+      toast.success(`تم تسجيل دفعة ${receipt.cashAmount} ج.م لـ ${student.name}${receipt.appliedCredit ? ` وتطبيق خصم نقاط ${receipt.appliedCredit} ج.م` : ""}`);
+    } catch (error: any) { toast.error(error?.message === "INVALID_PAYMENT_AMOUNT" ? "قيمة الدفعة غير صالحة أو تتجاوز المتبقي" : "تعذر تسجيل الدفعة، حاول مرة أخرى"); }
   };
   return <section className="group-collections"><div className="group-collections-head"><div><span className="eyebrow">التحصيل</span><b>{group.collectionPeriod === "term" ? "رسوم الترم" : "رسوم شهرية"}: {Number(group.fee).toLocaleString()} ج.م</b></div><span>{groupStudents.length} طالب</span></div>{groupStudents.length ? groupStudents.map(student => { const remaining = Math.max(0, Number(group.fee) - Number(student.paidAmount || 0)); const phone = (student.guardianPhone || student.phone || "").replace(/\D/g, ""); const message = encodeURIComponent(formatOutstandingWhatsAppMessage({ studentName: student.name, groupName: group.name, remainingAmount: remaining, collectionPeriod: group.collectionPeriod })); return <div className="group-collection-row" key={student.id}><div><b>{student.name}</b><small>دفع {Number(student.paidAmount || 0).toLocaleString()} ج.م · {remaining ? `متبقي ${remaining.toLocaleString()} ج.م` : "مكتمل السداد"}</small></div><div>{remaining > 0 && <button className="secondary" onClick={() => recordPayment(student)}>تسجيل دفعة</button>}{remaining > 0 && phone && <button className="secondary whatsapp-action" onClick={() => window.open(`https://wa.me/${phone}?text=${message}`, "_blank")}>WhatsApp</button>}</div></div>; }) : <div className="empty-inline">أضف طلابًا لبدء متابعة التحصيل.</div>}</section>;
 }
