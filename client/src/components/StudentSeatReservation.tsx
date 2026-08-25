@@ -1,0 +1,20 @@
+import { useMemo, useState } from "react";
+import { Armchair, CalendarClock, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+function asLocalDateTime(date: Date) { const offset = date.getTimezoneOffset() * 60_000; return new Date(date.getTime() - offset).toISOString().slice(0, 16); }
+type StudentRoom = { id: number; name: string; seats: string[]; reservedSeats: string[] };
+
+export function StudentSeatReservation({ onBack }: { onBack: () => void }) {
+  const { language, isRtl } = useLanguage();
+  const utils = trpc.useUtils(); const [sessionAt, setSessionAt] = useState(() => asLocalDateTime(new Date(Date.now() + 86_400_000))); const [activeRoomId, setActiveRoomId] = useState<number | null>(null);
+  const availability = trpc.app.rooms.studentAvailability.useQuery({ sessionAt: new Date(sessionAt) }, { retry: false });
+  const rooms = (availability.data?.rooms || []) as StudentRoom[];
+  const activeRoom = useMemo(() => rooms.find(room => room.id === activeRoomId) || rooms[0], [rooms, activeRoomId]);
+  const reserve = trpc.app.rooms.reserve.useMutation({ onSuccess: () => { availability.refetch(); toast.success(language === "ar" ? "تم حجز مقعدك." : "Your seat is reserved."); }, onError: error => toast.error(error.message) });
+  const cancel = trpc.app.rooms.cancelMine.useMutation({ onSuccess: () => { availability.refetch(); toast.success(language === "ar" ? "تم إلغاء الحجز." : "Reservation cancelled."); }, onError: error => toast.error(error.message) });
+  const own = availability.data?.ownReservation;
+  return <main className="student-portal" dir={isRtl ? "rtl" : "ltr"}><section className="student-dashboard learning-hub"><button className="student-back" type="button" onClick={onBack}>{language === "ar" ? "عودة إلى البروفايل" : "Back to profile"}</button><header className="learning-hub-head"><Armchair size={27}/><div><span>{language === "ar" ? "حجزي" : "My reservation"}</span><h1>{language === "ar" ? "حجز مقعد في السنتر" : "Reserve a center seat"}</h1><p>{language === "ar" ? "يمكنك حجز مقعد واحد لموعد واحد ضمن مجموعتك المرتبطة. لا يمكن حجز مقعد محجوز بالفعل." : "You can reserve one seat for one time within your linked group. Already-reserved seats cannot be selected."}</p></div></header><section className="student-panel"><label className="learning-select-label"><CalendarClock size={16}/>{language === "ar" ? "اختر موعد الحصة" : "Choose session time"}<input type="datetime-local" value={sessionAt} onChange={event => setSessionAt(event.target.value)}/></label>{availability.isLoading ? <p className="student-empty">{language === "ar" ? "جارٍ تحميل المقاعد…" : "Loading seats…"}</p> : own ? <div className="seat-own-reservation"><CheckCircle2 size={21}/><div><b>{language === "ar" ? `مقعدك المحجوز: ${own.seatNumber}` : `Your reserved seat: ${own.seatNumber}`}</b><small>{language === "ar" ? "لا يمكنك إنشاء حجز آخر لهذا الموعد." : "You cannot create another reservation for this time."}</small></div><button type="button" className="secondary" disabled={cancel.isPending} onClick={() => cancel.mutate({ reservationId: own.id })}>{language === "ar" ? "إلغاء الحجز" : "Cancel"}</button></div> : rooms.length ? <><div className="room-tabs">{rooms.map(room => <button type="button" className={(activeRoom?.id === room.id) ? "selected" : ""} key={room.id} onClick={() => setActiveRoomId(room.id)}>{room.name}</button>)}</div>{activeRoom && <div className="seat-grid">{activeRoom.seats.map(seat => { const reserved = activeRoom.reservedSeats.includes(seat); return <button type="button" key={seat} disabled={reserved || reserve.isPending} className={reserved ? "reserved" : "available"} onClick={() => reserve.mutate({ roomId: activeRoom.id, seatNumber: seat, sessionAt: new Date(sessionAt) })}>{seat}</button>; })}</div>}</> : <p className="student-empty">{language === "ar" ? "لا توجد قاعات متاحة للحجز حاليًا." : "No rooms are available for reservation yet."}</p>}</section></section></main>;
+}
