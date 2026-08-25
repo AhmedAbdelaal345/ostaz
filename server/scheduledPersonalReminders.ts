@@ -15,7 +15,7 @@ export async function runScheduledPersonalReminders(req: Request, res: Response)
     let claimed = 0; let delivered = 0;
     for (const reminder of due) {
       try {
-        const outcome = await sendPushToUser(reminder.userId, { title: "ذكّرني", body: reminder.note ? `${reminder.title} — ${reminder.note}` : reminder.title, url: "/settings/reminders" });
+        const outcome = await sendPushToUser(reminder.userId, { title: "ذكّرني", body: reminder.note ? `${reminder.title} — ${reminder.note}` : reminder.title, url: "/settings/reminders", tag: `personal-reminder-${reminder.id}`, lang: "ar" });
         if (!shouldConfirmPushDelivery(outcome)) continue;
         const claimedReminder = await claimPersonalReminderDelivery(reminder.id);
         if (!claimedReminder) continue;

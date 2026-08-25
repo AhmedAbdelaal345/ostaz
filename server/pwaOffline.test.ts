@@ -7,6 +7,8 @@ describe("PWA offline worker", () => {
     const worker = readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8");
     expect(worker).toContain('caches.match("/")');
     expect(worker).toContain('self.addEventListener("push"');
+    expect(worker).toContain("requireInteraction: true");
+    expect(worker).toContain("event.data?.text?.()");
     expect(worker).toContain('self.addEventListener("notificationclick"');
     const entry = readFileSync(resolve(process.cwd(), "client/src/main.tsx"), "utf8");
     expect(entry).toContain('navigator.serviceWorker.register("/sw.js", { scope: "/" })');

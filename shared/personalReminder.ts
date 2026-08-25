@@ -5,3 +5,8 @@ export function getNextReminderDate(current: Date, recurrence: PersonalReminderR
   if (recurrence === "weekly") return new Date(current.getTime() + 604_800_000);
   return null;
 }
+
+/** A one-time reminder stays visible after delivery; it should only be delivered once until the user completes it. */
+export function shouldDeliverPersonalReminder(recurrence: PersonalReminderRecurrence, lastDeliveredAt: Date | null | undefined) {
+  return recurrence !== "once" || !lastDeliveredAt;
+}

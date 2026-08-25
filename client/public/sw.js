@@ -1,4 +1,4 @@
-const CACHE = "el-mister-shell-v3";
+const CACHE = "el-mister-shell-v4";
 const BRAND_ICON = "/manus-storage/el-mister-logo_65d8a1da.jpg";
 const APP_SHELL = ["/", "/manifest.json"];
 
@@ -47,9 +47,24 @@ self.addEventListener("fetch", event => {
 });
 
 self.addEventListener("push", event => {
-  const data = event.data ? event.data.json() : {};
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    try { data = { body: event.data?.text?.() || "" }; } catch { data = {}; }
+  }
   const title = data.title || "El Mister | المستر";
-  const options = { body: data.body || "لديك تحديث جديد", icon: BRAND_ICON, badge: BRAND_ICON, data: { url: data.url || "/" }, dir: "rtl", lang: "ar" };
+  const options = {
+    body: data.body || "لديك تحديث جديد",
+    icon: BRAND_ICON,
+    badge: BRAND_ICON,
+    tag: data.tag || `el-mister-${Date.now()}`,
+    renotify: true,
+    requireInteraction: true,
+    data: { url: data.url || "/" },
+    dir: data.lang === "en" ? "ltr" : "rtl",
+    lang: data.lang || "ar",
+  };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 

@@ -11,7 +11,7 @@ export function getPushPublicKey() {
   return ENV.vapidPublicKey;
 }
 
-export async function sendPushToUser(userId: number, payload: { title: string; body: string; url?: string }) {
+export async function sendPushToUser(userId: number, payload: { title: string; body: string; url?: string; tag?: string; lang?: "ar" | "en" }) {
   if (!isPushConfigured()) throw new Error("PUSH_NOT_CONFIGURED");
   webpush.setVapidDetails(ENV.vapidSubject, ENV.vapidPublicKey, ENV.vapidPrivateKey);
   const subscriptions = await listPushSubscriptions(userId);
