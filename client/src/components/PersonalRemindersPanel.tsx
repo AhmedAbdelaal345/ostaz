@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarClock, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -20,6 +20,22 @@ export function PersonalRemindersPanel() {
   const [note, setNote] = useState("");
   const [remindAt, setRemindAt] = useState(() => toLocalInput(new Date(Date.now() + 3_600_000)));
   const [recurrence, setRecurrence] = useState<"once" | "daily" | "weekly">("once");
+  const locallyNotified = useRef(new Set<number>());
+  useEffect(() => {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const timers: number[] = [];
+    for (const reminder of reminders.data || []) {
+      const dueAt = new Date(reminder.remindAt).getTime();
+      const delay = dueAt - Date.now();
+      if (reminder.completed || delay <= 0 || delay > 86_400_000 || locallyNotified.current.has(reminder.id)) continue;
+      timers.push(window.setTimeout(() => {
+        if (locallyNotified.current.has(reminder.id) || Notification.permission !== "granted") return;
+        locallyNotified.current.add(reminder.id);
+        new Notification(language === "ar" ? "ذكّرني" : "Reminder", { body: reminder.note ? `${reminder.title} — ${reminder.note}` : reminder.title, tag: `personal-reminder-${reminder.id}` });
+      }, delay));
+    }
+    return () => timers.forEach(window.clearTimeout);
+  }, [language, reminders.data]);
   const submit = () => {
     const date = new Date(remindAt);
     if (!title.trim()) return toast.error(language === "ar" ? "اكتب ما تريد أن تتذكره." : "Enter what you want to remember.");

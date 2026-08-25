@@ -18,5 +18,8 @@ describe("PWA offline worker", () => {
     expect(offlineRuntime).toContain("تمت استعادة الاتصال");
     expect(offlineRuntime).toContain("result.sent");
     expect(offlineRuntime).toContain("if (navigator.onLine && offlineQueueSize()) void sync()");
+    const reminders = readFileSync(resolve(process.cwd(), "client/src/components/PersonalRemindersPanel.tsx"), "utf8");
+    expect(reminders).toContain("new Notification");
+    expect(reminders).toContain("personal-reminder-${reminder.id}");
   });
 });
