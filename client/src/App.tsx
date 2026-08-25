@@ -232,10 +232,10 @@ function GroupCollections({ group, students }: { group: Group; students: Student
   const groupStudents = studentsForGroup(students, group.name);
   const recordPayment = async (student: Student) => {
     const remaining = Math.max(0, Number(group.fee) - Number(student.paidAmount || 0));
-    const raw = window.prompt(`سجّل دفعة الطالب ${student.name} (المتبقي ${remaining} ج.م)`, String(remaining));
+    const raw = window.prompt(`سجّل دفعة الطالب ${student.name} (المتبقي ${remaining} ج.م). اكتب 0 لتطبيق رصيد مكافأة معتمد بالكامل.`, String(remaining));
     if (raw === null) return;
     const amount = Number(raw);
-    if (!Number.isFinite(amount) || amount <= 0) return toast.error("اكتب مبلغ دفعة صحيحًا");
+    if (!Number.isFinite(amount) || amount < 0) return toast.error("اكتب مبلغ دفعة صحيحًا");
     try {
       const receipt = await collectSubscription.mutateAsync({ studentId: student.id, groupId: group.id, cashAmount: String(amount) });
       toast.success(`تم تسجيل دفعة ${receipt.cashAmount} ج.م لـ ${student.name}${receipt.appliedCredit ? ` وتطبيق خصم نقاط ${receipt.appliedCredit} ج.م` : ""}`);

@@ -134,10 +134,11 @@ export async function collectSubscriptionPayment(userId: number, input: { studen
   if (!studentRow || !groupRow || studentRow.groupId !== groupRow.id) throw new Error("STUDENT_GROUP_NOT_FOUND");
   const cashAmount = Number(input.cashAmount);
   const remaining = Math.max(0, Number(groupRow.fee) - Number(studentRow.paidAmount || 0));
-  if (!Number.isFinite(cashAmount) || cashAmount <= 0 || cashAmount > remaining) throw new Error("INVALID_PAYMENT_AMOUNT");
+  if (!Number.isFinite(cashAmount) || cashAmount < 0 || cashAmount > remaining) throw new Error("INVALID_PAYMENT_AMOUNT");
   const availableCredits = await db.select().from(studentSubscriptionCredits).where(and(eq(studentSubscriptionCredits.userId, userId), eq(studentSubscriptionCredits.studentId, studentRow.id), eq(studentSubscriptionCredits.status, "available"))).orderBy(studentSubscriptionCredits.createdAt);
   const selection = selectApplicableCredits(availableCredits.map(credit => Number(credit.amount)), Math.max(0, remaining - cashAmount));
   const appliedCredits = selection.selectedIndexes.map(index => availableCredits[index]);
+  if (cashAmount + selection.applied <= 0) throw new Error("INVALID_PAYMENT_AMOUNT");
   const newPaidAmount = Number(studentRow.paidAmount || 0) + cashAmount + selection.applied;
   const now = new Date();
   if (appliedCredits.length) await db.update(studentSubscriptionCredits).set({ status: "applied", appliedAt: now }).where(sql`${studentSubscriptionCredits.id} IN (${sql.join(appliedCredits.map(credit => sql`${credit.id}`), sql`, `)})`);
