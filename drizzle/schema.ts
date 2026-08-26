@@ -69,13 +69,16 @@ export const students = mysqlTable("students", {
 
 export const studentAccounts = mysqlTable("student_accounts", {
   id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
   studentId: int("studentId").notNull().unique(),
-  phone: varchar("phone", { length: 32 }).notNull().unique(),
+  phone: varchar("phone", { length: 32 }).notNull(),
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
+}, table => ({
+  userPhoneUnique: uniqueIndex("student_accounts_user_phone_unique").on(table.userId, table.phone),
+}));
 
 export const teacherAccounts = mysqlTable("teacher_accounts", {
   id: int("id").autoincrement().primaryKey(),
