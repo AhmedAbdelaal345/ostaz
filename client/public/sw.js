@@ -1,4 +1,4 @@
-const CACHE = "el-mister-shell-v7";
+const CACHE = "el-mister-shell-v8";
 const BRAND_ICON = "/manus-storage/el-mister-logo_65d8a1da.jpg";
 const APP_SHELL = ["/", "/manifest.json"];
 
