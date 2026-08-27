@@ -3,13 +3,15 @@ import { Camera, LogOut, Pencil, ShieldCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { mergeTeacherProfile } from "../../../shared/profileSettings";
 
 const subjectLabels: Record<string, string> = { "لغة عربية": "Arabic", "لغة إنجليزية": "English", "لغة فرنسية": "French", "رياضيات": "Mathematics", "علوم": "Science", "فيزياء": "Physics", "كيمياء": "Chemistry", "أحياء": "Biology", "حاسب آلي": "Computer studies", "برمجة": "Programming", "دراسات اجتماعية": "Social studies", "قرآن كريم": "Quran", "أخرى": "Other" };
 
 export function TeacherSocialProfile({ profile, setProfile, close }: { profile: any; setProfile: (profile: any) => void; close: () => void }) {
   const { language, isRtl } = useLanguage();
-  const bootstrap = trpc.app.bootstrap.useQuery();
+  const [workspace] = useWorkspace();
+  const bootstrap = trpc.app.bootstrap.useQuery({ workspace }, { staleTime: 5 * 60_000 });
   const saveProfile = trpc.app.profile.save.useMutation();
   const uploadAvatar = trpc.app.profile.uploadAvatar.useMutation();
   const [editing, setEditing] = useState(false);

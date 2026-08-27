@@ -216,28 +216,52 @@ function WorkspaceSwitcher() {
   const [, setLocation] = useLocation();
   const { t } = useLanguage();
   const utils = trpc.useUtils();
+  const [switchingTo, setSwitchingTo] = useState<Workspace | null>(null);
+  useEffect(() => {
+    if (!switchingTo) return;
+    const finish = (event: Event) => {
+      const target = (event as CustomEvent<{ workspace?: Workspace }>).detail
+        ?.workspace;
+      if (target === switchingTo) setSwitchingTo(null);
+    };
+    window.addEventListener("ostazi-workspace-ready", finish);
+    window.addEventListener("ostazi-workspace-failed", finish);
+    const timeout = window.setTimeout(() => setSwitchingTo(null), 8_000);
+    return () => {
+      window.removeEventListener("ostazi-workspace-ready", finish);
+      window.removeEventListener("ostazi-workspace-failed", finish);
+      window.clearTimeout(timeout);
+    };
+  }, [switchingTo]);
   const prefetchWorkspace = (next: Workspace) => {
-    if (next !== workspace)
+    if (next !== workspace && !switchingTo)
       void utils.app.bootstrap.prefetch(
         { workspace: next },
         { staleTime: WORKSPACE_CACHE_MS }
       );
   };
   const selectWorkspace = (next: Workspace) => {
-    prefetchWorkspace(next);
+    if (next === workspace || switchingTo) return;
+    setSwitchingTo(next);
     setWorkspace(next);
     if (next === "school") setLocation("/");
   };
   return (
-    <div className="workspace-switcher" aria-label={t("contextReports")}>
+    <div
+      className={`workspace-switcher${switchingTo ? " is-switching" : ""}`}
+      aria-label={t("contextReports")}
+      aria-busy={Boolean(switchingTo)}
+    >
       {workspaces.map(item => (
         <button
           type="button"
           key={item.id}
           className={workspace === item.id ? "active" : ""}
-          onPointerEnter={() => prefetchWorkspace(item.id)}
+          disabled={Boolean(switchingTo) && workspace !== item.id}
+          onPointerEnter={event => {
+            if (event.pointerType === "mouse") prefetchWorkspace(item.id);
+          }}
           onFocus={() => prefetchWorkspace(item.id)}
-          onTouchStart={() => prefetchWorkspace(item.id)}
           onClick={() => selectWorkspace(item.id)}
         >
           {t(item.id)}
@@ -2051,9 +2075,14 @@ function Page({ profile }: { profile: any }) {
   const auth = useAuth();
   const [workspace] = useWorkspace();
   const [location] = useLocation();
+  const { language } = useLanguage();
   const boot = trpc.app.bootstrap.useQuery(
     { workspace },
-    { enabled: auth.isAuthenticated, retry: false }
+    {
+      enabled: auth.isAuthenticated,
+      retry: false,
+      staleTime: WORKSPACE_CACHE_MS,
+    }
   );
   const createGroupRemote = trpc.app.groups.create.useMutation({
     onSuccess: () => boot.refetch(),
@@ -2095,6 +2124,9 @@ function Page({ profile }: { profile: any }) {
   });
   const [groups, setGroups] = useStore<Group[]>("groups", []);
   const [students, setStudents] = useStore<Student[]>("students", []);
+  const [loadedWorkspace, setLoadedWorkspace] = useState<Workspace | null>(
+    null
+  );
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("الكل");
   const [studentFilter, setStudentFilter] = useState("الكل");
@@ -2125,12 +2157,6 @@ function Page({ profile }: { profile: any }) {
       retry: false,
     }
   );
-  useEffect(() => {
-    setGroups([]);
-    setStudents([]);
-    setExpandedGroupId(null);
-    setAttendanceResult(null);
-  }, [workspace]);
   useEffect(() => {
     const sync = () =>
       setGroupSort(localStorage.getItem("ostazi-group-sort") || "soon");
@@ -2174,7 +2200,44 @@ function Page({ profile }: { profile: any }) {
     }));
     setGroups(groupRows);
     setStudents(studentRows);
-  }, [boot.data]);
+    setExpandedGroupId(null);
+    setAttendanceResult(null);
+    setLoadedWorkspace(workspace);
+    window.dispatchEvent(
+      new CustomEvent("ostazi-workspace-ready", { detail: { workspace } })
+    );
+  }, [boot.data, workspace]);
+  useEffect(() => {
+    if (!boot.isError) return;
+    window.dispatchEvent(
+      new CustomEvent("ostazi-workspace-failed", { detail: { workspace } })
+    );
+  }, [boot.isError, workspace]);
+  if (auth.isAuthenticated && loadedWorkspace !== workspace)
+    return (
+      <section className="workspace-loading" aria-live="polite">
+        <span className="workspace-loading-mark">أ</span>
+        <div>
+          <b>
+            {language === "ar" ? "جارٍ تجهيز المساحة" : "Preparing workspace"}
+          </b>
+          <p>
+            {boot.isError
+              ? language === "ar"
+                ? "تعذر تحميل البيانات. حاول مرة أخرى."
+                : "Data could not load. Please retry."
+              : language === "ar"
+                ? "لن تظهر بيانات سياق آخر أثناء التبديل."
+                : "Data from another workspace will not be shown."}
+          </p>
+          {boot.isError && (
+            <button type="button" className="secondary" onClick={() => boot.refetch()}>
+              {language === "ar" ? "إعادة المحاولة" : "Retry"}
+            </button>
+          )}
+        </div>
+      </section>
+    );
   const today = new Date().toLocaleDateString("ar-EG", { weekday: "long" });
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const filteredGroups = groups

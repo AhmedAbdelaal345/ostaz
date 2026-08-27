@@ -16,4 +16,12 @@ describe("أداء تبديل سياق التشغيل", () => {
     expect(app).toContain("staleTime: WORKSPACE_CACHE_MS");
     expect(main).toContain('Object.prototype.hasOwnProperty.call(payload, "workspace")');
   });
+
+  it("يمنع ضغطات تبديل متداخلة ويعرض حالة تجهيز آمنة بدل تفريغ بيانات السياق", () => {
+    expect(app).toContain("const [switchingTo, setSwitchingTo]");
+    expect(app).toContain("if (next === workspace || switchingTo) return");
+    expect(app).toContain('window.addEventListener("ostazi-workspace-ready", finish)');
+    expect(app).toContain('loadedWorkspace !== workspace');
+    expect(app).toContain('className="workspace-loading"');
+  });
 });
