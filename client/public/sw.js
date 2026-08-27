@@ -1,6 +1,6 @@
-const CACHE = "el-mister-v14";
+const CACHE = "el-mister-v15";
 const BRAND_ICON = "/manus-storage/el-mister-icon-192_c406f989.png";
-const APP_SHELL = ["/", "/manifest.json", BRAND_ICON];
+const APP_SHELL = ["/manifest.json", BRAND_ICON];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)).catch(() => undefined));
@@ -23,10 +23,25 @@ self.addEventListener("fetch", event => {
       try {
         const response = await fetch(event.request);
         const cache = await caches.open(CACHE);
-        await cache.put("/", response.clone());
+        if (response.ok) await cache.put("/", response.clone());
         return response;
       } catch {
         return (await caches.match("/")) || Response.error();
+      }
+    })());
+    return;
+  }
+  if (["script", "style", "worker"].includes(event.request.destination)) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(event.request);
+        if (response.ok && new URL(event.request.url).origin === self.location.origin) {
+          const cache = await caches.open(CACHE);
+          await cache.put(event.request, response.clone());
+        }
+        return response;
+      } catch {
+        return (await caches.match(event.request)) || Response.error();
       }
     })());
     return;
@@ -42,7 +57,7 @@ self.addEventListener("fetch", event => {
       }
       return response;
     } catch {
-      return (await caches.match("/")) || Response.error();
+      return Response.error();
     }
   })());
 });

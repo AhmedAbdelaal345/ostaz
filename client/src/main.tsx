@@ -165,6 +165,12 @@ if ("serviceWorker" in navigator) {
       return;
     }
     try {
+      let reloadingForServiceWorker = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (reloadingForServiceWorker) return;
+        reloadingForServiceWorker = true;
+        window.location.reload();
+      });
       const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       await registration.update();
       window.dispatchEvent(new Event("ostazi-service-worker-ready"));

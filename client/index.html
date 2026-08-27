@@ -16,16 +16,27 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/manus-storage/el-mister-icon-512_951cf40b.png" type="image/png" sizes="512x512" />
     <link rel="apple-touch-icon" href="/manus-storage/el-mister-icon-180_e6c4f152.png" sizes="180x180" />
-    <!-- THIS IS THE START OF A COMMENT BLOCK, BLOCK TO BE DELETED: Google Fonts here, example:
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    THIS IS THE END OF A COMMENT BLOCK, BLOCK TO BE DELETED -->
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #000; color: #f5f5f7; font-family: Arial, sans-serif; }
+      #app-startup { min-height: 100svh; display: grid; place-items: center; padding: 24px; text-align: center; box-sizing: border-box; }
+      #app-startup-card { width: min(100%, 320px); padding: 28px 22px; border: 1px solid #24344b; border-radius: 24px; background: #0c1016; box-sizing: border-box; }
+      #app-startup-mark { width: 52px; height: 52px; display: grid; place-items: center; margin: 0 auto 14px; border-radius: 17px; background: #12253d; color: #67b6ff; font-size: 28px; font-weight: 800; }
+      #app-startup p { color: #a9b4c3; line-height: 1.6; margin: 0; font-size: 14px; }
+      #app-recover { margin-top: 16px; border: 0; border-radius: 12px; padding: 11px 16px; background: #52a9ff; color: #04111f; font-weight: 700; cursor: pointer; }
+    </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="app-startup" role="status" aria-live="polite"><div id="app-startup-card"><div id="app-startup-mark">أ</div><strong>El Mister</strong><p>جارٍ تجهيز التطبيق…</p></div></div></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.setTimeout(function () {
+        var startup = document.getElementById("app-startup-card");
+        if (!startup) return;
+        startup.innerHTML = '<div id="app-startup-mark">أ</div><strong>تعذر بدء التطبيق</strong><p>قد تكون نسخة قديمة محفوظة في الجهاز.</p><button id="app-recover" type="button">إعادة فتح التطبيق</button>';
+        document.getElementById("app-recover").addEventListener("click", function () { window.location.reload(); });
+      }, 8000);
+    </script>
     <script
       defer
       src="%VITE_ANALYTICS_ENDPOINT%/umami"
