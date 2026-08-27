@@ -15,4 +15,12 @@ describe("التواصل وتقارير المجموعة", () => {
     expect(view).toContain("window.confirm(`سيتم فتح ${recipients.length} رسالة WhatsApp جاهزة بالتتابع");
     expect(view).toContain("window.setTimeout(() => openReport(student, recipient), index * 600)");
   });
+
+  it("يقصر نشر وإشراف المساعد على صلاحية المجتمع وبيانات سنتر المالك", () => {
+    const router = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    expect(router).toContain('resolveCenterScope(ctx.user.id, "community")');
+    expect(router).toContain('scope.role === "assistant" ? "assistant" : "teacher"');
+    expect(router).toContain("resolveCenterWorkspace(scope, input.workspace)");
+    expect(router).toContain("removeGroupDiscussionMessage(scope.dataUserId");
+  });
 });
