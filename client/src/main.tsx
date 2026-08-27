@@ -12,6 +12,7 @@ import ParentPortal from "./pages/ParentPortal";
 import TeacherPortal from "./pages/TeacherPortal";
 import PlatformLanding from "./pages/PlatformLanding";
 import { OfflineRuntime } from "./components/OfflineRuntime";
+import { InstallGuide } from "./components/InstallGuide";
 import { enqueueTrpcRequest, flushOfflineQueue } from "./lib/offlineSync";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import "./index.css";
@@ -93,7 +94,7 @@ const trpcClient = trpc.createClient({
 
 const pathname = window.location.pathname;
 const RootApp = pathname === "/platform" ? PlatformLanding : pathname.startsWith("/student/") ? StudentPortal : pathname.startsWith("/parent/") ? ParentPortal : pathname.startsWith("/teacher/") ? TeacherPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
-const EL_MISTER_LOGO = "/manus-storage/el-mister-logo_65d8a1da.jpg";
+const EL_MISTER_LOGO = "/manus-storage/el-mister-icon-512_951cf40b.png";
 
 function DirectAccessGuard({ children }: { children: React.ReactNode }) {
   const session = trpc.auth.me.useQuery(undefined, { retry: false, staleTime: 0, refetchOnMount: "always" });
@@ -126,6 +127,7 @@ createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
       <LanguageProvider><DirectAccessGuard><BrandStartup><RootApp /></BrandStartup></DirectAccessGuard>
+      <InstallGuide />
       <OfflineRuntime /></LanguageProvider>
     </QueryClientProvider>
   </trpc.Provider>
