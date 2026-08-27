@@ -28,6 +28,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useWorkspace } from "../hooks/useWorkspace";
 import "./entity-profile-cards.css";
 import "./group-attendance-colors.css";
+import "./group-student-card-actions.css";
 import {
   collectionPeriodLabel,
   formatOutstandingWhatsAppMessage,
@@ -872,7 +873,7 @@ function ProfileManagementActions() {
   return null;
 }
 
-export function GroupQuickAttendance({ detail, showMessageTemplates = false }: { detail: any; showMessageTemplates?: boolean }) {
+export function GroupQuickAttendance({ detail }: { detail: any }) {
   const utils = trpc.useUtils();
   const [workspace] = useWorkspace();
   const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
@@ -940,6 +941,34 @@ export function GroupQuickAttendance({ detail, showMessageTemplates = false }: {
       recitation: field === "recitation" ? value : existing?.recitation ?? null,
       homework: field === "homework" ? value : existing?.homework ?? null,
     });
+  const reportFor = (student: any) => {
+    const sevenDaysAgo = Date.now() - 7 * 86_400_000;
+    const attendance = detail.attendance.filter((row: any) => row.studentId === student.id && new Date(row.lessonDate).getTime() >= sevenDaysAgo);
+    const followUps = (detail.followUps || []).filter((row: any) => row.studentId === student.id && new Date(row.followupDate).getTime() >= sevenDaysAgo);
+    const ratingLine = (value?: string | null) => value === "weak" ? "ضعيف (ض)" : value === "good" ? "جيد (ج)" : value === "very_good" ? "جيد جدًا (جج)" : value === "excellent" ? "ممتاز (م)" : "غير مسجل";
+    return formatWeeklyWhatsAppReport({
+      studentName: student.name,
+      groupName: detail.group.name,
+      present: attendance.filter((row: any) => row.status === "present").length,
+      late: attendance.filter((row: any) => row.status === "late").length,
+      absent: attendance.filter((row: any) => row.status === "absent").length,
+      assessments: detail.assessments.filter((row: any) => row.studentId === student.id && (!row.createdAt || new Date(row.createdAt).getTime() >= sevenDaysAgo)).map((row: any) => `${row.title}: ${row.score ?? "—"}/${row.maxScore ?? "—"}`),
+      recitation: followUps.filter((row: any) => row.recitation).map((row: any) => `${date(row.followupDate)}: ${ratingLine(row.recitation)}`),
+      homework: followUps.filter((row: any) => row.homework).map((row: any) => `${date(row.followupDate)}: ${ratingLine(row.homework)}`),
+      paidAmount: Number(student.paidAmount || 0),
+      remainingAmount: remainingFor(student, detail.group),
+      period: "weekly",
+    });
+  };
+  const openStudentWhatsApp = (student: any, kind: "subscription" | "studentReport" | "guardianReport") => {
+    const isGuardian = kind === "guardianReport";
+    const phone = isGuardian ? student.guardianPhone : student.phone || student.guardianPhone;
+    if (!phone) return toast.error(isGuardian ? "لا يوجد رقم WhatsApp لولي الأمر." : "لا يوجد رقم WhatsApp للطالب أو ولي الأمر.");
+    const message = kind === "subscription"
+      ? formatSubscriptionWhatsAppMessage({ studentName: student.name, groupName: detail.group.name, joinedAt: student.joinedGroupAt || student.createdAt, endsAt: subscriptionEndDate(student, detail.group), paidAmount: Number(student.paidAmount || 0), remainingAmount: remainingFor(student, detail.group) })
+      : reportFor(student);
+    window.open(whatsappUrl(phone, message), "_blank", "noopener,noreferrer");
+  };
   const markDailyAttendance = (student: any, previousStatus: "present" | "late" | "absent" | undefined, status: "present" | "late" | "absent") => {
     setAttendanceOverrides(current => ({ ...current, [student.id]: status }));
     mark.mutate({ workspace, studentId: student.id, groupId: detail.group.id, lessonDate: today, status }, {
@@ -1032,6 +1061,17 @@ export function GroupQuickAttendance({ detail, showMessageTemplates = false }: {
                         </fieldset>
                       ))}
                     </div>
+                    <section className="student-daily-card-message-actions" aria-label={`رسائل WhatsApp الخاصة بالطالب ${student.name}`}>
+                      <div>
+                        <span><MessageSquareText size={15} /> رسائل الطالب</span>
+                        <small>رسائل جاهزة خاصة بهذا الكارت فقط.</small>
+                      </div>
+                      <div className="student-daily-card-message-buttons">
+                        <button type="button" onClick={() => openStudentWhatsApp(student, "subscription")}>رسالة الاشتراك</button>
+                        <button type="button" onClick={() => openStudentWhatsApp(student, "studentReport")}>تقرير الطالب</button>
+                        <button type="button" onClick={() => openStudentWhatsApp(student, "guardianReport")}>ولي الأمر</button>
+                      </div>
+                    </section>
                     <a className="student-daily-profile-link" href={`/students/${student.id}`}>فتح بروفايل الطالب</a>
                   </div>
                 )}
@@ -1043,7 +1083,6 @@ export function GroupQuickAttendance({ detail, showMessageTemplates = false }: {
         )}
       </div>
     </article>
-    {showMessageTemplates && <GroupCommunicationPanel detail={detail} />}
     </>
   );
 }

@@ -125,6 +125,7 @@ import { TeacherRoomsPanel } from "./components/TeacherRoomsPanel";
 import { TeacherStorePanel } from "./components/TeacherStorePanel";
 import { GroupQuickAttendance } from "./pages/EntityProfile";
 import "./topbar.css";
+import "./whatsapp-navigation-chrome.css";
 
 const nav = [
   ["/", "home", Home],
@@ -2120,7 +2121,7 @@ function GroupInlineStudentCards({ groupId }: { groupId: number }) {
       </div>
     );
 
-  return <GroupQuickAttendance detail={groupDetail.data} showMessageTemplates />;
+  return <GroupQuickAttendance detail={groupDetail.data} />;
 }
 
 function Page({ profile }: { profile: any }) {

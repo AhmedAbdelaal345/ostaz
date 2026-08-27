@@ -27,7 +27,9 @@ describe("ظهور كروت طلاب المجموعة", () => {
   it("يثبّت لون حالة الحضور اليومية ويعرض نماذج الرسائل خارج كارت الطالب", () => {
     expect(profileSource).toContain("attendanceOverrides");
     expect(profileSource).toContain('attendance-${effectiveStatus || "unmarked"}');
-    expect(profileSource).toContain("showMessageTemplates && <GroupCommunicationPanel");
-    expect(appSource).toContain("<GroupQuickAttendance detail={groupDetail.data} showMessageTemplates />");
+    expect(profileSource).toContain("student-daily-card-message-actions");
+    expect(profileSource).toContain('openStudentWhatsApp(student, "subscription")');
+    expect(profileSource).toContain('openStudentWhatsApp(student, "guardianReport")');
+    expect(appSource).toContain("<GroupQuickAttendance detail={groupDetail.data} />");
   });
 });
