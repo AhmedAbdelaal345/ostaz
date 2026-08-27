@@ -1,0 +1,6 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides". See https://pnpm.io/settings for the new home of each setting.
+client/src/App.tsx(143,62): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(input: void | typeof skipToken, opts: DefinedUseTRPCQueryOptions<{ id: number; userId: number; workspace: "school" | "center" | "online"; studentId: number; groupId: number | null; title: string; period: "monthly" | ... 3 more ... | "weekly"; score: string | null; maxScore: string | null; note: string | null; createdAt: Date; }[], { ...; }[], TRPCClientErrorLike<...>, { ...; }[]>): DefinedUseTRPCQueryResult<...>', gave the following error.
+    Argument of type '{ workspace: "school" | "center" | "online"; }' is not assignable to parameter of type 'void | unique symbol'.
+  Overload 2 of 2, '(input: void | typeof skipToken, opts?: UseTRPCQueryOptions<{ id: number; userId: number; workspace: "school" | "center" | "online"; studentId: number; groupId: number | null; title: string; ... 4 more ...; createdAt: Date; }[], { ...; }[], TRPCClientErrorLike<...>, { ...; }[]> | undefined): UseTRPCQueryResult<...>', gave the following error.
+    Argument of type '{ workspace: "school" | "center" | "online"; }' is not assignable to parameter of type 'void | unique symbol'.

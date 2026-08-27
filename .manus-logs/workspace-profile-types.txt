@@ -1,0 +1,4 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides". See https://pnpm.io/settings for the new home of each setting.
+client/src/pages/EntityProfile.tsx(44,203): error TS2353: Object literal may only specify known properties, and 'workspace' does not exist in type '{ groupId: number; }'.
+client/src/pages/EntityProfile.tsx(45,90): error TS2353: Object literal may only specify known properties, and 'workspace' does not exist in type '{ groupId?: number | undefined; }'.
+client/src/pages/EntityProfile.tsx(49,758): error TS2353: Object literal may only specify known properties, and 'workspace' does not exist in type '{ groupId: number; body: string; }'.
