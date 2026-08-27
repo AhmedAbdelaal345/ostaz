@@ -12,6 +12,7 @@ describe("دعم العربية والإنجليزية", () => {
     expect(context).toContain("const pendingRoots = new Set<Node>()");
     expect(context).toContain("records.forEach(record =>");
     expect(context).toContain("record.addedNodes.forEach(schedule)");
+    expect(context).not.toContain("document.createTreeWalker(document.body");
     expect(main).toContain("<LanguageProvider>");
     expect(app).toContain("Globe2");
     expect(app).toContain('id === "language"');
