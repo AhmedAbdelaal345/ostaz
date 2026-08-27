@@ -24,9 +24,19 @@
   </head>
 
   <body>
-    <script>if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));</script>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      (async () => {
+        if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
+          const registrations = await navigator.serviceWorker?.getRegistrations?.() || [];
+          await Promise.all(registrations.map(registration => registration.unregister()));
+        }
+        const app = document.createElement('script');
+        app.type = 'module';
+        app.src = '/src/main.tsx';
+        document.body.appendChild(app);
+      })();
+    </script>
     <script
       defer
       src="%VITE_ANALYTICS_ENDPOINT%/umami"

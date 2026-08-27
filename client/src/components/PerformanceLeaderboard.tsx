@@ -2,11 +2,13 @@ import { BarChart3, Crown, Printer, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { buildMonthlyPerformanceCards, buildPerformanceLeaderboard } from "../../../shared/performanceSummary";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 export function PerformanceLeaderboard() {
   const { language } = useLanguage();
-  const students = trpc.app.students.list.useQuery();
-  const assessments = trpc.app.assessments.list.useQuery();
+  const [workspace] = useWorkspace();
+  const students = trpc.app.students.list.useQuery({ workspace });
+  const assessments = trpc.app.assessments.list.useQuery({ workspace });
   if (students.isLoading || assessments.isLoading) return <div className="panel performance-loading">{language === "ar" ? "جارٍ احتساب ترتيب الطلاب..." : "Calculating student rankings..."}</div>;
   const weekly = buildPerformanceLeaderboard(students.data || [], assessments.data || [], "weekly");
   const monthly = buildMonthlyPerformanceCards(students.data || [], assessments.data || []);

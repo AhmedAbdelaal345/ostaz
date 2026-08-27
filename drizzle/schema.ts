@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal, uniqueIndex } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal, uniqueIndex, index } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -48,7 +48,9 @@ export const studyGroups = mysqlTable("study_groups", {
   collectionPeriod: mysqlEnum("collectionPeriod", ["monthly", "term", "per_lesson"]).default("monthly").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, table => ({
+  userWorkspaceIdx: index("study_groups_user_workspace_idx").on(table.userId, table.workspace),
+}));
 
 export const students = mysqlTable("students", {
   id: int("id").autoincrement().primaryKey(),
@@ -68,7 +70,10 @@ export const students = mysqlTable("students", {
   joinedGroupAt: timestamp("joinedGroupAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, table => ({
+  userWorkspaceIdx: index("students_user_workspace_idx").on(table.userId, table.workspace),
+  userWorkspaceGroupIdx: index("students_user_workspace_group_idx").on(table.userId, table.workspace, table.groupId),
+}));
 
 export const studentAccounts = mysqlTable("student_accounts", {
   id: int("id").autoincrement().primaryKey(),
@@ -172,7 +177,9 @@ export const attendance = mysqlTable("attendance", {
   status: mysqlEnum("status", ["present", "late", "absent"]).default("present").notNull(),
   note: varchar("note", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, table => ({
+  userWorkspaceLessonIdx: index("attendance_user_workspace_lesson_idx").on(table.userId, table.workspace, table.lessonDate),
+}));
 
 export const financialTransactions = mysqlTable("financial_transactions", {
   id: int("id").autoincrement().primaryKey(),
@@ -186,7 +193,9 @@ export const financialTransactions = mysqlTable("financial_transactions", {
   paidAt: timestamp("paidAt"),
   description: varchar("description", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, table => ({
+  userWorkspaceCreatedIdx: index("financial_user_workspace_created_idx").on(table.userId, table.workspace, table.createdAt),
+}));
 
 export const pushSubscriptions = mysqlTable("push_subscriptions", {
   id: int("id").autoincrement().primaryKey(),

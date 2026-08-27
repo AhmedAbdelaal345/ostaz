@@ -51,12 +51,54 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+const workspaceScopedPath = /\/api\/trpc\/app\.(bootstrap|groups|students|attendance|finance|assessments|groupNotes|materials|community|assignments|video)/;
+const activeWorkspace = () => {
+  try {
+    const value = localStorage.getItem("ostazi-workspace");
+    return value === "school" || value === "center" || value === "online" ? value : "center";
+  } catch {
+    return "center";
+  }
+};
+const injectWorkspace = (input: unknown, workspace: string): unknown => {
+  if (!input || typeof input !== "object") return input;
+  if (Array.isArray(input)) return input.map(item => injectWorkspace(item, workspace));
+  const record = input as Record<string, unknown>;
+  if (record.json && typeof record.json === "object" && !Array.isArray(record.json)) return { ...record, json: { ...(record.json as Record<string, unknown>), workspace } };
+  return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, injectWorkspace(value, workspace)]));
+};
+const scopeTrpcRequest = (input: RequestInfo | URL, init?: RequestInit) => {
+  const source = String(input);
+  if (!workspaceScopedPath.test(source)) return { input, init };
+  const workspace = activeWorkspace();
+  const nextInit = { ...(init ?? {}) };
+  if (typeof nextInit.body === "string") {
+    try { nextInit.body = JSON.stringify(injectWorkspace(JSON.parse(nextInit.body), workspace)); } catch { /* preserve malformed request body for the server */ }
+  }
+  try {
+    const url = new URL(source, window.location.origin);
+    const encoded = url.searchParams.get("input");
+    const decoded = encoded ? JSON.parse(encoded) : { json: {} };
+    url.searchParams.set("input", JSON.stringify(injectWorkspace(decoded, workspace)));
+    return { input: url.toString(), init: nextInit };
+  } catch {
+    return { input, init: nextInit };
+  }
+};
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
+        const headers: Record<string, string> = {};
+        try {
+          const workspace = localStorage.getItem("ostazi-workspace");
+          if (workspace === "school" || workspace === "center" || workspace === "online") headers["x-ostazi-workspace"] = workspace;
+        } catch {
+          // localStorage unavailable
+        }
         // Preview auto-login fallback: when the browser blocks iframe cookies
         // (Safari ITP / private browsing / WebView), the runtime mirrors the
         // session into sessionStorage so we can forward it as a Bearer token.
@@ -68,25 +110,26 @@ const trpcClient = trpc.createClient({
             const pair = raw.split(";").find(s => s.trim().startsWith(prefix));
             const token = pair?.trim().slice(prefix.length);
             if (token) {
-              return { Authorization: `Bearer ${token}` };
+              headers.Authorization = `Bearer ${token}`;
             }
           }
         } catch {
           // sessionStorage unavailable
         }
-        return {};
+        return headers;
       },
       fetch(input, init) {
-        if (!navigator.onLine && (init?.method || "GET").toUpperCase() === "POST") {
-          enqueueTrpcRequest(String(input), init);
+        const scoped = scopeTrpcRequest(input, init);
+        if (!navigator.onLine && (scoped.init?.method || "GET").toUpperCase() === "POST") {
+          enqueueTrpcRequest(String(scoped.input), scoped.init);
           return Promise.reject(new Error("OFFLINE_QUEUED"));
         }
-        const request = globalThis.fetch(input, {
-          ...(init ?? {}),
+        const request = globalThis.fetch(scoped.input, {
+          ...(scoped.init ?? {}),
           credentials: "include",
         });
-        if ((init?.method || "GET").toUpperCase() !== "POST") return request;
-        return request.catch(error => { enqueueTrpcRequest(String(input), init); return Promise.reject(error); });
+        if ((scoped.init?.method || "GET").toUpperCase() !== "POST") return request;
+        return request.catch(error => { enqueueTrpcRequest(String(scoped.input), scoped.init); return Promise.reject(error); });
       },
     }),
   ],
@@ -113,6 +156,10 @@ function BrandStartup({ children }: { children: React.ReactNode }) {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
+    if (import.meta.env.DEV) {
+      await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(registration => registration.unregister())));
+      return;
+    }
     try {
       const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       await registration.update();

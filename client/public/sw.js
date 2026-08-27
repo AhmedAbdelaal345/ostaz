@@ -1,5 +1,5 @@
 const CACHE = "el-mister-shell-v8";
-const CACHE = "el-mister-v12";
+const CACHE = "el-mister-v13";
 const BRAND_ICON = "/manus-storage/el-mister-icon-192_c406f989.png";
 const APP_SHELL = ["/", "/manifest.json", BRAND_ICON];
 
@@ -17,6 +17,7 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
+  if (self.location.hostname === "127.0.0.1" || self.location.hostname === "localhost") return;
   if (event.request.method !== "GET") return;
   if (event.request.mode === "navigate") {
     event.respondWith((async () => {
