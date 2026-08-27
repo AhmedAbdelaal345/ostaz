@@ -1,7 +1,7 @@
 // Design: Night Operations — RTL teacher command center with charcoal surfaces, electric sky actions, and restrained technical details.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Link, Route, Switch, useLocation } from "wouter";
+import { Link as WouterLink, Route, Switch, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "./const";
 import { trpc } from "@/lib/trpc";
@@ -47,18 +47,42 @@ import { TeacherVideoHub } from "./components/TeacherVideoHub";
 import { TeacherDeviceBindingsPanel } from "./components/TeacherDeviceBindingsPanel";
 import { TeacherRoomsPanel } from "./components/TeacherRoomsPanel";
 import { TeacherStorePanel } from "./components/TeacherStorePanel";
+import "./topbar.css";
 
 const nav = [
   ["/", "home", Home], ["/attendance", "attendance", CheckCircle2], ["/groups", "groups", LayoutGrid], ["/finance", "finance", WalletCards], ["/settings", "settings", Settings],
 ] as const;
+
+type AppLinkProps = { href: string; children: React.ReactNode; className?: string };
+
+function Link({ href, children, className }: AppLinkProps) {
+  const [, navigate] = useLocation();
+  if (isValidElement(children) && children.type === "a") {
+    const child = children as React.ReactElement<React.AnchorHTMLAttributes<HTMLAnchorElement>>;
+    return cloneElement(child, {
+      href,
+      className: [child.props.className, className].filter(Boolean).join(" ") || undefined,
+      onClick: event => {
+        child.props.onClick?.(event);
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return;
+        event.preventDefault();
+        navigate(href);
+      },
+    });
+  }
+  return <WouterLink href={href} className={className}>{children}</WouterLink>;
+}
+
 const subjects = ["لغة عربية", "لغة إنجليزية", "لغة فرنسية", "رياضيات", "علوم", "فيزياء", "كيمياء", "أحياء", "حاسب آلي", "برمجة", "دراسات اجتماعية", "قرآن كريم", "أخرى"];
 const workspaces: Array<{ id: Workspace; label: string; place: string }> = [{ id: "school", label: "المدرسة", place: "مدرسة" }, { id: "center", label: "السنتر", place: "سنتر" }, { id: "online", label: "أونلاين", place: "أونلاين" }];
+const WORKSPACE_CACHE_MS = 5 * 60_000;
 const localizedDay = (day: string, language: "ar" | "en") => language === "en" ? ({ "الأحد": "Sunday", "الاثنين": "Monday", "الإثنين": "Monday", "الثلاثاء": "Tuesday", "الأربعاء": "Wednesday", "الخميس": "Thursday", "الجمعة": "Friday", "السبت": "Saturday" }[day] || day) : day;
 const localizedPlace = (place: string, language: "ar" | "en") => language === "en" ? ({ "مدرسة": "School", "سنتر": "Center", "أونلاين": "Online" }[place] || place) : place;
 function WorkspaceSwitcher() {
-  const [workspace, setWorkspace] = useWorkspace(); const [, setLocation] = useLocation(); const { t } = useLanguage();
-  const selectWorkspace = (next: Workspace) => { setWorkspace(next); if (next === "school") setLocation("/"); };
-  return <div className="workspace-switcher" aria-label={t("contextReports")}>{workspaces.map(item => <button type="button" key={item.id} className={workspace === item.id ? "active" : ""} onClick={() => selectWorkspace(item.id)}>{t(item.id)}</button>)}</div>;
+  const [workspace, setWorkspace] = useWorkspace(); const [, setLocation] = useLocation(); const { t } = useLanguage(); const utils = trpc.useUtils();
+  const prefetchWorkspace = (next: Workspace) => { if (next !== workspace) void utils.app.bootstrap.prefetch({ workspace: next }, { staleTime: WORKSPACE_CACHE_MS }); };
+  const selectWorkspace = (next: Workspace) => { prefetchWorkspace(next); setWorkspace(next); if (next === "school") setLocation("/"); };
+  return <div className="workspace-switcher" aria-label={t("contextReports")}>{workspaces.map(item => <button type="button" key={item.id} className={workspace === item.id ? "active" : ""} onPointerEnter={() => prefetchWorkspace(item.id)} onFocus={() => prefetchWorkspace(item.id)} onTouchStart={() => prefetchWorkspace(item.id)} onClick={() => selectWorkspace(item.id)}>{t(item.id)}</button>)}</div>;
 }
 function GroupSortPicker() {
   const [sort, setSort] = useState(() => localStorage.getItem("ostazi-group-sort") || "soon");
@@ -78,15 +102,17 @@ const demoFinanceRows = [
 function useStore<T>(key: string, fallback: T) { const [value, setValue] = useState<T>(() => { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch { return fallback; } }); useEffect(() => localStorage.setItem(key, JSON.stringify(value)), [key, value]); return [value, setValue] as const; }
 
 function Shell({ children, profile, setProfile }: { children: React.ReactNode; profile: any; setProfile: (p: any) => void }) {
-  const [location, setLocation] = useLocation(); const [dark, setDark] = useState(true); const showProfile = location === "/profile"; const { language, setLanguage, t, isRtl } = useLanguage();
+  const [location, setLocation] = useLocation(); const [dark, setDark] = useState(true); const showProfile = location === "/profile"; const { language, setLanguage, t, isRtl } = useLanguage(); const [workspace] = useWorkspace();
   useEffect(() => { document.documentElement.classList.toggle("light", !dark); }, [dark]);
   const backup = () => { const data = { profile, groups: JSON.parse(localStorage.getItem("groups") || "[]"), students: JSON.parse(localStorage.getItem("students") || "[]") }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ostazi-backup.json"; a.click(); toast.success("تم تحميل النسخة الاحتياطية"); };
   const profileMark = profile?.name?.match(/[ء-ي]/)?.[0] || "أ";
-  const pageTitle = location === "/" ? `${t("greeting")} ${profile?.name || t("teacher")}` : location === "/assessments" ? t("weeklyExams") : location === "/reports" ? t("contextReports") : nav.find(n => n[0] === location)?.[1];
-  const translatedTitle = pageTitle ? (pageTitle in { home: 1, attendance: 1, groups: 1, finance: 1, settings: 1 } ? t(pageTitle as "home" | "attendance" | "groups" | "finance" | "settings") : pageTitle) : "";
+  const isHomePage = location === "/";
+  const navTitle = nav.find(item => item[0] === location)?.[1];
+  const translatedTitle = isHomePage ? `${t("greeting")} ${profile?.name || t("teacher")}` : location === "/assessments" ? t("weeklyExams") : location === "/reports" ? t("contextReports") : location.startsWith("/settings") ? t("settings") : navTitle ? t(navTitle) : t("home");
+  const workspaceLabel = workspaces.find(item => item.id === workspace)?.label || t("center");
   return <><style>{`.groups-toolbar .filter-row>.filters:first-child{display:none!important}@media(max-width:620px){.top-actions{gap:6px}.top-actions .topbar-group-sort{display:inline-flex!important;align-items:center;padding:7px 8px;font-size:10px;white-space:nowrap}.top-actions .topbar-group-sort select{max-width:80px;padding:0;border:0;background:transparent;color:var(--blue);font:inherit}.top-actions .report-entry{display:none}}`}</style><div className="app-shell ios-shell" dir={isRtl ? "rtl" : "ltr"}>
     <aside className="sidebar ios-sidebar"><div className="brand"><div className="brand-mark">أ</div><div><b>El Mister</b><span>{t("brandSubtitle")}</span></div></div><div className="date-chip">{t("personalWorkspace")}</div><nav>{nav.map(([href, label, Icon]) => <Link href={href} key={href} className={location === href ? "active" : ""}><Icon size={18}/><span>{t(label)}</span>{location === href && (isRtl ? <ChevronLeft size={15} className="nav-arrow"/> : <ChevronRight size={15} className="nav-arrow"/>)}</Link>)}</nav><div className="sidebar-bottom"><button onClick={() => setLanguage(language === "ar" ? "en" : "ar")}><span className="icon-box"><Globe2 size={17}/></span>{language === "ar" ? t("english") : t("arabic")}</button><button onClick={() => setDark(!dark)}><span className="icon-box">{dark ? <Sun size={17}/> : <Moon size={17}/>}</span>{dark ? t("lightMode") : t("darkMode")}</button><button onClick={backup}><span className="icon-box"><Download size={17}/></span>{t("backup")}</button><button onClick={() => setLocation("/settings")}><span className="icon-box"><Settings size={17}/></span>{t("settings")}</button></div></aside>
-    <main className="main"><header className="topbar"><div><h1>{translatedTitle}</h1><WorkspaceSwitcher/></div><div className="top-actions">{location === "/groups" && <GroupSortPicker/>}<button className="secondary report-entry" onClick={() => setLocation("/reports")}><BarChart3 size={16}/> {t("reports")}</button><button className="icon-button" aria-label={t("notifications")} onClick={() => toast.success(language === "ar" ? "لا توجد تنبيهات جديدة" : "No new notifications")}><Bell size={19}/><i/></button><button className="avatar" aria-label={t("profile")} onClick={() => setLocation("/profile")}>{profileMark}</button></div></header>{children}</main>
+    <main className="main"><header className={`topbar ${isHomePage ? "topbar-home" : "topbar-section"}`}><div className="topbar-heading"><span className="topbar-kicker">{isHomePage ? t("personalWorkspace") : workspaceLabel}</span><h1>{translatedTitle}</h1></div><div className="topbar-controls"><WorkspaceSwitcher/><div className="top-actions">{location === "/groups" && <GroupSortPicker/>}<button className="secondary report-entry" onClick={() => setLocation("/reports")}><BarChart3 size={16}/> {t("reports")}</button><button className="icon-button" aria-label={t("notifications")} onClick={() => toast.success(language === "ar" ? "لا توجد تنبيهات جديدة" : "No new notifications")}><Bell size={19}/><i/></button><button className="avatar" aria-label={t("profile")} onClick={() => setLocation("/profile")}>{profileMark}</button></div></div></header>{children}</main>
     {showProfile && <TeacherSocialProfile profile={profile} setProfile={setProfile} close={() => setLocation("/")} />}
   </div></>;
 }

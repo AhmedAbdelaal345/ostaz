@@ -1,0 +1,148 @@
+.topbar {
+  align-items: center;
+  border-bottom: 1px solid transparent;
+  column-gap: 18px;
+  display: flex;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.topbar-heading {
+  min-width: 0;
+}
+
+.topbar-kicker {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  margin-bottom: 4px;
+}
+
+.topbar-heading h1 {
+  color: var(--text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-controls {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
+}
+
+.topbar-home {
+  background: linear-gradient(125deg, rgba(53, 184, 255, .12), rgba(16, 24, 34, .92) 52%, rgba(16, 24, 34, .78));
+  border: 1px solid rgba(53, 184, 255, .20);
+  border-radius: 22px;
+  min-height: 116px;
+  padding: 21px 24px;
+}
+
+.topbar-home .topbar-kicker {
+  color: var(--blue);
+}
+
+.topbar-home .topbar-heading h1 {
+  font-size: clamp(24px, 2.4vw, 32px);
+}
+
+.topbar-section {
+  border-bottom-color: var(--line);
+  margin-bottom: 24px;
+  min-height: 68px;
+  padding: 8px 0 14px;
+}
+
+.topbar-section .topbar-heading h1 {
+  font-size: 23px;
+  line-height: 1.18;
+}
+
+.topbar-section .workspace-switcher {
+  transform: scale(.93);
+  transform-origin: center;
+}
+
+@media (max-width: 820px) {
+  .topbar {
+    margin-bottom: 22px;
+  }
+
+  .topbar-home {
+    display: grid;
+    gap: 16px 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "workspace actions" "heading heading";
+    min-height: 134px;
+    padding: 17px 16px 14px;
+  }
+
+  .topbar-home .topbar-heading {
+    grid-area: heading;
+  }
+
+  .topbar-home .topbar-heading h1 {
+    white-space: normal;
+  }
+
+  .topbar-home .topbar-controls {
+    display: contents;
+  }
+
+  .topbar-home .workspace-switcher {
+    grid-area: workspace;
+    justify-self: stretch;
+  }
+
+  .topbar-home .top-actions {
+    grid-area: actions;
+  }
+
+  .topbar-section {
+    align-items: center;
+    min-height: 68px;
+    padding: 7px 0 13px;
+  }
+
+  .topbar-section .topbar-heading h1 {
+    font-size: 21px;
+  }
+
+  .topbar-section .topbar-kicker {
+    font-size: 10px;
+    margin-bottom: 3px;
+  }
+
+  .topbar-section .topbar-controls {
+    gap: 4px;
+  }
+
+  .topbar-section .workspace-switcher {
+    transform: scale(.84);
+    transform-origin: left center;
+  }
+
+  [dir="rtl"] .topbar-section .workspace-switcher {
+    transform-origin: right center;
+  }
+
+  .topbar-section .top-actions {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar-section .workspace-switcher button {
+    font-size: 10px;
+    padding-inline: 8px;
+  }
+
+  .topbar-section .report-entry {
+    display: none;
+  }
+}

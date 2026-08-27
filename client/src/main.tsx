@@ -64,7 +64,11 @@ const injectWorkspace = (input: unknown, workspace: string): unknown => {
   if (!input || typeof input !== "object") return input;
   if (Array.isArray(input)) return input.map(item => injectWorkspace(item, workspace));
   const record = input as Record<string, unknown>;
-  if (record.json && typeof record.json === "object" && !Array.isArray(record.json)) return { ...record, json: { ...(record.json as Record<string, unknown>), workspace } };
+  if (record.json && typeof record.json === "object" && !Array.isArray(record.json)) {
+    const payload = record.json as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(payload, "workspace")) return record;
+    return { ...record, json: { ...payload, workspace } };
+  }
   return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, injectWorkspace(value, workspace)]));
 };
 const scopeTrpcRequest = (input: RequestInfo | URL, init?: RequestInit) => {

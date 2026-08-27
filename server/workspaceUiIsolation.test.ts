@@ -23,4 +23,10 @@ describe("تحميل واجهة السياق النشط", () => {
     expect(leaderboard).toContain("students.list.useQuery({ workspace })");
     expect(leaderboard).toContain("assessments.list.useQuery({ workspace })");
   });
+
+  it("يبقي روابط Wouter ذات المحتوى القديم رابطًا واحدًا صالحًا", () => {
+    expect(app).toContain('Link as WouterLink');
+    expect(app).toContain('if (isValidElement(children) && children.type === "a")');
+    expect(app).toContain("return cloneElement(child");
+  });
 });
