@@ -45,7 +45,7 @@ export const studyGroups = mysqlTable("study_groups", {
   time: varchar("time", { length: 30 }).notNull(),
   scheduleJson: text("scheduleJson"),
   fee: decimal("fee", { precision: 10, scale: 2 }).default("0").notNull(),
-  collectionPeriod: mysqlEnum("collectionPeriod", ["monthly", "term"]).default("monthly").notNull(),
+  collectionPeriod: mysqlEnum("collectionPeriod", ["monthly", "term", "per_lesson"]).default("monthly").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -65,6 +65,7 @@ export const students = mysqlTable("students", {
   avatarUrl: varchar("avatarUrl", { length: 512 }),
   paid: boolean("paid").default(false).notNull(),
   paidAmount: decimal("paidAmount", { precision: 10, scale: 2 }).default("0").notNull(),
+  joinedGroupAt: timestamp("joinedGroupAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -285,6 +286,17 @@ export const groupAnnouncements = mysqlTable("group_announcements", {
   body: text("body").notNull(),
   audience: mysqlEnum("audience", ["students", "guardians", "all"]).default("all").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const groupNotes = mysqlTable("group_notes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  groupId: int("groupId").notNull(),
+  body: varchar("body", { length: 500 }).notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  refreshedAt: timestamp("refreshedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export const videoLessons = mysqlTable("video_lessons", {

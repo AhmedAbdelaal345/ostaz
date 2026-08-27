@@ -8,8 +8,9 @@ describe("التواصل وتقارير المجموعة", () => {
     expect(view).toContain("ابحث بالاسم أو الهاتف أو كود الطالب داخل المجموعة");
     expect(view).toContain("واتساب الطالب");
     expect(view).toContain("ولي الأمر");
-    expect(view).toContain("إرسال التقرير للطلاب");
-    expect(view).toContain("إرسال التقرير لأولياء الأمور");
-    expect(view).toContain("تقرير ${period === \"weekly\" ? \"أسبوعي\" : \"شهري\"}");
+    expect(view).toContain("إرسال التقرير لكل الطلاب");
+    expect(view).toContain("إرسال التقرير لكل أولياء الأمور");
+    expect(view).toContain("formatWeeklyWhatsAppReport");
+    expect(view).toContain("أرسل كل رسالة من WhatsApp قبل الانتقال للتالية");
   });
 });
