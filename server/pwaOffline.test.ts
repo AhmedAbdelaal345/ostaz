@@ -6,7 +6,7 @@ describe("PWA offline worker", () => {
   it("keeps an app-shell fallback and handles Push notification events", () => {
     const worker = readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8");
     expect(worker.match(/^const CACHE =/gm)).toHaveLength(1);
-    expect(worker).toContain('const CACHE = "el-mister-v15"');
+    expect(worker).toContain('const CACHE = "el-mister-v16"');
     expect(worker).toContain('caches.match("/")');
     expect(worker).toContain('["script", "style", "worker"].includes(event.request.destination)');
     expect(worker).toContain('(await caches.match(event.request)) || Response.error()');
