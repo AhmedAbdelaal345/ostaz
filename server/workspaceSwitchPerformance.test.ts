@@ -20,6 +20,8 @@ describe("أداء تبديل سياق التشغيل", () => {
   it("يمنع ضغطات تبديل متداخلة ويعرض حالة تجهيز آمنة بدل تفريغ بيانات السياق", () => {
     expect(app).toContain("const [switchingTo, setSwitchingTo]");
     expect(app).toContain("if (next === workspace || switchingTo) return");
+    expect(app).toContain('sessionStorage.setItem("ostazi-workspace-switching"');
+    expect(app).toContain('sessionStorage.removeItem("ostazi-workspace-switching")');
     expect(app).toContain('window.addEventListener("ostazi-workspace-ready", finish)');
     expect(app).toContain('loadedWorkspace !== workspace');
     expect(app).toContain('className="workspace-loading"');
@@ -31,5 +33,12 @@ describe("أداء تبديل سياق التشغيل", () => {
     const loadingReturn = app.indexOf("if (isWorkspaceLoading)");
     expect(loadingState).toBeGreaterThan(lastPageEffect);
     expect(loadingReturn).toBeGreaterThan(lastPageEffect);
+  });
+
+  it("يختار بوابة التطبيق من المسار التفاعلي ولا يوجّه إلى الدخول أثناء تبديل أوفلاين مؤقت", () => {
+    expect(main).toContain("function RootRouter()");
+    expect(main).toContain("const [pathname] = useLocation()");
+    expect(main).toContain("<ErrorBoundary><DirectAccessGuard>");
+    expect(main).toContain("!navigator.onLine || workspaceSwitchIsActive()");
   });
 });

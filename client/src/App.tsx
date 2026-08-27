@@ -223,11 +223,25 @@ function WorkspaceSwitcher() {
     const finish = (event: Event) => {
       const target = (event as CustomEvent<{ workspace?: Workspace }>).detail
         ?.workspace;
-      if (target === switchingTo) setSwitchingTo(null);
+      if (target === switchingTo) {
+        try {
+          sessionStorage.removeItem("ostazi-workspace-switching");
+        } catch {
+          // Session storage is optional in private browsing.
+        }
+        setSwitchingTo(null);
+      }
     };
     window.addEventListener("ostazi-workspace-ready", finish);
     window.addEventListener("ostazi-workspace-failed", finish);
-    const timeout = window.setTimeout(() => setSwitchingTo(null), 8_000);
+    const timeout = window.setTimeout(() => {
+      try {
+        sessionStorage.removeItem("ostazi-workspace-switching");
+      } catch {
+        // Session storage is optional in private browsing.
+      }
+      setSwitchingTo(null);
+    }, 8_000);
     return () => {
       window.removeEventListener("ostazi-workspace-ready", finish);
       window.removeEventListener("ostazi-workspace-failed", finish);
@@ -243,6 +257,11 @@ function WorkspaceSwitcher() {
   };
   const selectWorkspace = (next: Workspace) => {
     if (next === workspace || switchingTo) return;
+    try {
+      sessionStorage.setItem("ostazi-workspace-switching", String(Date.now()));
+    } catch {
+      // Session storage is optional in private browsing.
+    }
     setSwitchingTo(next);
     setWorkspace(next);
     if (next === "school") setLocation("/");

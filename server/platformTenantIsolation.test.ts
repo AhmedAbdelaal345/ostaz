@@ -9,7 +9,8 @@ const db = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
 
 describe("منصة الحسابات المستقلة", () => {
   it("يتيح بوابة المنصة العامة ويُبقي مسارات الحسابات المنفصلة واضحة", () => {
-    expect(main).toContain('pathname === "/platform" ? PlatformLanding');
+    expect(main).toContain("function RootRouter()");
+    expect(main).toContain('if (pathname === "/platform") return <PlatformLanding />');
     expect(main).toContain('pathname === "/platform" || pathname.startsWith("/student/")');
     expect(landing).toContain('setLocation("/teacher/register")');
     expect(landing).toContain('setLocation("/student/login")');

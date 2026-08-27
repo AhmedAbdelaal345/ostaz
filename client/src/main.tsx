@@ -5,7 +5,9 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
 import superjson from "superjson";
+import { useLocation } from "wouter";
 import App from "./App";
+import ErrorBoundary from "./components/ErrorBoundary";
 import EntityProfile from "./pages/EntityProfile";
 import StudentPortal from "./pages/StudentPortal";
 import ParentPortal from "./pages/ParentPortal";
@@ -28,9 +30,20 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
+  const workspaceSwitchIsActive = () => {
+    try {
+      const startedAt = Number(sessionStorage.getItem("ostazi-workspace-switching"));
+      if (startedAt && Date.now() - startedAt < 10_000) return true;
+      sessionStorage.removeItem("ostazi-workspace-switching");
+    } catch {
+      // Session storage is optional in private browsing.
+    }
+    return false;
+  };
+
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
 
-  if (!isUnauthorized) return;
+  if (!isUnauthorized || !navigator.onLine || workspaceSwitchIsActive()) return;
 
   window.location.assign("/teacher/login");
 };
@@ -139,11 +152,20 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-const pathname = window.location.pathname;
-const RootApp = pathname === "/platform" ? PlatformLanding : pathname.startsWith("/student/") ? StudentPortal : pathname.startsWith("/parent/") ? ParentPortal : pathname.startsWith("/teacher/") ? TeacherPortal : /^\/(students|groups)\/\d+$/.test(pathname) ? EntityProfile : App;
 const EL_MISTER_LOGO = "/manus-storage/el-mister-icon-512_951cf40b.png";
 
+function RootRouter() {
+  const [pathname] = useLocation();
+  if (pathname === "/platform") return <PlatformLanding />;
+  if (pathname.startsWith("/student/")) return <StudentPortal />;
+  if (pathname.startsWith("/parent/")) return <ParentPortal />;
+  if (pathname.startsWith("/teacher/")) return <TeacherPortal />;
+  if (/^\/(students|groups)\/\d+$/.test(pathname)) return <EntityProfile />;
+  return <App />;
+}
+
 function DirectAccessGuard({ children }: { children: React.ReactNode }) {
+  const [pathname] = useLocation();
   const session = trpc.auth.me.useQuery(undefined, { retry: false, staleTime: 0, refetchOnMount: "always" });
   useEffect(() => {
     const keepsOwnSession = pathname === "/platform" || pathname.startsWith("/student/") || pathname.startsWith("/parent/") || pathname.startsWith("/teacher/");
@@ -183,7 +205,7 @@ if ("serviceWorker" in navigator) {
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <LanguageProvider><DirectAccessGuard><BrandStartup><RootApp /></BrandStartup></DirectAccessGuard>
+      <LanguageProvider><ErrorBoundary><DirectAccessGuard><BrandStartup><RootRouter /></BrandStartup></DirectAccessGuard></ErrorBoundary>
       <InstallGuide />
       <OfflineRuntime /></LanguageProvider>
     </QueryClientProvider>
