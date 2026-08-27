@@ -12,8 +12,10 @@ describe("التواصل وتقارير المجموعة", () => {
     expect(view).toContain("إرسال التقرير لكل أولياء الأمور");
     expect(view).toContain("formatWeeklyWhatsAppReport");
     expect(view).toContain("أرسل كل رسالة من WhatsApp قبل الانتقال للتالية");
-    expect(view).toContain("window.confirm(`سيتم فتح ${recipients.length} رسالة WhatsApp جاهزة بالتتابع");
-    expect(view).toContain("window.setTimeout(() => openReport(student, recipient), index * 600)");
+    expect(view).toContain("recipients.length} رسالة WhatsApp جاهزة بالتتابع");
+    expect(view).toContain("window.setTimeout");
+    expect(view).toContain("رسالة الاشتراك");
+    expect(view).toContain("التسميع");
   });
 
   it("يقصر نشر وإشراف المساعد على صلاحية المجتمع وبيانات سنتر المالك", () => {

@@ -489,6 +489,22 @@ export const assessments = mysqlTable("assessments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const studentDailyFollowUps = mysqlTable("student_daily_followups", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  workspace: mysqlEnum("workspace", ["school", "center", "online"]).default("center").notNull(),
+  studentId: int("studentId").notNull(),
+  groupId: int("groupId").notNull(),
+  followupDate: timestamp("followupDate").notNull(),
+  recitation: mysqlEnum("recitation", ["weak", "good", "very_good", "excellent"]),
+  homework: mysqlEnum("homework", ["weak", "good", "very_good", "excellent"]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  studentDayUnique: uniqueIndex("student_followup_day_unique").on(table.userId, table.workspace, table.studentId, table.groupId, table.followupDate),
+  groupDayIdx: index("student_followup_group_day_idx").on(table.userId, table.workspace, table.groupId, table.followupDate),
+}));
+
 export const behaviorRecords = mysqlTable("behavior_records", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
