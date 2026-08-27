@@ -9,6 +9,9 @@ describe("دعم العربية والإنجليزية", () => {
     expect(context).toContain('localStorage.setItem("el-mister-language", language)');
     expect(context).toContain('document.documentElement.dir = isRtl ? "rtl" : "ltr"');
     expect(context).toContain('en: {');
+    expect(context).toContain("const pendingRoots = new Set<Node>()");
+    expect(context).toContain("records.forEach(record =>");
+    expect(context).toContain("record.addedNodes.forEach(schedule)");
     expect(main).toContain("<LanguageProvider>");
     expect(app).toContain("Globe2");
     expect(app).toContain('id === "language"');

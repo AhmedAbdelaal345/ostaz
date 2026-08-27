@@ -12,5 +12,7 @@ describe("التواصل وتقارير المجموعة", () => {
     expect(view).toContain("إرسال التقرير لكل أولياء الأمور");
     expect(view).toContain("formatWeeklyWhatsAppReport");
     expect(view).toContain("أرسل كل رسالة من WhatsApp قبل الانتقال للتالية");
+    expect(view).toContain("window.confirm(`سيتم فتح ${recipients.length} رسالة WhatsApp جاهزة بالتتابع");
+    expect(view).toContain("window.setTimeout(() => openReport(student, recipient), index * 600)");
   });
 });

@@ -69,12 +69,17 @@ Object.assign(legacyEnglishText, {
   "يناير": "January", "فبراير": "February", "مارس": "March", "أبريل": "April", "مايو": "May", "يونيو": "June", "يوليو": "July", "أغسطس": "August", "سبتمبر": "September", "أكتوبر": "October", "نوفمبر": "November", "ديسمبر": "December"
 });
 
+Object.assign(legacyEnglishText, {
+  "المحصّل": "Collected", "بطاقة الاشتراك": "Subscription card", "بيانات المجموعة والدفع": "Group and payment details", "متبقي": "Outstanding", "غير مضاف": "Not added", "تاريخ الانضمام": "Joined", "نوع الاشتراك": "Subscription type", "قيمة الاشتراك": "Subscription fee", "المبلغ المدفوع": "Paid amount", "المبلغ المتبقي": "Outstanding amount", "رسالة الاشتراك": "Subscription message", "تذكير بالمبلغ": "Payment reminder", "الرسوم الشهرية": "Monthly fee", "بيانات التواصل": "Contact details", "البيانات الدراسية": "Academic details", "العمر": "Age", "الصف الدراسي": "Grade", "آخر الحضور": "Latest attendance", "السجل المالي": "Financial ledger"
+});
+
 const originalAttributes = new WeakMap<Element, Map<string, string>>();
 
 function translateLegacyText(source: string, language: AppLanguage) {
   if (language === "ar") return source;
   const trimmed = source.trim();
   if (trimmed.startsWith("اليوم ·")) return source.replace(trimmed, `Today · ${new Date().toLocaleDateString("en-GB")}`);
+  if (trimmed.startsWith("تذكير: لدى ")) return source.replace(/تذكير: لدى (.+) مبلغ متبقٍ قدره (.+) في مجموعة (.+)\./, "Reminder: $1 has an outstanding amount of $2 in $3.");
   if (source.includes("ج.م")) return source.replaceAll("ج.م", "EGP");
   const translated = legacyEnglishText[trimmed];
   return translated ? source.replace(trimmed, translated) : source;
@@ -84,19 +89,24 @@ function LegacyTextLocalization() {
   const { language } = useLanguage();
   useEffect(() => {
     let frame = 0;
-    const apply = () => {
-      frame = 0;
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      let current: Node | null;
-      while ((current = walker.nextNode())) {
+    const pendingRoots = new Set<Node>();
+    const apply = (root: Node) => {
+      const textNodes: Node[] = root.nodeType === Node.TEXT_NODE ? [root] : [];
+      if (root.nodeType !== Node.TEXT_NODE) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let current: Node | null;
+        while ((current = walker.nextNode())) textNodes.push(current);
+      }
+      textNodes.forEach(current => {
         const parent = current.parentElement;
-        if (!parent || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName) || parent.closest("[contenteditable='true']")) continue;
+        if (!parent || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName) || parent.closest("[contenteditable='true']")) return;
         const source = (current as Text & { __elMisterSource?: string }).__elMisterSource ?? current.nodeValue ?? "";
         (current as Text & { __elMisterSource?: string }).__elMisterSource = source;
         const next = translateLegacyText(source, language);
         if (current.nodeValue !== next) current.nodeValue = next;
-      }
-      document.querySelectorAll<HTMLElement>("[placeholder], [aria-label], [title], [alt]").forEach(element => {
+      });
+      const elements = root instanceof Element ? [root, ...Array.from(root.querySelectorAll<HTMLElement>("[placeholder], [aria-label], [title], [alt]"))] : root.parentElement ? [root.parentElement] : [];
+      elements.forEach(element => {
         const saved = originalAttributes.get(element) ?? new Map<string, string>();
         ["placeholder", "aria-label", "title", "alt"].forEach(attribute => {
           const currentValue = element.getAttribute(attribute);
@@ -109,9 +119,13 @@ function LegacyTextLocalization() {
         originalAttributes.set(element, saved);
       });
     };
-    const schedule = () => { if (!frame) frame = window.requestAnimationFrame(apply); };
-    apply();
-    const observer = new MutationObserver(schedule);
+    const flush = () => { frame = 0; const roots = Array.from(pendingRoots); pendingRoots.clear(); roots.forEach(apply); };
+    const schedule = (node: Node) => { pendingRoots.add(node.nodeType === Node.TEXT_NODE ? node.parentElement || node : node); if (!frame) frame = window.requestAnimationFrame(flush); };
+    apply(document.body);
+    const observer = new MutationObserver(records => records.forEach(record => {
+      if (record.type === "characterData") schedule(record.target);
+      record.addedNodes.forEach(schedule);
+    }));
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     return () => { observer.disconnect(); if (frame) window.cancelAnimationFrame(frame); };
   }, [language]);
@@ -124,11 +138,22 @@ type LanguageContextValue = { language: AppLanguage; setLanguage: (language: App
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<AppLanguage>(() => {
+  const [language, setLanguageState] = useState<AppLanguage>(() => {
     const requested = new URLSearchParams(window.location.search).get("lang");
-    if (requested === "en" || requested === "ar") return requested;
-    return localStorage.getItem("el-mister-language") === "en" ? "en" : "ar";
+    const initial = requested === "en" || requested === "ar" ? requested : localStorage.getItem("el-mister-language") === "en" ? "en" : "ar";
+    document.documentElement.lang = initial;
+    document.documentElement.dir = initial === "ar" ? "rtl" : "ltr";
+    document.documentElement.dataset.language = initial;
+    return initial;
   });
+  const setLanguage = (nextLanguage: AppLanguage) => {
+    const isRtl = nextLanguage === "ar";
+    document.documentElement.lang = nextLanguage;
+    document.documentElement.dir = isRtl ? "rtl" : "ltr";
+    document.documentElement.dataset.language = nextLanguage;
+    localStorage.setItem("el-mister-language", nextLanguage);
+    setLanguageState(nextLanguage);
+  };
   useEffect(() => {
     const isRtl = language === "ar";
     document.documentElement.lang = language;
