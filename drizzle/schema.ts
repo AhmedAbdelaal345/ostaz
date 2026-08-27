@@ -450,7 +450,7 @@ export const walletLedger = mysqlTable("wallet_ledger", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   studentId: int("studentId").notNull(),
-  source: mysqlEnum("source", ["kiosk_code", "manual", "store_order", "adjustment"]).notNull(),
+  source: mysqlEnum("source", ["kiosk_code", "manual", "store_order", "subscription_payment", "adjustment"]).notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   note: varchar("note", { length: 320 }),
   referenceKey: varchar("referenceKey", { length: 180 }).unique(),

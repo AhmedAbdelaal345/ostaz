@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const dbSource = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
 const routerSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+const materialsView = readFileSync(new URL("../client/src/components/StudentMaterialsPanel.tsx", import.meta.url), "utf8");
+const videoView = readFileSync(new URL("../client/src/components/StudentVideoHub.tsx", import.meta.url), "utf8");
 
 describe("عزل صلاحيات مركز التعلم", () => {
   it("يربط قراءة ومراجعة تسليم الواجب بمعلم الطالب وملكية التسليم", () => {
@@ -28,5 +30,14 @@ describe("عزل صلاحيات مركز التعلم", () => {
     expect(dbSource).toContain("workspace: students.workspace");
     expect(dbSource).toContain("listGroupDiscussion(access.userId, access.groupId, access.workspace)");
     expect(dbSource).toContain("listGroupAnnouncements(access.userId, access.groupId, access.workspace)");
+  });
+
+  it("يقفل المواد والفيديوهات المدفوعة حتى تسديد اشتراك مجموعة الطالب", () => {
+    expect(dbSource).toContain("getStudentContentAccess(studentId: number)");
+    expect(dbSource).toContain("allowed: Number(group.fee) <= 0 || Boolean(student.paid)");
+    expect(routerSource).toContain("سدّد اشتراك المجموعة لفتح المواد المنشورة.");
+    expect(routerSource).toContain("سدّد اشتراك المجموعة لفتح الدروس والجلسات.");
+    expect(materialsView).toContain("materials.error.message");
+    expect(videoView).toContain("lessons.error.message");
   });
 });

@@ -30,4 +30,14 @@ describe("المتجر والمحفظة", () => {
     expect(dbSource).toContain("refund:${orderId}");
     expect(studentStore).toContain("لا توجد بوابة دفع إلكتروني مفعلة حاليًا");
   });
+
+  it("يسدد اشتراك الطالب من رصيده فقط ويسجل الأثر في المحفظة والمالية", () => {
+    expect(routerSource).toContain("paySubscriptionWithWallet: publicProcedure");
+    expect(routerSource).toContain("payStudentSubscriptionWithWallet(session.studentId)");
+    expect(dbSource).toContain('source: "subscription_payment"');
+    expect(dbSource).toContain("سداد اشتراك");
+    expect(dbSource).toContain("paidAmount: String(fee), paid: true");
+    expect(dbSource).toContain('kind: "subscription"');
+    expect(studentStore).toContain("سداد اشتراك مجموعتي من الرصيد");
+  });
 });

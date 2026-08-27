@@ -1,0 +1,1 @@
+ALTER TABLE `wallet_ledger` MODIFY COLUMN `source` enum('kiosk_code','manual','store_order','subscription_payment','adjustment') NOT NULL;

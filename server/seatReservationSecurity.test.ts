@@ -26,4 +26,9 @@ describe("حجز المقاعد", () => {
     expect(studentView).toContain("cancelMine");
     expect(dbSource).toContain("eq(seatReservations.studentId, studentId)");
   });
+
+  it("لا يفتح بيانات أو حجز مقاعد السنتر لطالب المدرسة أو الأونلاين", () => {
+    expect(dbSource).toContain('if (access.workspace !== "center") return { groupId: access.groupId, rooms: []');
+    expect(dbSource).toContain('if (access.workspace !== "center") throw new Error("CENTER_FEATURE_ONLY")');
+  });
 });
