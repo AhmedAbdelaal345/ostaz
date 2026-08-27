@@ -871,7 +871,7 @@ function ProfileManagementActions() {
   return null;
 }
 
-function GroupQuickAttendance({ detail }: { detail: any }) {
+export function GroupQuickAttendance({ detail }: { detail: any }) {
   const utils = trpc.useUtils();
   const [workspace] = useWorkspace();
   const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);

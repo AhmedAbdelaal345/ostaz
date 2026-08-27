@@ -123,6 +123,7 @@ import { TeacherVideoHub } from "./components/TeacherVideoHub";
 import { TeacherDeviceBindingsPanel } from "./components/TeacherDeviceBindingsPanel";
 import { TeacherRoomsPanel } from "./components/TeacherRoomsPanel";
 import { TeacherStorePanel } from "./components/TeacherStorePanel";
+import { GroupQuickAttendance } from "./pages/EntityProfile";
 import "./topbar.css";
 
 const nav = [
@@ -2071,6 +2072,38 @@ function AssessmentPanel({
     </>
   );
 }
+function GroupInlineStudentCards({ groupId }: { groupId: number }) {
+  const auth = useAuth();
+  const [workspace] = useWorkspace();
+  const groupDetail = trpc.app.groups.detail.useQuery(
+    { id: groupId, workspace },
+    {
+      enabled: auth.isAuthenticated && Boolean(groupId),
+      retry: false,
+      staleTime: 30_000,
+    }
+  );
+
+  if (groupDetail.isLoading)
+    return (
+      <div className="group-inline-card-state" role="status">
+        جارٍ تحميل كروت طلاب المجموعة...
+      </div>
+    );
+
+  if (groupDetail.isError || !groupDetail.data)
+    return (
+      <div className="group-inline-card-state is-error" role="alert">
+        <span>تعذر تحميل كروت طلاب المجموعة.</span>
+        <button type="button" className="secondary" onClick={() => groupDetail.refetch()}>
+          إعادة المحاولة
+        </button>
+      </div>
+    );
+
+  return <GroupQuickAttendance detail={groupDetail.data} />;
+}
+
 function Page({ profile }: { profile: any }) {
   const auth = useAuth();
   const [workspace] = useWorkspace();
@@ -2676,26 +2709,10 @@ function Page({ profile }: { profile: any }) {
                   className="group-inline-details"
                   onClick={e => e.stopPropagation()}
                 >
-                  <div className="inline-students-heading">
-                    <b>طلاب المجموعة</b>
-                    <span>
-                      {studentsForGroup(students, g.name).length} طالب
-                    </span>
-                  </div>
-                  {studentsForGroup(students, g.name).length ? (
-                    <div className="inline-student-list">
-                      {studentsForGroup(students, g.name)
-                        .slice(0, 5)
-                        .map(student => (
-                          <span key={student.id}>{student.name}</span>
-                        ))}
-                    </div>
-                  ) : (
-                    <small className="muted">لا يوجد طلاب مضافون بعد.</small>
-                  )}
+                  <GroupInlineStudentCards groupId={g.id} />
                   <div className="inline-card-actions">
                     <a className="secondary" href={`/groups/${g.id}`}>
-                      بروفايل المجموعة
+                      بروفايل المجموعة الكامل
                     </a>
                     <button
                       type="button"
@@ -5166,8 +5183,10 @@ function App() {
   const [location] = useLocation();
   useEffect(() => {
     const isEditable = (target: EventTarget | null) => {
-      const element = target as HTMLElement | null;
-      return !!element?.closest(
+      if (!(target instanceof Element)) return false;
+      return target.matches(
+        "input, textarea, select, [contenteditable='true']"
+      ) || !!target.closest(
         "input, textarea, select, [contenteditable='true']"
       );
     };
