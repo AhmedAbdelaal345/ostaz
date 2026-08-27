@@ -27,6 +27,7 @@ import { startLogin } from "../const";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useWorkspace } from "../hooks/useWorkspace";
 import "./entity-profile-cards.css";
+import "./group-attendance-colors.css";
 import {
   collectionPeriodLabel,
   formatOutstandingWhatsAppMessage,
@@ -871,10 +872,11 @@ function ProfileManagementActions() {
   return null;
 }
 
-export function GroupQuickAttendance({ detail }: { detail: any }) {
+export function GroupQuickAttendance({ detail, showMessageTemplates = false }: { detail: any; showMessageTemplates?: boolean }) {
   const utils = trpc.useUtils();
   const [workspace] = useWorkspace();
   const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
+  const [attendanceOverrides, setAttendanceOverrides] = useState<Record<number, "present" | "late" | "absent">>({});
   const mark = trpc.app.attendance.mark.useMutation({
     onSuccess: () => {
       utils.app.groups.detail.invalidate({ id: detail.group.id, workspace });
@@ -938,7 +940,21 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
       recitation: field === "recitation" ? value : existing?.recitation ?? null,
       homework: field === "homework" ? value : existing?.homework ?? null,
     });
+  const markDailyAttendance = (student: any, previousStatus: "present" | "late" | "absent" | undefined, status: "present" | "late" | "absent") => {
+    setAttendanceOverrides(current => ({ ...current, [student.id]: status }));
+    mark.mutate({ workspace, studentId: student.id, groupId: detail.group.id, lessonDate: today, status }, {
+      onError: () => {
+        setAttendanceOverrides(current => {
+          const next = { ...current };
+          if (previousStatus) next[student.id] = previousStatus;
+          else delete next[student.id];
+          return next;
+        });
+      },
+    });
+  };
   return (
+    <>
     <article className="group-quick-attendance wide">
       <div className="group-quick-attendance-head">
         <div>
@@ -953,6 +969,7 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
       <div className="student-daily-card-list">
         {roster.length ? (
           roster.map(({ student, status }: any) => {
+            const effectiveStatus = attendanceOverrides[student.id] ?? status;
             const remaining = remainingFor(student, detail.group);
             const followUp = detail.followUps?.find(
               (row: any) =>
@@ -961,7 +978,7 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
             );
             const isExpanded = expandedStudentId === student.id;
             return (
-              <article key={student.id} className={`student-daily-card ${status === "late" ? "late" : ""} ${isExpanded ? "expanded" : ""}`}>
+              <article key={student.id} className={`student-daily-card attendance-${effectiveStatus || "unmarked"} ${effectiveStatus === "late" ? "late" : ""} ${isExpanded ? "expanded" : ""}`}>
                 <div className="student-daily-card-top">
                   <button type="button" className="student-daily-card-toggle" onClick={() => setExpandedStudentId(current => current === student.id ? null : student.id)} aria-expanded={isExpanded}>
                     <span className="student-daily-avatar">{student.name.slice(0, 1)}</span>
@@ -971,49 +988,28 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
                 <div className="quick-roster-status">
                   <button
                     type="button"
-                    className={status === "present" ? "selected present" : ""}
+                    className={effectiveStatus === "present" ? "selected present" : ""}
+                    aria-pressed={effectiveStatus === "present"}
                     disabled={mark.isPending}
-                    onClick={() =>
-                      mark.mutate({
-                        workspace,
-                        studentId: student.id,
-                        groupId: detail.group.id,
-                        lessonDate: today,
-                        status: "present",
-                      })
-                    }
+                    onClick={() => markDailyAttendance(student, status, "present")}
                   >
                     حاضر
                   </button>
                   <button
                     type="button"
-                    className={status === "late" ? "selected late" : ""}
+                    className={effectiveStatus === "late" ? "selected late" : ""}
+                    aria-pressed={effectiveStatus === "late"}
                     disabled={mark.isPending}
-                    onClick={() =>
-                      mark.mutate({
-                        workspace,
-                        studentId: student.id,
-                        groupId: detail.group.id,
-                        lessonDate: today,
-                        status: "late",
-                      })
-                    }
+                    onClick={() => markDailyAttendance(student, status, "late")}
                   >
                     متأخر
                   </button>
                   <button
                     type="button"
-                    className={status === "absent" ? "selected absent" : ""}
+                    className={effectiveStatus === "absent" ? "selected absent" : ""}
+                    aria-pressed={effectiveStatus === "absent"}
                     disabled={mark.isPending}
-                    onClick={() =>
-                      mark.mutate({
-                        workspace,
-                        studentId: student.id,
-                        groupId: detail.group.id,
-                        lessonDate: today,
-                        status: "absent",
-                      })
-                    }
+                    onClick={() => markDailyAttendance(student, status, "absent")}
                   >
                     غائب
                   </button>
@@ -1047,6 +1043,8 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
         )}
       </div>
     </article>
+    {showMessageTemplates && <GroupCommunicationPanel detail={detail} />}
+    </>
   );
 }
 

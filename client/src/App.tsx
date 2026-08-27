@@ -2120,7 +2120,7 @@ function GroupInlineStudentCards({ groupId }: { groupId: number }) {
       </div>
     );
 
-  return <GroupQuickAttendance detail={groupDetail.data} />;
+  return <GroupQuickAttendance detail={groupDetail.data} showMessageTemplates />;
 }
 
 function Page({ profile }: { profile: any }) {

@@ -1,0 +1,8 @@
+.student-daily-card.attendance-present{border-color:rgba(91,220,158,.68);background:linear-gradient(145deg,rgba(14,88,61,.72),rgba(7,36,37,.96));box-shadow:inset 4px 0 #57d69a}
+.student-daily-card.attendance-late{border-color:rgba(248,191,78,.72);background:linear-gradient(145deg,rgba(93,61,13,.72),rgba(42,29,6,.96));box-shadow:inset 4px 0 #f4bc4e}
+.student-daily-card.attendance-absent{border-color:rgba(255,125,141,.72);background:linear-gradient(145deg,rgba(91,23,35,.72),rgba(42,9,16,.96));box-shadow:inset 4px 0 #ff7788}
+.student-daily-card.attendance-present .student-daily-avatar{background:rgba(87,214,154,.2);color:#adf5d1}
+.student-daily-card.attendance-late .student-daily-avatar{background:rgba(244,188,78,.2);color:#ffe0a1}
+.student-daily-card.attendance-absent .student-daily-avatar{background:rgba(255,119,136,.2);color:#ffc2ca}
+@media (prefers-reduced-motion:no-preference){.student-daily-card.attendance-present,.student-daily-card.attendance-late,.student-daily-card.attendance-absent{animation:attendance-mark .22s cubic-bezier(.23,1,.32,1)}}
+@keyframes attendance-mark{from{transform:scale(.985)}to{transform:scale(1)}}
