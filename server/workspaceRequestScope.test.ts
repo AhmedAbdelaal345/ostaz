@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const clientRuntime = readFileSync(new URL("../client/src/main.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
 const routers = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+const weeklyQuizPanel = readFileSync(new URL("../client/src/components/WeeklyQuizPanel.tsx", import.meta.url), "utf8");
 
 describe("تمرير سياق التشغيل إلى إجراءات المعلم", () => {
   it("يضيف السياق المختار إلى طلبات القراءة والكتابة الأساسية قبل إرسالها أو وضعها في طابور الأوفلاين", () => {
@@ -25,5 +26,13 @@ describe("تمرير سياق التشغيل إلى إجراءات المعلم"
     expect(app).toContain("const visibleTabs = workspace === \"center\" ? tabs");
     expect(app).toContain("[\"rewards\", \"rooms\", \"store\", \"team\"]");
     expect(app).toContain("هذه الأداة خاصة بالسنتر");
+  });
+
+  it("يعزل الاختبارات الأسبوعية وإنشاءها ورصدها ضمن السياق النشط", () => {
+    expect(routers).toContain("listWeeklyQuizzes(ctx.user.id, input?.workspace ?? \"center\")");
+    expect(routers).toContain("createWeeklyQuiz(ctx.user.id, workspace");
+    expect(routers).toContain("getWeeklyQuiz(ctx.user.id, workspace, input.quizId)");
+    expect(weeklyQuizPanel).toContain("trpc.app.quizzes.list.useQuery({ workspace })");
+    expect(weeklyQuizPanel).toContain("gradeEssay.mutate({ quizId: Number(selectedQuizId), studentCode, score, workspace })");
   });
 });

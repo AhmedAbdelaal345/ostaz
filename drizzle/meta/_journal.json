@@ -183,6 +183,13 @@
       "when": 1787807351638,
       "tag": "0025_late_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1787809503756,
+      "tag": "0026_parched_felicia_hardy",
+      "breakpoints": true
     }
   ]
 }

@@ -112,6 +112,7 @@ export const weeklyQuizzes = mysqlTable("weekly_quizzes", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   groupId: int("groupId").notNull(),
+  workspace: mysqlEnum("workspace", ["school", "center", "online"]).default("center").notNull(),
   title: varchar("title", { length: 180 }).notNull(),
   instructions: text("instructions"),
   questionType: mysqlEnum("questionType", ["mcq", "true_false", "essay"]).notNull(),
@@ -121,7 +122,9 @@ export const weeklyQuizzes = mysqlTable("weekly_quizzes", {
   endsAt: timestamp("endsAt").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, table => ({
+  userWorkspaceStartsAt: index("weekly_quizzes_user_workspace_starts_at").on(table.userId, table.workspace, table.startsAt),
+}));
 
 export const learningMaterials = mysqlTable("learning_materials", {
   id: int("id").autoincrement().primaryKey(),

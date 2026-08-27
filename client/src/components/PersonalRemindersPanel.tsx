@@ -3,7 +3,7 @@ import { CalendarClock, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getReminderDelayMinutes } from "../../../shared/reminderTiming";
+import { getReminderDelayMinutes, parseLocalReminderDateTime } from "../../../shared/reminderTiming";
 
 function toLocalInput(value: Date) {
   const offset = value.getTimezoneOffset() * 60_000;
@@ -63,7 +63,7 @@ export function PersonalRemindersPanel() {
     ? value === "daily" ? "يومي" : value === "weekly" ? "أسبوعي" : "مرة واحدة"
     : value === "daily" ? "Daily" : value === "weekly" ? "Weekly" : "Once";
   const formatTime = (value: Date | string) => new Date(value).toLocaleString(language === "ar" ? "ar-EG" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
-  const minutesRemaining = getReminderDelayMinutes(new Date(remindAt), new Date(clock));
+  const minutesRemaining = getReminderDelayMinutes(parseLocalReminderDateTime(remindAt), new Date(clock));
   const timingHint = minutesRemaining === null
     ? null
     : minutesRemaining < 0
@@ -75,7 +75,7 @@ export function PersonalRemindersPanel() {
           : `This reminder is scheduled in ${minutesRemaining} minute${minutesRemaining === 1 ? "" : "s"}.`;
 
   const submit = () => {
-    const date = new Date(remindAt);
+    const date = parseLocalReminderDateTime(remindAt);
     if (!title.trim()) return toast.error(language === "ar" ? "اكتب ما تريد أن تتذكره." : "Enter what you want to remember.");
     if (!Number.isFinite(date.getTime()) || date.getTime() < Date.now() - 60_000) return toast.error(language === "ar" ? "اختر وقتًا قادمًا." : "Choose a future time.");
     create.mutate({ title: title.trim(), note: note.trim() || null, remindAt: date, recurrence });

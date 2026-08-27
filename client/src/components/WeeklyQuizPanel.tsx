@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { normalizeStudentCode } from "../../../shared/studentCode";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useWorkspace } from "../hooks/useWorkspace";
 
 type QuestionType = "mcq" | "true_false" | "essay";
 type Question = { id: string; text: string; points: number; options?: string[]; correctAnswer?: number | boolean };
@@ -61,6 +62,7 @@ function StudentQuizPreview({
 
 export function WeeklyQuizPanel({ groups, students }: { groups: Array<any>; students: Array<any> }) {
   const { language } = useLanguage();
+  const [workspace] = useWorkspace();
   const [groupId, setGroupId] = useState("");
   const [title, setTitle] = useState(() => language === "en" ? "Weekly assessment" : "التقييم الأسبوعي");
   const [questionType, setQuestionType] = useState<QuestionType>("mcq");
@@ -71,8 +73,8 @@ export function WeeklyQuizPanel({ groups, students }: { groups: Array<any>; stud
   const [studentCode, setStudentCode] = useState("");
   const [score, setScore] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
-  const quizzes = trpc.app.quizzes.list.useQuery();
-  const attempts = trpc.app.quizzes.attempts.useQuery({ quizId: Number(selectedQuizId) || 0 }, { enabled: Boolean(selectedQuizId) });
+  const quizzes = trpc.app.quizzes.list.useQuery({ workspace });
+  const attempts = trpc.app.quizzes.attempts.useQuery({ quizId: Number(selectedQuizId) || 0, workspace }, { enabled: Boolean(selectedQuizId) });
   const focusEvents = trpc.app.quizFocus.list.useQuery({ quizId: Number(selectedQuizId) || 0 }, { enabled: Boolean(selectedQuizId) });
   const createQuiz = trpc.app.quizzes.create.useMutation({ onSuccess: () => { quizzes.refetch(); toast.success("تم إنشاء الاختبار الأسبوعي"); setQuestions([newQuestion(questionType)]); }, onError: error => toast.error(error.message) });
   const gradeEssay = trpc.app.quizzes.gradeByStudentCode.useMutation({ onSuccess: data => { attempts.refetch(); toast.success(`تم رصد ${data.score}/${data.maxScore} للطالب ${data.studentName}`); setStudentCode(""); setScore(""); }, onError: error => toast.error(error.message) });
@@ -86,7 +88,7 @@ export function WeeklyQuizPanel({ groups, students }: { groups: Array<any>; stud
   const submit = () => {
     if (!groupId || !title.trim()) return toast.error("اختر المجموعة واكتب عنوان الاختبار");
     if (questions.some(question => !question.text.trim() || question.points <= 0 || (questionType === "mcq" && question.options?.some(option => !option.trim())))) return toast.error("أكمل نص ودرجة كل سؤال واختياراته");
-    createQuiz.mutate({ groupId: Number(groupId), title: title.trim(), questionType, questions, startsAt: new Date(startsAt), endsAt: new Date(endsAt), instructions: null });
+    createQuiz.mutate({ groupId: Number(groupId), title: title.trim(), questionType, questions, startsAt: new Date(startsAt), endsAt: new Date(endsAt), instructions: null, workspace });
   };
   const scanAnswerSheet = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -120,7 +122,7 @@ export function WeeklyQuizPanel({ groups, students }: { groups: Array<any>; stud
     <div className="quiz-results panel">
       <div className="quiz-builder-head"><div><span className="eyebrow">المتابعة والرصد</span><h3>نتائج الاختبارات</h3></div><ScanLine size={23}/></div>
       {quizzes.data?.length ? <div className="quiz-result-list">{quizzes.data.map(quiz => <button type="button" className={String(quiz.id) === selectedQuizId ? "selected" : ""} key={quiz.id} onClick={() => setSelectedQuizId(String(quiz.id))}><span>{quiz.title}</span><small>{quiz.questionType === "mcq" ? "اختياري" : quiz.questionType === "true_false" ? "صح/خطأ" : "مقالي"} · {quiz.maxScore} درجة</small></button>)}</div> : <p className="quiz-empty">لم تُنشئ اختبارًا أسبوعيًا بعد.</p>}
-      {selectedQuizId && <><div className="essay-grade-bar"><b>تصحيح {selectedQuiz?.questionType === "essay" ? "مقالي" : "يدوي"} بكود الطالب</b>{selectedQuiz?.questionType === "essay" && <label className="secondary essay-scan-button"><ScanLine size={15}/>{answerOcr.isPending ? "جارٍ قراءة الورقة..." : "مسح ورقة الإجابة"}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={scanAnswerSheet} hidden/></label>}<input value={studentCode} maxLength={4} inputMode="numeric" onChange={event => setStudentCode(normalizeStudentCode(event.target.value))} placeholder="كود الطالب (4 أرقام)"/><input value={score} onChange={event => setScore(event.target.value)} inputMode="decimal" placeholder="الدرجة"/><button type="button" className="primary" onClick={() => gradeEssay.mutate({ quizId: Number(selectedQuizId), studentCode, score })}>رصد الدرجة</button></div><div className="quiz-attempts">{attempts.data?.length ? attempts.data.map(attempt => <div key={attempt.id}><span>{students.find(student => student.id === attempt.studentId)?.name || `طالب #${attempt.studentId}`}</span><b>{attempt.status === "locked" ? "أُغلق وفق السياسة" : attempt.status === "in_progress" ? "قيد الحل" : attempt.score ?? "بانتظار التصحيح"}</b></div>) : <p className="quiz-empty">لا توجد محاولات بعد.</p>}</div><div className="quiz-focus-events"><div><AlertTriangle size={16}/><b>سجل الخروج من الاختبار</b><small>يسجل فقدان التركيز داخل المتصفح فقط، ولا يثبت منع التطبيقات أو تسجيل الشاشة.</small></div>{focusEvents.data?.length ? focusEvents.data.map(event => <article key={event.id}><span>{event.studentName}</span><b>{event.eventType === "visibility_hidden" ? "انتقل التطبيق للخلفية" : event.eventType === "fullscreen_exit" ? "خرج من ملء الشاشة" : "فقد تركيز النافذة"}</b><time>{new Date(event.createdAt).toLocaleString("ar-EG")}</time></article>) : <p>لا توجد أحداث مسجلة لهذا الاختبار.</p>}</div></>}
+      {selectedQuizId && <><div className="essay-grade-bar"><b>تصحيح {selectedQuiz?.questionType === "essay" ? "مقالي" : "يدوي"} بكود الطالب</b>{selectedQuiz?.questionType === "essay" && <label className="secondary essay-scan-button"><ScanLine size={15}/>{answerOcr.isPending ? "جارٍ قراءة الورقة..." : "مسح ورقة الإجابة"}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={scanAnswerSheet} hidden/></label>}<input value={studentCode} maxLength={4} inputMode="numeric" onChange={event => setStudentCode(normalizeStudentCode(event.target.value))} placeholder="كود الطالب (4 أرقام)"/><input value={score} onChange={event => setScore(event.target.value)} inputMode="decimal" placeholder="الدرجة"/><button type="button" className="primary" onClick={() => gradeEssay.mutate({ quizId: Number(selectedQuizId), studentCode, score, workspace })}>رصد الدرجة</button></div><div className="quiz-attempts">{attempts.data?.length ? attempts.data.map(attempt => <div key={attempt.id}><span>{students.find(student => student.id === attempt.studentId)?.name || `طالب #${attempt.studentId}`}</span><b>{attempt.status === "locked" ? "أُغلق وفق السياسة" : attempt.status === "in_progress" ? "قيد الحل" : attempt.score ?? "بانتظار التصحيح"}</b></div>) : <p className="quiz-empty">لا توجد محاولات بعد.</p>}</div><div className="quiz-focus-events"><div><AlertTriangle size={16}/><b>سجل الخروج من الاختبار</b><small>يسجل فقدان التركيز داخل المتصفح فقط، ولا يثبت منع التطبيقات أو تسجيل الشاشة.</small></div>{focusEvents.data?.length ? focusEvents.data.map(event => <article key={event.id}><span>{event.studentName}</span><b>{event.eventType === "visibility_hidden" ? "انتقل التطبيق للخلفية" : event.eventType === "fullscreen_exit" ? "خرج من ملء الشاشة" : "فقد تركيز النافذة"}</b><time>{new Date(event.createdAt).toLocaleString("ar-EG")}</time></article>) : <p>لا توجد أحداث مسجلة لهذا الاختبار.</p>}</div></>}
     </div>
     {previewOpen && <StudentQuizPreview title={title} groupName={selectedGroupName} questions={questions} questionType={questionType} maxScore={maxScore} close={() => setPreviewOpen(false)} />}
   </section>;

@@ -23,4 +23,10 @@ describe("عزل صلاحيات مركز التعلم", () => {
     expect(routerSource).toContain("return postStudentDiscussionMessage(session.studentId, input.body)");
     expect(dbSource).toContain("const access = await getStudentGroupAccess(studentId)");
   });
+
+  it("يمرر سياق الطالب إلى قراءة نقاشات وإعلانات مجموعته", () => {
+    expect(dbSource).toContain("workspace: students.workspace");
+    expect(dbSource).toContain("listGroupDiscussion(access.userId, access.groupId, access.workspace)");
+    expect(dbSource).toContain("listGroupAnnouncements(access.userId, access.groupId, access.workspace)");
+  });
 });
