@@ -1,5 +1,12 @@
 // Design: Night Operations — RTL teacher command center with charcoal surfaces, electric sky actions, and restrained technical details.
-import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import { Link as WouterLink, Route, Switch, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -7,28 +14,97 @@ import { startLogin } from "./const";
 import { trpc } from "@/lib/trpc";
 import { mergeTeacherProfile } from "../../shared/profileSettings";
 import { getNextGroupForDay, sortGroupsByTime } from "../../shared/dashboard";
-import { WEEK_DAYS, countScheduledLessons, scheduleForGroup, serializeSchedule, type ScheduleEntry } from "../../shared/schedule";
+import {
+  WEEK_DAYS,
+  countScheduledLessons,
+  scheduleForGroup,
+  serializeSchedule,
+  type ScheduleEntry,
+} from "../../shared/schedule";
 import { studentsForGroup } from "../../shared/groupStudents";
 import { isExistingStudentDraft } from "../../shared/studentDraft";
 import { addStudentToGroupState } from "../../shared/groupStudentState";
-import { formatClockTime, parseClockTime, type ClockTime } from "../../shared/time";
+import {
+  clockTimeToMinutes,
+  formatClockTime,
+  parseClockTime,
+  type ClockTime,
+} from "../../shared/time";
 import { formatRemainingLessonTime } from "../../shared/tracker";
 import type { Workspace } from "../../shared/workspace";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { renderMessageTemplate } from "../../shared/messageTemplate";
-import { displayStudentCode, generateStudentCode, normalizeStudentCode } from "../../shared/studentCode";
+import {
+  displayStudentCode,
+  generateStudentCode,
+  normalizeStudentCode,
+} from "../../shared/studentCode";
 import { shouldPromptLateAttendanceReview } from "../../shared/attendanceReminder";
 import { renameGroupWithStudentCount } from "../../shared/groupRename";
 import { useLanguage } from "./contexts/LanguageContext";
 import { Toaster, toast } from "sonner";
-import { AlertTriangle, Bell, BookOpen, CalendarDays, Camera, CheckCircle2, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardCheck, Download, FileSpreadsheet, Globe2, Home, LayoutGrid, Moon, MoreHorizontal, Plus, Search, Settings, ShieldCheck, Sun, Users, WalletCards, X, BarChart3, CreditCard, MessageSquareText, MonitorCog, Upload, ExternalLink, Pencil, Trash2, Video } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  BookOpen,
+  CalendarDays,
+  Camera,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
+  ClipboardCheck,
+  Download,
+  FileSpreadsheet,
+  Globe2,
+  Home,
+  LayoutGrid,
+  Moon,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sun,
+  Users,
+  WalletCards,
+  X,
+  BarChart3,
+  CreditCard,
+  MessageSquareText,
+  MonitorCog,
+  Upload,
+  ExternalLink,
+  Pencil,
+  Pin,
+  Trash2,
+  Video,
+} from "lucide-react";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 
-const collectionPeriodLabel = (period?: "monthly" | "term" | "per_lesson") => period === "term" ? "رسوم الترم" : period === "per_lesson" ? "رسوم الحصة" : "الرسوم الشهرية";
-const formatOutstandingWhatsAppMessage = (input: { studentName: string; groupName: string; remainingAmount: number; collectionPeriod?: "monthly" | "term" | "per_lesson" }) => `مرحبًا، نود تذكيركم بأن على الطالب ${input.studentName} مبلغًا متبقيًا قدره ${Number(input.remainingAmount || 0).toLocaleString("ar-EG")} ج.م في مجموعة ${input.groupName} (${collectionPeriodLabel(input.collectionPeriod)}). يرجى سداد المبلغ في أقرب وقت. شكرًا لكم.`;
-const formatSubscriptionWhatsAppMessage = (input: { studentName: string; groupName: string; joinedAt: Date | string | null | undefined; paidAmount: number; remainingAmount: number }) => `مرحباً ${input.studentName}\nتم الاشتراك في مجموعة ${input.groupName} بتاريخ ${input.joinedAt ? new Date(input.joinedAt).toLocaleDateString("ar-EG") : "تاريخ التسجيل"}.\nتم دفع مبلغ ${Number(input.paidAmount || 0).toLocaleString("ar-EG")} ج.م، والمبلغ المتبقي ${Number(input.remainingAmount || 0).toLocaleString("ar-EG")} ج.م.`;
+const collectionPeriodLabel = (period?: "monthly" | "term" | "per_lesson") =>
+  period === "term"
+    ? "رسوم الترم"
+    : period === "per_lesson"
+      ? "رسوم الحصة"
+      : "الرسوم الشهرية";
+const formatOutstandingWhatsAppMessage = (input: {
+  studentName: string;
+  groupName: string;
+  remainingAmount: number;
+  collectionPeriod?: "monthly" | "term" | "per_lesson";
+}) =>
+  `مرحبًا، نود تذكيركم بأن على الطالب ${input.studentName} مبلغًا متبقيًا قدره ${Number(input.remainingAmount || 0).toLocaleString("ar-EG")} ج.م في مجموعة ${input.groupName} (${collectionPeriodLabel(input.collectionPeriod)}). يرجى سداد المبلغ في أقرب وقت. شكرًا لكم.`;
+const formatSubscriptionWhatsAppMessage = (input: {
+  studentName: string;
+  groupName: string;
+  joinedAt: Date | string | null | undefined;
+  paidAmount: number;
+  remainingAmount: number;
+}) =>
+  `مرحباً ${input.studentName}\nتم الاشتراك في مجموعة ${input.groupName} بتاريخ ${input.joinedAt ? new Date(input.joinedAt).toLocaleDateString("ar-EG") : "تاريخ التسجيل"}.\nتم دفع مبلغ ${Number(input.paidAmount || 0).toLocaleString("ar-EG")} ج.م، والمبلغ المتبقي ${Number(input.remainingAmount || 0).toLocaleString("ar-EG")} ج.م.`;
 import { WeeklyQuizPanel } from "./components/WeeklyQuizPanel";
 import { ContextReports } from "./components/ContextReports";
 import { OfflineRuntime } from "./components/OfflineRuntime";
@@ -50,333 +126,5093 @@ import { TeacherStorePanel } from "./components/TeacherStorePanel";
 import "./topbar.css";
 
 const nav = [
-  ["/", "home", Home], ["/attendance", "attendance", CheckCircle2], ["/groups", "groups", LayoutGrid], ["/finance", "finance", WalletCards], ["/settings", "settings", Settings],
+  ["/", "home", Home],
+  ["/attendance", "attendance", CheckCircle2],
+  ["/groups", "groups", LayoutGrid],
+  ["/finance", "finance", WalletCards],
+  ["/settings", "settings", Settings],
 ] as const;
 
-type AppLinkProps = { href: string; children: React.ReactNode; className?: string };
+type AppLinkProps = {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+};
 
 function Link({ href, children, className }: AppLinkProps) {
   const [, navigate] = useLocation();
   if (isValidElement(children) && children.type === "a") {
-    const child = children as React.ReactElement<React.AnchorHTMLAttributes<HTMLAnchorElement>>;
+    const child = children as React.ReactElement<
+      React.AnchorHTMLAttributes<HTMLAnchorElement>
+    >;
     return cloneElement(child, {
       href,
-      className: [child.props.className, className].filter(Boolean).join(" ") || undefined,
+      className:
+        [child.props.className, className].filter(Boolean).join(" ") ||
+        undefined,
       onClick: event => {
         child.props.onClick?.(event);
-        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return;
+        if (
+          event.defaultPrevented ||
+          event.button !== 0 ||
+          event.metaKey ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.shiftKey
+        )
+          return;
         event.preventDefault();
         navigate(href);
       },
     });
   }
-  return <WouterLink href={href} className={className}>{children}</WouterLink>;
+  return (
+    <WouterLink href={href} className={className}>
+      {children}
+    </WouterLink>
+  );
 }
 
-const subjects = ["لغة عربية", "لغة إنجليزية", "لغة فرنسية", "رياضيات", "علوم", "فيزياء", "كيمياء", "أحياء", "حاسب آلي", "برمجة", "دراسات اجتماعية", "قرآن كريم", "أخرى"];
-const workspaces: Array<{ id: Workspace; label: string; place: string }> = [{ id: "school", label: "المدرسة", place: "مدرسة" }, { id: "center", label: "السنتر", place: "سنتر" }, { id: "online", label: "أونلاين", place: "أونلاين" }];
+const subjects = [
+  "لغة عربية",
+  "لغة إنجليزية",
+  "لغة فرنسية",
+  "رياضيات",
+  "علوم",
+  "فيزياء",
+  "كيمياء",
+  "أحياء",
+  "حاسب آلي",
+  "برمجة",
+  "دراسات اجتماعية",
+  "قرآن كريم",
+  "أخرى",
+];
+const workspaces: Array<{ id: Workspace; label: string; place: string }> = [
+  { id: "school", label: "المدرسة", place: "مدرسة" },
+  { id: "center", label: "السنتر", place: "سنتر" },
+  { id: "online", label: "أونلاين", place: "أونلاين" },
+];
 const WORKSPACE_CACHE_MS = 5 * 60_000;
-const localizedDay = (day: string, language: "ar" | "en") => language === "en" ? ({ "الأحد": "Sunday", "الاثنين": "Monday", "الإثنين": "Monday", "الثلاثاء": "Tuesday", "الأربعاء": "Wednesday", "الخميس": "Thursday", "الجمعة": "Friday", "السبت": "Saturday" }[day] || day) : day;
-const localizedPlace = (place: string, language: "ar" | "en") => language === "en" ? ({ "مدرسة": "School", "سنتر": "Center", "أونلاين": "Online" }[place] || place) : place;
+const localizedDay = (day: string, language: "ar" | "en") =>
+  language === "en"
+    ? {
+        الأحد: "Sunday",
+        الاثنين: "Monday",
+        الإثنين: "Monday",
+        الثلاثاء: "Tuesday",
+        الأربعاء: "Wednesday",
+        الخميس: "Thursday",
+        الجمعة: "Friday",
+        السبت: "Saturday",
+      }[day] || day
+    : day;
+const localizedPlace = (place: string, language: "ar" | "en") =>
+  language === "en"
+    ? { مدرسة: "School", سنتر: "Center", أونلاين: "Online" }[place] || place
+    : place;
 function WorkspaceSwitcher() {
-  const [workspace, setWorkspace] = useWorkspace(); const [, setLocation] = useLocation(); const { t } = useLanguage(); const utils = trpc.useUtils();
-  const prefetchWorkspace = (next: Workspace) => { if (next !== workspace) void utils.app.bootstrap.prefetch({ workspace: next }, { staleTime: WORKSPACE_CACHE_MS }); };
-  const selectWorkspace = (next: Workspace) => { prefetchWorkspace(next); setWorkspace(next); if (next === "school") setLocation("/"); };
-  return <div className="workspace-switcher" aria-label={t("contextReports")}>{workspaces.map(item => <button type="button" key={item.id} className={workspace === item.id ? "active" : ""} onPointerEnter={() => prefetchWorkspace(item.id)} onFocus={() => prefetchWorkspace(item.id)} onTouchStart={() => prefetchWorkspace(item.id)} onClick={() => selectWorkspace(item.id)}>{t(item.id)}</button>)}</div>;
+  const [workspace, setWorkspace] = useWorkspace();
+  const [, setLocation] = useLocation();
+  const { t } = useLanguage();
+  const utils = trpc.useUtils();
+  const prefetchWorkspace = (next: Workspace) => {
+    if (next !== workspace)
+      void utils.app.bootstrap.prefetch(
+        { workspace: next },
+        { staleTime: WORKSPACE_CACHE_MS }
+      );
+  };
+  const selectWorkspace = (next: Workspace) => {
+    prefetchWorkspace(next);
+    setWorkspace(next);
+    if (next === "school") setLocation("/");
+  };
+  return (
+    <div className="workspace-switcher" aria-label={t("contextReports")}>
+      {workspaces.map(item => (
+        <button
+          type="button"
+          key={item.id}
+          className={workspace === item.id ? "active" : ""}
+          onPointerEnter={() => prefetchWorkspace(item.id)}
+          onFocus={() => prefetchWorkspace(item.id)}
+          onTouchStart={() => prefetchWorkspace(item.id)}
+          onClick={() => selectWorkspace(item.id)}
+        >
+          {t(item.id)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function useGroupEndAlert() {
+  const auth = useAuth();
+  const [workspace] = useWorkspace();
+  const { language } = useLanguage();
+  const boot = trpc.app.bootstrap.useQuery(
+    { workspace },
+    {
+      enabled: auth.isAuthenticated,
+      staleTime: WORKSPACE_CACHE_MS,
+      retry: false,
+    }
+  );
+  const delivered = useRef(new Set<string>());
+  useEffect(() => {
+    const check = () => {
+      const now = new Date();
+      const today = now.toLocaleDateString("ar-EG", { weekday: "long" });
+      for (const group of boot.data?.groups || [])
+        for (const schedule of scheduleForGroup(group)) {
+          if (schedule.day !== today) continue;
+          const clockMinutes = clockTimeToMinutes(
+            parseClockTime(schedule.time)
+          );
+          const start = new Date(now);
+          start.setHours(
+            Math.floor(clockMinutes / 60),
+            clockMinutes % 60,
+            0,
+            0
+          );
+          const end = new Date(
+            start.getTime() + Number(group.durationMinutes || 60) * 60_000
+          );
+          const key = `${group.id}-${start.toISOString()}`;
+          if (
+            now >= end &&
+            now.getTime() - end.getTime() < 60_000 &&
+            !delivered.current.has(key)
+          ) {
+            delivered.current.add(key);
+            const body =
+              language === "ar"
+                ? `انتهى وقت مجموعة ${group.name}.`
+                : `${group.name} has ended.`;
+            toast.info(body, { duration: 12_000 });
+            if (
+              "Notification" in window &&
+              Notification.permission === "granted"
+            )
+              new Notification(
+                language === "ar" ? "انتهت الحصة" : "Lesson ended",
+                { body }
+              );
+          }
+        }
+    };
+    check();
+    const timer = window.setInterval(check, 15_000);
+    return () => window.clearInterval(timer);
+  }, [boot.data, language]);
 }
 function GroupSortPicker() {
-  const [sort, setSort] = useState(() => localStorage.getItem("ostazi-group-sort") || "soon");
-  return <label className="group-sort-control topbar-group-sort">ترتيب <select aria-label="ترتيب المجموعات" value={sort} onChange={event => { const next = event.target.value; setSort(next); localStorage.setItem("ostazi-group-sort", next); window.dispatchEvent(new Event("ostazi-group-sort-change")); }}><option value="soon">الأقرب موعدًا</option><option value="name">الاسم</option><option value="count">الأكبر عددًا</option><option value="active">نشطة (بها طلاب)</option></select></label>;
+  const [sort, setSort] = useState(
+    () => localStorage.getItem("ostazi-group-sort") || "soon"
+  );
+  return (
+    <label className="group-sort-control topbar-group-sort">
+      ترتيب{" "}
+      <select
+        aria-label="ترتيب المجموعات"
+        value={sort}
+        onChange={event => {
+          const next = event.target.value;
+          setSort(next);
+          localStorage.setItem("ostazi-group-sort", next);
+          window.dispatchEvent(new Event("ostazi-group-sort-change"));
+        }}
+      >
+        <option value="soon">الأقرب موعدًا</option>
+        <option value="name">الاسم</option>
+        <option value="count">الأكبر عددًا</option>
+        <option value="active">نشطة (بها طلاب)</option>
+      </select>
+    </label>
+  );
 }
-const initialGroups = [{ id: 1, name: "الصف الثالث الثانوي", place: "سنتر", mode: "حضوري", students: 18, day: "السبت", time: "06:00 م", fee: 180 }, { id: 2, name: "مجموعة الأونلاين", place: "أونلاين", mode: "عن بُعد", students: 12, day: "الأحد", time: "08:00 م", fee: 150 }];
-const initialStudents = [{ id: 1, name: "سارة أحمد", group: "الصف الثالث الثانوي", phone: "01012345678", paid: true }, { id: 2, name: "عمر خالد", group: "مجموعة الأونلاين", phone: "01123456789", paid: false }, { id: 3, name: "نور محمد", group: "الصف الثالث الثانوي", phone: "01234567890", paid: true }];
-type Group = typeof initialGroups[number] & { schedule?: ScheduleEntry[]; scheduleJson?: string | null; collectionPeriod?: "monthly" | "term" | "per_lesson" };
-type Student = typeof initialStudents[number] & { guardianName?: string; guardianPhone?: string; studentCode?: string; paidAmount?: number; age?: number | null; grade?: string | null; avatarUrl?: string | null; createdAt?: Date | string; joinedGroupAt?: Date | string };
+const initialGroups = [
+  {
+    id: 1,
+    name: "الصف الثالث الثانوي",
+    place: "سنتر",
+    mode: "حضوري",
+    students: 18,
+    day: "السبت",
+    time: "06:00 م",
+    fee: 180,
+  },
+  {
+    id: 2,
+    name: "مجموعة الأونلاين",
+    place: "أونلاين",
+    mode: "عن بُعد",
+    students: 12,
+    day: "الأحد",
+    time: "08:00 م",
+    fee: 150,
+  },
+];
+const initialStudents = [
+  {
+    id: 1,
+    name: "سارة أحمد",
+    group: "الصف الثالث الثانوي",
+    phone: "01012345678",
+    paid: true,
+  },
+  {
+    id: 2,
+    name: "عمر خالد",
+    group: "مجموعة الأونلاين",
+    phone: "01123456789",
+    paid: false,
+  },
+  {
+    id: 3,
+    name: "نور محمد",
+    group: "الصف الثالث الثانوي",
+    phone: "01234567890",
+    paid: true,
+  },
+];
+type Group = (typeof initialGroups)[number] & {
+  grade?: string | null;
+  durationMinutes?: number;
+  isPinned?: boolean;
+  schedule?: ScheduleEntry[];
+  scheduleJson?: string | null;
+  collectionPeriod?: "monthly" | "term" | "per_lesson";
+};
+type Student = (typeof initialStudents)[number] & {
+  guardianName?: string;
+  guardianPhone?: string;
+  studentCode?: string;
+  paidAmount?: number;
+  age?: number | null;
+  grade?: string | null;
+  avatarUrl?: string | null;
+  createdAt?: Date | string;
+  joinedGroupAt?: Date | string;
+};
 
 const demoFinanceRows = [
-  { id: 901, kind: "subscription", studentId: 1, groupId: 1, amount: "180", dueDate: new Date(), paidAt: new Date(), description: "اشتراك أغسطس", createdAt: new Date() },
-  { id: 902, kind: "subscription", studentId: 2, groupId: 2, amount: "150", dueDate: new Date(Date.now() - 86_400_000 * 3), paidAt: null, description: "اشتراك مستحق", createdAt: new Date() },
-  { id: 903, kind: "expense", studentId: null, groupId: 1, amount: "60", dueDate: null, paidAt: new Date(), description: "مستلزمات تشغيل", createdAt: new Date() },
+  {
+    id: 901,
+    kind: "subscription",
+    studentId: 1,
+    groupId: 1,
+    amount: "180",
+    dueDate: new Date(),
+    paidAt: new Date(),
+    description: "اشتراك أغسطس",
+    createdAt: new Date(),
+  },
+  {
+    id: 902,
+    kind: "subscription",
+    studentId: 2,
+    groupId: 2,
+    amount: "150",
+    dueDate: new Date(Date.now() - 86_400_000 * 3),
+    paidAt: null,
+    description: "اشتراك مستحق",
+    createdAt: new Date(),
+  },
+  {
+    id: 903,
+    kind: "expense",
+    studentId: null,
+    groupId: 1,
+    amount: "60",
+    dueDate: null,
+    paidAt: new Date(),
+    description: "مستلزمات تشغيل",
+    createdAt: new Date(),
+  },
 ];
 
-function useStore<T>(key: string, fallback: T) { const [value, setValue] = useState<T>(() => { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch { return fallback; } }); useEffect(() => localStorage.setItem(key, JSON.stringify(value)), [key, value]); return [value, setValue] as const; }
+function useStore<T>(key: string, fallback: T) {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(key) || "null") ?? fallback;
+    } catch {
+      return fallback;
+    }
+  });
+  useEffect(
+    () => localStorage.setItem(key, JSON.stringify(value)),
+    [key, value]
+  );
+  return [value, setValue] as const;
+}
 
-function Shell({ children, profile, setProfile }: { children: React.ReactNode; profile: any; setProfile: (p: any) => void }) {
-  const [location, setLocation] = useLocation(); const [dark, setDark] = useState(true); const showProfile = location === "/profile"; const { language, setLanguage, t, isRtl } = useLanguage(); const [workspace] = useWorkspace();
-  useEffect(() => { document.documentElement.classList.toggle("light", !dark); }, [dark]);
-  const backup = () => { const data = { profile, groups: JSON.parse(localStorage.getItem("groups") || "[]"), students: JSON.parse(localStorage.getItem("students") || "[]") }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ostazi-backup.json"; a.click(); toast.success("تم تحميل النسخة الاحتياطية"); };
+function Shell({
+  children,
+  profile,
+  setProfile,
+}: {
+  children: React.ReactNode;
+  profile: any;
+  setProfile: (p: any) => void;
+}) {
+  const [location, setLocation] = useLocation();
+  const [dark, setDark] = useState(true);
+  const showProfile = location === "/profile";
+  const { language, setLanguage, t, isRtl } = useLanguage();
+  const [workspace] = useWorkspace();
+  useGroupEndAlert();
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", !dark);
+  }, [dark]);
+  const backup = () => {
+    const data = {
+      profile,
+      groups: JSON.parse(localStorage.getItem("groups") || "[]"),
+      students: JSON.parse(localStorage.getItem("students") || "[]"),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ostazi-backup.json";
+    a.click();
+    toast.success("تم تحميل النسخة الاحتياطية");
+  };
   const profileMark = profile?.name?.match(/[ء-ي]/)?.[0] || "أ";
   const isHomePage = location === "/";
   const navTitle = nav.find(item => item[0] === location)?.[1];
-  const translatedTitle = isHomePage ? `${t("greeting")} ${profile?.name || t("teacher")}` : location === "/assessments" ? t("weeklyExams") : location === "/reports" ? t("contextReports") : location.startsWith("/settings") ? t("settings") : navTitle ? t(navTitle) : t("home");
-  const workspaceLabel = workspaces.find(item => item.id === workspace)?.label || t("center");
-  return <><style>{`.groups-toolbar .filter-row>.filters:first-child{display:none!important}@media(max-width:620px){.top-actions{gap:6px}.top-actions .topbar-group-sort{display:inline-flex!important;align-items:center;padding:7px 8px;font-size:10px;white-space:nowrap}.top-actions .topbar-group-sort select{max-width:80px;padding:0;border:0;background:transparent;color:var(--blue);font:inherit}.top-actions .report-entry{display:none}}`}</style><div className="app-shell ios-shell" dir={isRtl ? "rtl" : "ltr"}>
-    <aside className="sidebar ios-sidebar"><div className="brand"><div className="brand-mark">أ</div><div><b>El Mister</b><span>{t("brandSubtitle")}</span></div></div><div className="date-chip">{t("personalWorkspace")}</div><nav>{nav.map(([href, label, Icon]) => <Link href={href} key={href} className={location === href ? "active" : ""}><Icon size={18}/><span>{t(label)}</span>{location === href && (isRtl ? <ChevronLeft size={15} className="nav-arrow"/> : <ChevronRight size={15} className="nav-arrow"/>)}</Link>)}</nav><div className="sidebar-bottom"><button onClick={() => setLanguage(language === "ar" ? "en" : "ar")}><span className="icon-box"><Globe2 size={17}/></span>{language === "ar" ? t("english") : t("arabic")}</button><button onClick={() => setDark(!dark)}><span className="icon-box">{dark ? <Sun size={17}/> : <Moon size={17}/>}</span>{dark ? t("lightMode") : t("darkMode")}</button><button onClick={backup}><span className="icon-box"><Download size={17}/></span>{t("backup")}</button><button onClick={() => setLocation("/settings")}><span className="icon-box"><Settings size={17}/></span>{t("settings")}</button></div></aside>
-    <main className="main"><header className={`topbar ${isHomePage ? "topbar-home" : "topbar-section"}`}><div className="topbar-heading"><span className="topbar-kicker">{isHomePage ? t("personalWorkspace") : workspaceLabel}</span><h1>{translatedTitle}</h1></div><div className="topbar-controls"><WorkspaceSwitcher/><div className="top-actions">{location === "/groups" && <GroupSortPicker/>}<button className="secondary report-entry" onClick={() => setLocation("/reports")}><BarChart3 size={16}/> {t("reports")}</button><button className="icon-button" aria-label={t("notifications")} onClick={() => toast.success(language === "ar" ? "لا توجد تنبيهات جديدة" : "No new notifications")}><Bell size={19}/><i/></button><button className="avatar" aria-label={t("profile")} onClick={() => setLocation("/profile")}>{profileMark}</button></div></div></header>{children}</main>
-    {showProfile && <TeacherSocialProfile profile={profile} setProfile={setProfile} close={() => setLocation("/")} />}
-  </div></>;
+  const translatedTitle = isHomePage
+    ? `${t("greeting")} ${profile?.name || t("teacher")}`
+    : location === "/assessments"
+      ? t("weeklyExams")
+      : location === "/reports"
+        ? t("contextReports")
+        : location.startsWith("/settings")
+          ? t("settings")
+          : navTitle
+            ? t(navTitle)
+            : t("home");
+  const workspaceLabel =
+    workspaces.find(item => item.id === workspace)?.label || t("center");
+  return (
+    <>
+      <style>{`.groups-toolbar .filter-row>.filters:first-child{display:none!important}@media(max-width:620px){.top-actions{gap:6px}.top-actions .topbar-group-sort{display:inline-flex!important;align-items:center;padding:7px 8px;font-size:10px;white-space:nowrap}.top-actions .topbar-group-sort select{max-width:80px;padding:0;border:0;background:transparent;color:var(--blue);font:inherit}.top-actions .report-entry{display:none}}`}</style>
+      <div className="app-shell ios-shell" dir={isRtl ? "rtl" : "ltr"}>
+        <aside className="sidebar ios-sidebar">
+          <div className="brand">
+            <div className="brand-mark">أ</div>
+            <div>
+              <b>El Mister</b>
+              <span>{t("brandSubtitle")}</span>
+            </div>
+          </div>
+          <div className="date-chip">{t("personalWorkspace")}</div>
+          <nav>
+            {nav.map(([href, label, Icon]) => (
+              <Link
+                href={href}
+                key={href}
+                className={location === href ? "active" : ""}
+              >
+                <Icon size={18} />
+                <span>{t(label)}</span>
+                {location === href &&
+                  (isRtl ? (
+                    <ChevronLeft size={15} className="nav-arrow" />
+                  ) : (
+                    <ChevronRight size={15} className="nav-arrow" />
+                  ))}
+              </Link>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <button
+              onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
+            >
+              <span className="icon-box">
+                <Globe2 size={17} />
+              </span>
+              {language === "ar" ? t("english") : t("arabic")}
+            </button>
+            <button onClick={() => setDark(!dark)}>
+              <span className="icon-box">
+                {dark ? <Sun size={17} /> : <Moon size={17} />}
+              </span>
+              {dark ? t("lightMode") : t("darkMode")}
+            </button>
+            <button onClick={backup}>
+              <span className="icon-box">
+                <Download size={17} />
+              </span>
+              {t("backup")}
+            </button>
+            <button onClick={() => setLocation("/settings")}>
+              <span className="icon-box">
+                <Settings size={17} />
+              </span>
+              {t("settings")}
+            </button>
+          </div>
+        </aside>
+        <main className="main">
+          <header
+            className={`topbar ${isHomePage ? "topbar-home" : "topbar-section"}`}
+          >
+            <div className="topbar-heading">
+              <span className="topbar-kicker">
+                {isHomePage ? t("personalWorkspace") : workspaceLabel}
+              </span>
+              <h1>{translatedTitle}</h1>
+            </div>
+            <div className="topbar-controls">
+              <WorkspaceSwitcher />
+              <div className="top-actions">
+                {location === "/groups" && <GroupSortPicker />}
+                <button
+                  className="secondary report-entry"
+                  onClick={() => setLocation("/reports")}
+                >
+                  <BarChart3 size={16} /> {t("reports")}
+                </button>
+                <button
+                  className="icon-button"
+                  aria-label={t("notifications")}
+                  onClick={() =>
+                    toast.success(
+                      language === "ar"
+                        ? "لا توجد تنبيهات جديدة"
+                        : "No new notifications"
+                    )
+                  }
+                >
+                  <Bell size={19} />
+                  <i />
+                </button>
+                <button
+                  className="avatar"
+                  aria-label={t("profile")}
+                  onClick={() => setLocation("/profile")}
+                >
+                  {profileMark}
+                </button>
+              </div>
+            </div>
+          </header>
+          {children}
+        </main>
+        {showProfile && (
+          <TeacherSocialProfile
+            profile={profile}
+            setProfile={setProfile}
+            close={() => setLocation("/")}
+          />
+        )}
+      </div>
+    </>
+  );
 }
 
-function ProfileModal({ profile, setProfile, close }: { profile: any; setProfile: (p: any) => void; close: () => void }) { const saveProfile = trpc.app.profile.save.useMutation(); const uploadAvatar = trpc.app.profile.uploadAvatar.useMutation(); const configurePhoneLogin = trpc.teacherAuth.configure.useMutation(); const [name, setName] = useState(profile?.name || ""); const [phone, setPhone] = useState(profile?.phone || ""); const [subject, setSubject] = useState(profile?.subject || ""); const [password, setPassword] = useState(""); const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || ""); const upload = (file?: File) => { if (!file) return; if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 2_500_000) return toast.error("اختر صورة PNG أو JPG أو WEBP بحجم لا يتجاوز 2.5 ميجابايت"); const reader = new FileReader(); reader.onload = () => uploadAvatar.mutate({ imageDataUrl: String(reader.result) }, { onSuccess: data => { setAvatarUrl(data?.avatarUrl || ""); setProfile({ ...profile, ...data }); toast.success("تم تحديث الصورة الشخصية"); }, onError: error => toast.error(error.message) }); reader.readAsDataURL(file); }; const save = async () => { if (!name || !subject) return toast.error("أكمل الاسم والمادة أولاً"); try { const next = await saveProfile.mutateAsync({ name, phone, subject, avatarUrl: avatarUrl || null, displayMode: getDisplayMode(profile) }); if (password) await configurePhoneLogin.mutateAsync({ phone, password }); setProfile(mergeTeacherProfile(profile, { ...next, name, phone, subject, avatarUrl })); close(); toast.success(password ? "تم حفظ الملف وتفعيل دخول الهاتف" : "تم حفظ بياناتك ومزامنتها"); } catch (error: any) { toast.error(error?.message || "تعذر حفظ بياناتك الآن"); } }; return <div className="modal-backdrop"><div className="modal teacher-profile-modal"><button className="modal-close" onClick={close}><X size={18}/></button><div className="teacher-profile-identity"><div className="teacher-profile-photo">{avatarUrl ? <img src={avatarUrl} alt="الصورة الشخصية للمعلم"/> : <span>{name.trim().match(/[ء-ي]/)?.[0] || "أ"}</span>}<label className="teacher-photo-edit">تغيير الصورة<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => upload(event.target.files?.[0])}/></label></div><div><span className="modal-kicker">ملفك الشخصي</span><h2>{name || "بيانات المعلم"}</h2><p>هذه البيانات تظهر في مساحة المعلم ورسائله.</p></div></div><label>اسم المعلم<input value={name} onChange={e => setName(e.target.value)} placeholder="مثال: أ/ أحمد محمود"/></label><label>رقم الهاتف / واتساب<input value={phone} onChange={e => setPhone(e.target.value)} placeholder="01xxxxxxxxx" inputMode="tel"/></label><label>المادة الأساسية<select value={subject} onChange={e => setSubject(e.target.value)}><option value="">اختر المادة</option>{subjects.map(s => <option key={s}>{s}</option>)}</select></label><label>كلمة مرور دخول الهاتف <small>اتركها فارغة إن لم ترد تغييرها</small><input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="8 أحرف على الأقل" autoComplete="new-password"/></label><button className="primary wide" disabled={saveProfile.isPending || configurePhoneLogin.isPending} onClick={save}>{password ? "حفظ وتفعيل دخول الهاتف" : "حفظ التعديلات"}</button></div></div> }
+function ProfileModal({
+  profile,
+  setProfile,
+  close,
+}: {
+  profile: any;
+  setProfile: (p: any) => void;
+  close: () => void;
+}) {
+  const saveProfile = trpc.app.profile.save.useMutation();
+  const uploadAvatar = trpc.app.profile.uploadAvatar.useMutation();
+  const configurePhoneLogin = trpc.teacherAuth.configure.useMutation();
+  const [name, setName] = useState(profile?.name || "");
+  const [phone, setPhone] = useState(profile?.phone || "");
+  const [subject, setSubject] = useState(profile?.subject || "");
+  const [password, setPassword] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || "");
+  const upload = (file?: File) => {
+    if (!file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 2_500_000)
+      return toast.error(
+        "اختر صورة PNG أو JPG أو WEBP بحجم لا يتجاوز 2.5 ميجابايت"
+      );
+    const reader = new FileReader();
+    reader.onload = () =>
+      uploadAvatar.mutate(
+        { imageDataUrl: String(reader.result) },
+        {
+          onSuccess: data => {
+            setAvatarUrl(data?.avatarUrl || "");
+            setProfile({ ...profile, ...data });
+            toast.success("تم تحديث الصورة الشخصية");
+          },
+          onError: error => toast.error(error.message),
+        }
+      );
+    reader.readAsDataURL(file);
+  };
+  const save = async () => {
+    if (!name || !subject) return toast.error("أكمل الاسم والمادة أولاً");
+    try {
+      const next = await saveProfile.mutateAsync({
+        name,
+        phone,
+        subject,
+        avatarUrl: avatarUrl || null,
+        displayMode: getDisplayMode(profile),
+      });
+      if (password) await configurePhoneLogin.mutateAsync({ phone, password });
+      setProfile(
+        mergeTeacherProfile(profile, {
+          ...next,
+          name,
+          phone,
+          subject,
+          avatarUrl,
+        })
+      );
+      close();
+      toast.success(
+        password
+          ? "تم حفظ الملف وتفعيل دخول الهاتف"
+          : "تم حفظ بياناتك ومزامنتها"
+      );
+    } catch (error: any) {
+      toast.error(error?.message || "تعذر حفظ بياناتك الآن");
+    }
+  };
+  return (
+    <div className="modal-backdrop">
+      <div className="modal teacher-profile-modal">
+        <button className="modal-close" onClick={close}>
+          <X size={18} />
+        </button>
+        <div className="teacher-profile-identity">
+          <div className="teacher-profile-photo">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="الصورة الشخصية للمعلم" />
+            ) : (
+              <span>{name.trim().match(/[ء-ي]/)?.[0] || "أ"}</span>
+            )}
+            <label className="teacher-photo-edit">
+              تغيير الصورة
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={event => upload(event.target.files?.[0])}
+              />
+            </label>
+          </div>
+          <div>
+            <span className="modal-kicker">ملفك الشخصي</span>
+            <h2>{name || "بيانات المعلم"}</h2>
+            <p>هذه البيانات تظهر في مساحة المعلم ورسائله.</p>
+          </div>
+        </div>
+        <label>
+          اسم المعلم
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="مثال: أ/ أحمد محمود"
+          />
+        </label>
+        <label>
+          رقم الهاتف / واتساب
+          <input
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="01xxxxxxxxx"
+            inputMode="tel"
+          />
+        </label>
+        <label>
+          المادة الأساسية
+          <select value={subject} onChange={e => setSubject(e.target.value)}>
+            <option value="">اختر المادة</option>
+            {subjects.map(s => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          كلمة مرور دخول الهاتف <small>اتركها فارغة إن لم ترد تغييرها</small>
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="8 أحرف على الأقل"
+            autoComplete="new-password"
+          />
+        </label>
+        <button
+          className="primary wide"
+          disabled={saveProfile.isPending || configurePhoneLogin.isPending}
+          onClick={save}
+        >
+          {password ? "حفظ وتفعيل دخول الهاتف" : "حفظ التعديلات"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
-const getDisplayMode = (profile: any, fallback = "ليلي") => (profile?.displayMode || fallback) as "ليلي" | "عادي" | "أوتوماتيك";
-function Stat({ label, value, note, icon: Icon, tone = "blue", onClick }: any) { const content = <><div className="stat-icon"><Icon size={18}/></div><div><span>{label}</span><strong>{value}</strong><small>{note}</small></div></>; return onClick ? <button type="button" className={`stat stat-${tone} stat-clickable`} onClick={onClick}>{content}</button> : <div className={`stat stat-${tone}`}>{content}</div> }
-function SectionTitle({ kicker, title, action }: any) { return <div className="section-title"><div><span className="eyebrow">{kicker}</span><h2>{title}</h2></div>{action}</div> }
-function Empty({ icon: Icon, title, text, action }: any) { return <div className="empty"><div className="empty-icon"><Icon size={25}/></div><h3>{title}</h3><p>{text}</p>{action}</div> }
-function downloadBase64File(contentBase64: string, filename: string) { const bytes = Uint8Array.from(atob(contentBase64), c => c.charCodeAt(0)); const blob = new Blob([bytes], { type: "application/pdf" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); toast.success("تم تنزيل تقرير PDF"); }
-function StudentCard({ student, close }: { student: Student; close: () => void }) {
+const getDisplayMode = (profile: any, fallback = "ليلي") =>
+  (profile?.displayMode || fallback) as "ليلي" | "عادي" | "أوتوماتيك";
+function Stat({ label, value, note, icon: Icon, tone = "blue", onClick }: any) {
+  const content = (
+    <>
+      <div className="stat-icon">
+        <Icon size={18} />
+      </div>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{note}</small>
+      </div>
+    </>
+  );
+  return onClick ? (
+    <button
+      type="button"
+      className={`stat stat-${tone} stat-clickable`}
+      onClick={onClick}
+    >
+      {content}
+    </button>
+  ) : (
+    <div className={`stat stat-${tone}`}>{content}</div>
+  );
+}
+function SectionTitle({ kicker, title, action }: any) {
+  return (
+    <div className="section-title">
+      <div>
+        <span className="eyebrow">{kicker}</span>
+        <h2>{title}</h2>
+      </div>
+      {action}
+    </div>
+  );
+}
+function Empty({ icon: Icon, title, text, action }: any) {
+  return (
+    <div className="empty">
+      <div className="empty-icon">
+        <Icon size={25} />
+      </div>
+      <h3>{title}</h3>
+      <p>{text}</p>
+      {action}
+    </div>
+  );
+}
+function downloadBase64File(contentBase64: string, filename: string) {
+  const bytes = Uint8Array.from(atob(contentBase64), c => c.charCodeAt(0));
+  const blob = new Blob([bytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success("تم تنزيل تقرير PDF");
+}
+function StudentCard({
+  student,
+  close,
+}: {
+  student: Student;
+  close: () => void;
+}) {
   const [qr, setQr] = useState("");
-  const groupsQuery = trpc.app.groups.list.useQuery(undefined, { retry: false });
+  const groupsQuery = trpc.app.groups.list.useQuery(undefined, {
+    retry: false,
+  });
   const code = displayStudentCode(student.studentCode, student.id);
   const group = groupsQuery.data?.find(item => item.name === student.group);
-  const remaining = Math.max(0, Number(group?.fee || 0) - Number(student.paidAmount || 0));
-  const phone = (student.guardianPhone || student.phone || "").replace(/\D/g, "");
-  const message = encodeURIComponent(formatOutstandingWhatsAppMessage({ studentName: student.name, groupName: student.group, remainingAmount: remaining, collectionPeriod: group?.collectionPeriod }));
-  const subscriptionMessage = encodeURIComponent(formatSubscriptionWhatsAppMessage({ studentName: student.name, groupName: student.group, joinedAt: student.joinedGroupAt || student.createdAt, paidAmount: Number(student.paidAmount || 0), remainingAmount: remaining }));
-  useEffect(() => { QRCode.toDataURL(code, { margin: 1, width: 180 }).then(setQr).catch(() => setQr("")); }, [code]);
-  return <div className="modal-backdrop"><div className="student-card-modal"><button className="modal-close" onClick={close}><X size={18}/></button><div className="student-card-print" id="student-card-print"><div className="student-card-brand">أستاذي <span>بطاقة طالب</span></div><div className="student-card-main"><div><b>{student.name}</b><span>{student.group}</span><small>كود الطالب: {code}</small><small>الصف: {student.grade || "غير مضاف"}</small><small>الانضمام: {student.joinedGroupAt || student.createdAt ? new Date(student.joinedGroupAt || student.createdAt!).toLocaleDateString("ar-EG") : "غير مضاف"}</small>{student.guardianName && <small>ولي الأمر: {student.guardianName}</small>}</div>{qr && <img src={qr} alt={`QR ${code}`} />}</div><div className="student-card-payment"><span>{collectionPeriodLabel(group?.collectionPeriod)} · {Number(group?.fee || 0).toLocaleString("ar-EG")} ج.م</span><span>دفع: {Number(student.paidAmount || 0).toLocaleString("ar-EG")} ج.م</span><strong className={remaining > 0 ? "card-due" : "card-paid"}>{remaining > 0 ? `! المتبقي ${remaining.toLocaleString("ar-EG")} ج.م` : "✓ الحساب مسدد"}</strong></div><div className="student-card-footer"><span>{student.phone || "بدون هاتف"}</span><strong>{remaining > 0 ? "يرجى سداد المتبقي" : "تم تأكيد الاشتراك"}</strong></div></div><div className="student-card-actions"><a className="secondary" href={`/students/${student.id}`}>فتح بروفايل الطالب</a>{phone && <button className="secondary" onClick={() => window.open(`https://wa.me/${phone}?text=${subscriptionMessage}`, "_blank", "noopener,noreferrer")}>رسالة الاشتراك</button>}{remaining > 0 && phone && <button className="secondary" onClick={() => window.open(`https://wa.me/${phone}?text=${message}`, "_blank", "noopener,noreferrer")}>تذكير بالمبلغ</button>}<button className="primary" onClick={() => window.print()}>طباعة البطاقة</button></div></div></div>;
+  const remaining = Math.max(
+    0,
+    Number(group?.fee || 0) - Number(student.paidAmount || 0)
+  );
+  const phone = (student.guardianPhone || student.phone || "").replace(
+    /\D/g,
+    ""
+  );
+  const message = encodeURIComponent(
+    formatOutstandingWhatsAppMessage({
+      studentName: student.name,
+      groupName: student.group,
+      remainingAmount: remaining,
+      collectionPeriod: group?.collectionPeriod,
+    })
+  );
+  const subscriptionMessage = encodeURIComponent(
+    formatSubscriptionWhatsAppMessage({
+      studentName: student.name,
+      groupName: student.group,
+      joinedAt: student.joinedGroupAt || student.createdAt,
+      paidAmount: Number(student.paidAmount || 0),
+      remainingAmount: remaining,
+    })
+  );
+  useEffect(() => {
+    QRCode.toDataURL(code, { margin: 1, width: 180 })
+      .then(setQr)
+      .catch(() => setQr(""));
+  }, [code]);
+  return (
+    <div className="modal-backdrop">
+      <div className="student-card-modal">
+        <button className="modal-close" onClick={close}>
+          <X size={18} />
+        </button>
+        <div className="student-card-print" id="student-card-print">
+          <div className="student-card-brand">
+            أستاذي <span>بطاقة طالب</span>
+          </div>
+          <div className="student-card-main">
+            <div>
+              <b>{student.name}</b>
+              <span>{student.group}</span>
+              <small>كود الطالب: {code}</small>
+              <small>الصف: {student.grade || "غير مضاف"}</small>
+              <small>
+                الانضمام:{" "}
+                {student.joinedGroupAt || student.createdAt
+                  ? new Date(
+                      student.joinedGroupAt || student.createdAt!
+                    ).toLocaleDateString("ar-EG")
+                  : "غير مضاف"}
+              </small>
+              {student.guardianName && (
+                <small>ولي الأمر: {student.guardianName}</small>
+              )}
+            </div>
+            {qr && <img src={qr} alt={`QR ${code}`} />}
+          </div>
+          <div className="student-card-payment">
+            <span>
+              {collectionPeriodLabel(group?.collectionPeriod)} ·{" "}
+              {Number(group?.fee || 0).toLocaleString("ar-EG")} ج.م
+            </span>
+            <span>
+              دفع: {Number(student.paidAmount || 0).toLocaleString("ar-EG")} ج.م
+            </span>
+            <strong className={remaining > 0 ? "card-due" : "card-paid"}>
+              {remaining > 0
+                ? `! المتبقي ${remaining.toLocaleString("ar-EG")} ج.م`
+                : "✓ الحساب مسدد"}
+            </strong>
+          </div>
+          <div className="student-card-footer">
+            <span>{student.phone || "بدون هاتف"}</span>
+            <strong>
+              {remaining > 0 ? "يرجى سداد المتبقي" : "تم تأكيد الاشتراك"}
+            </strong>
+          </div>
+        </div>
+        <div className="student-card-actions">
+          <a className="secondary" href={`/students/${student.id}`}>
+            فتح بروفايل الطالب
+          </a>
+          {phone && (
+            <button
+              className="secondary"
+              onClick={() =>
+                window.open(
+                  `https://wa.me/${phone}?text=${subscriptionMessage}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+            >
+              رسالة الاشتراك
+            </button>
+          )}
+          {remaining > 0 && phone && (
+            <button
+              className="secondary"
+              onClick={() =>
+                window.open(
+                  `https://wa.me/${phone}?text=${message}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+            >
+              تذكير بالمبلغ
+            </button>
+          )}
+          <button className="primary" onClick={() => window.print()}>
+            طباعة البطاقة
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
-function QuickAttendance({ students, onCheckin }: { students: Student[]; onCheckin: (student: Student) => void }) { const [code, setCode] = useState(""); const [cameraOpen, setCameraOpen] = useState(false); const videoRef = useRef<HTMLVideoElement>(null); useEffect(() => { if (!cameraOpen || !navigator.mediaDevices?.getUserMedia) return; let stream: MediaStream | null = null; let timer: number | undefined; const start = async () => { try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }); if (videoRef.current) videoRef.current.srcObject = stream; const Detector = (window as any).BarcodeDetector; if (!Detector) return; const detector = new Detector({ formats: ["qr_code", "code_128", "ean_13"] }); timer = window.setInterval(async () => { if (!videoRef.current || videoRef.current.readyState < 2) return; try { const results = await detector.detect(videoRef.current); const value = results[0]?.rawValue; if (value) { setCode(value); const match = students.find(student => (student.studentCode || `ST-${student.id}`) === value); if (match) { onCheckin(match); setCameraOpen(false); } } } catch {} }, 500); } catch { toast.error("تعذر تشغيل الكاميرا"); setCameraOpen(false); } }; start(); return () => { if (timer) window.clearInterval(timer); stream?.getTracks().forEach(track => track.stop()); }; }, [cameraOpen, onCheckin, students]); const submit = () => { const normalized = code.trim().toLowerCase(); const match = students.find(student => (student.studentCode || `ST-${student.id}`).toLowerCase() === normalized || String(student.id) === normalized); if (!match) return toast.error("لم يتم العثور على طالب بهذا الكود"); onCheckin(match); setCode(""); }; return <div className="attendance-checkin panel"><div className="checkin-copy"><span className="eyebrow">تسجيل لحظي</span><h3>تسجيل حضور سريع</h3><p>امسح QR أو اكتب كود الطالب لتسجيل حضوره في حصة اليوم.</p></div><div className="checkin-controls"><div className="search"><CheckCircle2 size={18}/><input aria-label="كود الطالب" value={code} onChange={event => setCode(event.target.value)} onKeyDown={event => event.key === "Enter" && submit()} inputMode="numeric" maxLength={4} placeholder="1234"/><button className="primary" type="button" onClick={submit}>تسجيل</button></div><button className="secondary" type="button" onClick={() => setCameraOpen(open => !open)}><Camera size={16}/> {cameraOpen ? "إيقاف الكاميرا" : "فتح الكاميرا"}</button></div>{cameraOpen && <div className="camera-preview"><video ref={videoRef} autoPlay muted playsInline/><small>{"BarcodeDetector" in window ? "وجّه الكاميرا إلى كود الطالب" : "المتصفح لا يدعم المسح التلقائي؛ استخدم الإدخال اليدوي"}</small></div>}</div> }
-function GroupAttendanceRoster({ group, students, attendanceRows, onMark }: { group: Group; students: Student[]; attendanceRows: any[]; onMark: (student: Student, status: "present" | "absent" | "late") => void }) {
-  const roster = studentsForGroup(students, group.name).map(student => ({ student, status: attendanceRows.find(row => row.studentId === student.id)?.status as "present" | "absent" | "late" | undefined })).sort((a, b) => Number(b.status === "late") - Number(a.status === "late"));
+function QuickAttendance({
+  students,
+  onCheckin,
+}: {
+  students: Student[];
+  onCheckin: (student: Student) => void;
+}) {
+  const [code, setCode] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (!cameraOpen || !navigator.mediaDevices?.getUserMedia) return;
+    let stream: MediaStream | null = null;
+    let timer: number | undefined;
+    const start = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        if (videoRef.current) videoRef.current.srcObject = stream;
+        const Detector = (window as any).BarcodeDetector;
+        if (!Detector) return;
+        const detector = new Detector({
+          formats: ["qr_code", "code_128", "ean_13"],
+        });
+        timer = window.setInterval(async () => {
+          if (!videoRef.current || videoRef.current.readyState < 2) return;
+          try {
+            const results = await detector.detect(videoRef.current);
+            const value = results[0]?.rawValue;
+            if (value) {
+              setCode(value);
+              const match = students.find(
+                student => (student.studentCode || `ST-${student.id}`) === value
+              );
+              if (match) {
+                onCheckin(match);
+                setCameraOpen(false);
+              }
+            }
+          } catch {}
+        }, 500);
+      } catch {
+        toast.error("تعذر تشغيل الكاميرا");
+        setCameraOpen(false);
+      }
+    };
+    start();
+    return () => {
+      if (timer) window.clearInterval(timer);
+      stream?.getTracks().forEach(track => track.stop());
+    };
+  }, [cameraOpen, onCheckin, students]);
+  const submit = () => {
+    const normalized = code.trim().toLowerCase();
+    const match = students.find(
+      student =>
+        (student.studentCode || `ST-${student.id}`).toLowerCase() ===
+          normalized || String(student.id) === normalized
+    );
+    if (!match) return toast.error("لم يتم العثور على طالب بهذا الكود");
+    onCheckin(match);
+    setCode("");
+  };
+  return (
+    <div className="attendance-checkin panel">
+      <div className="checkin-copy">
+        <span className="eyebrow">تسجيل لحظي</span>
+        <h3>تسجيل حضور سريع</h3>
+        <p>امسح QR أو اكتب كود الطالب لتسجيل حضوره في حصة اليوم.</p>
+      </div>
+      <div className="checkin-controls">
+        <div className="search">
+          <CheckCircle2 size={18} />
+          <input
+            aria-label="كود الطالب"
+            value={code}
+            onChange={event => setCode(event.target.value)}
+            onKeyDown={event => event.key === "Enter" && submit()}
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="1234"
+          />
+          <button className="primary" type="button" onClick={submit}>
+            تسجيل
+          </button>
+        </div>
+        <button
+          className="secondary"
+          type="button"
+          onClick={() => setCameraOpen(open => !open)}
+        >
+          <Camera size={16} /> {cameraOpen ? "إيقاف الكاميرا" : "فتح الكاميرا"}
+        </button>
+      </div>
+      {cameraOpen && (
+        <div className="camera-preview">
+          <video ref={videoRef} autoPlay muted playsInline />
+          <small>
+            {"BarcodeDetector" in window
+              ? "وجّه الكاميرا إلى كود الطالب"
+              : "المتصفح لا يدعم المسح التلقائي؛ استخدم الإدخال اليدوي"}
+          </small>
+        </div>
+      )}
+    </div>
+  );
+}
+function GroupAttendanceRoster({
+  group,
+  students,
+  attendanceRows,
+  onMark,
+}: {
+  group: Group;
+  students: Student[];
+  attendanceRows: any[];
+  onMark: (student: Student, status: "present" | "absent" | "late") => void;
+}) {
+  const roster = studentsForGroup(students, group.name)
+    .map(student => ({
+      student,
+      status: attendanceRows.find(row => row.studentId === student.id)
+        ?.status as "present" | "absent" | "late" | undefined,
+    }))
+    .sort((a, b) => Number(b.status === "late") - Number(a.status === "late"));
   const labels = { present: "حاضر", absent: "غائب", late: "متأخر" } as const;
-  return <div className="group-attendance-roster"><div className="attendance-roster-heading"><span>حضور حصة اليوم</span><div><small>المتأخرون يظهرون أولًا</small><a className="mini-profile-link" href={`/groups/${group.id}`}>بروفايل المجموعة</a></div></div>{roster.length ? roster.map(({ student, status }) => { const remaining = Math.max(0, Number(group.fee || 0) - Number(student.paidAmount || 0)); const phone = (student.guardianPhone || student.phone || "").replace(/\D/g, ""); const message = encodeURIComponent(formatOutstandingWhatsAppMessage({ studentName: student.name, groupName: group.name, remainingAmount: remaining, collectionPeriod: group.collectionPeriod })); return <div className={`roster-student ${status === "late" ? "is-late" : ""}`} key={student.id}><div className="roster-student-name"><span className="student-avatar">{student.name.slice(0, 1)}</span><div><a className="roster-profile-link" href={`/students/${student.id}`}>{student.name}</a><small>{status ? labels[status] : "لم يُسجل بعد"}{remaining > 0 ? ` · متبقي ${remaining} ج.م` : " · مسدد"}</small></div></div><div className="roster-actions"><button type="button" className={status === "present" ? "selected present" : ""} onClick={() => onMark(student, "present")}>حاضر</button><button type="button" className={status === "late" ? "selected late" : ""} onClick={() => onMark(student, "late")}>متأخر</button><button type="button" className={status === "absent" ? "selected absent" : ""} onClick={() => onMark(student, "absent")}>غائب</button>{remaining > 0 && phone && <button type="button" className="roster-whatsapp" onClick={() => window.open(`https://wa.me/${phone}?text=${message}`, "_blank")}>واتساب</button>}</div></div>; }) : <div className="empty-inline">لا يوجد طلاب مرتبطون بهذه المجموعة بعد.</div>}</div>;
+  return (
+    <div className="group-attendance-roster">
+      <div className="attendance-roster-heading">
+        <span>حضور حصة اليوم</span>
+        <div>
+          <small>المتأخرون يظهرون أولًا</small>
+          <a className="mini-profile-link" href={`/groups/${group.id}`}>
+            بروفايل المجموعة
+          </a>
+        </div>
+      </div>
+      {roster.length ? (
+        roster.map(({ student, status }) => {
+          const remaining = Math.max(
+            0,
+            Number(group.fee || 0) - Number(student.paidAmount || 0)
+          );
+          const phone = (student.guardianPhone || student.phone || "").replace(
+            /\D/g,
+            ""
+          );
+          const message = encodeURIComponent(
+            formatOutstandingWhatsAppMessage({
+              studentName: student.name,
+              groupName: group.name,
+              remainingAmount: remaining,
+              collectionPeriod: group.collectionPeriod,
+            })
+          );
+          return (
+            <div
+              className={`roster-student ${status === "late" ? "is-late" : ""}`}
+              key={student.id}
+            >
+              <div className="roster-student-name">
+                <span className="student-avatar">
+                  {student.name.slice(0, 1)}
+                </span>
+                <div>
+                  <a
+                    className="roster-profile-link"
+                    href={`/students/${student.id}`}
+                  >
+                    {student.name}
+                  </a>
+                  <small>
+                    {status ? labels[status] : "لم يُسجل بعد"}
+                    {remaining > 0 ? ` · متبقي ${remaining} ج.م` : " · مسدد"}
+                  </small>
+                </div>
+              </div>
+              <div className="roster-actions">
+                <button
+                  type="button"
+                  className={status === "present" ? "selected present" : ""}
+                  onClick={() => onMark(student, "present")}
+                >
+                  حاضر
+                </button>
+                <button
+                  type="button"
+                  className={status === "late" ? "selected late" : ""}
+                  onClick={() => onMark(student, "late")}
+                >
+                  متأخر
+                </button>
+                <button
+                  type="button"
+                  className={status === "absent" ? "selected absent" : ""}
+                  onClick={() => onMark(student, "absent")}
+                >
+                  غائب
+                </button>
+                {remaining > 0 && phone && (
+                  <button
+                    type="button"
+                    className="roster-whatsapp"
+                    onClick={() =>
+                      window.open(
+                        `https://wa.me/${phone}?text=${message}`,
+                        "_blank"
+                      )
+                    }
+                  >
+                    واتساب
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="empty-inline">
+          لا يوجد طلاب مرتبطون بهذه المجموعة بعد.
+        </div>
+      )}
+    </div>
+  );
 }
-function FinancePanel({ rows, students, groups, onCreate, onSettle }: { rows: any[]; students: Student[]; groups: Group[]; onCreate: (input: any) => void; onSettle: (id: number) => void }) { const [kind, setKind] = useState<"subscription" | "expense">("subscription"); const [scopeFilter, setScopeFilter] = useState("all"); const [groupFilter, setGroupFilter] = useState("all"); const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth())); const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "remaining">("all"); const [studentId, setStudentId] = useState(""); const [groupId, setGroupId] = useState(""); const [amount, setAmount] = useState(""); const [description, setDescription] = useState(""); const [dueDate, setDueDate] = useState(""); const studentName = (id: number | null) => students.find(student => student.id === id)?.name || "عام"; const filteredRows = rows.filter(row => { const scopeMatch = scopeFilter === "all" || (scopeFilter === "private" ? !row.groupId : Boolean(row.groupId)); const groupMatch = groupFilter === "all" || String(row.groupId) === groupFilter; const date = row.dueDate ? new Date(row.dueDate) : row.createdAt ? new Date(row.createdAt) : new Date(); const monthMatch = monthFilter === "all" || String(date.getMonth()) === monthFilter; const statusMatch = statusFilter === "all" || (statusFilter === "paid" ? Boolean(row.paidAt) : !row.paidAt); return scopeMatch && groupMatch && monthMatch && statusMatch; }); const income = filteredRows.filter(row => row.kind === "subscription" && row.paidAt).reduce((sum, row) => sum + Number(row.amount), 0); const expenses = filteredRows.filter(row => row.kind === "expense").reduce((sum, row) => sum + Number(row.amount), 0); const overdue = filteredRows.filter(row => row.kind === "subscription" && !row.paidAt && row.dueDate && new Date(row.dueDate) < new Date()); const submit = () => { if (!amount || Number(amount) <= 0) return toast.error("اكتب مبلغًا صحيحًا"); onCreate({ kind, amount, studentId: studentId ? Number(studentId) : null, groupId: groupId ? Number(groupId) : null, dueDate: dueDate ? new Date(`${dueDate}T23:59:59`) : null, paidAt: kind === "expense" ? new Date() : null, description: description || (kind === "expense" ? "مصروف تشغيلي" : "اشتراك طالب") }); setAmount(""); setDescription(""); setDueDate(""); }; return <><SectionTitle kicker="الخزينة والمستحقات" title="السجل المالي" action={<div className="action-row"><span className="live-pill"><i/> مزامنة سحابية</span><button className="secondary" type="button" onClick={() => window.print()}><Download size={15}/> تصدير السجل PDF</button></div>}/><div className="finance-filter-panel panel"><div className="finance-filter-grid"><label>تصفية حسب<select value={scopeFilter} onChange={event => setScopeFilter(event.target.value)}><option value="all">كل المجموعات والبرايفت</option><option value="private">البرايفت فقط</option><option value="groups">المجموعات فقط</option></select></label><label>اختار المجموعة<select value={groupFilter} onChange={event => setGroupFilter(event.target.value)}><option value="all">كل المجموعات</option>{groups.map(group => <option key={group.id} value={String(group.id)}>{group.name}</option>)}</select></label><label>الفترة المالية<select value={monthFilter} onChange={event => setMonthFilter(event.target.value)}><option value="all">كل الشهور</option>{["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"].map((month, index) => <option key={month} value={String(index)}>{month}</option>)}</select></label></div><div className="finance-status-tabs" role="tablist"><button type="button" className={statusFilter === "all" ? "active" : ""} onClick={() => setStatusFilter("all")}>الكل <b>{filteredRows.length}</b></button><button type="button" className={statusFilter === "paid" ? "active" : ""} onClick={() => setStatusFilter("paid")}>مدفوع <b>{rows.filter(row => Boolean(row.paidAt)).length}</b></button><button type="button" className={statusFilter === "remaining" ? "active" : ""} onClick={() => setStatusFilter("remaining")}>متبقي <b>{rows.filter(row => !row.paidAt && row.kind === "subscription").length}</b></button></div></div><div className="finance-stats"><Stat label="إيرادات محصلة" value={`${income.toLocaleString()} ج.م`} note="اشتراكات مسددة" icon={CircleDollarSign} tone="green"/><Stat label="المصروفات" value={`${expenses.toLocaleString()} ج.م`} note="تشغيلية" icon={WalletCards} tone="red"/><Stat label="صافي الخزينة" value={`${(income - expenses).toLocaleString()} ج.م`} note="إيرادات ناقص مصروفات" icon={BarChart3} tone="gold"/><Stat label="متأخرات" value={overdue.length} note="حالة تحتاج متابعة" icon={AlertTriangle} tone="red"/></div><div className="finance-layout"><div className="panel finance-form"><div className="eyebrow">إضافة حركة</div><h3>تسجيل اشتراك أو مصروف</h3><div className="mode-switch"><button className={kind === "subscription" ? "selected" : ""} onClick={() => setKind("subscription")}>اشتراك</button><button className={kind === "expense" ? "selected" : ""} onClick={() => setKind("expense")}>مصروف</button></div>{kind === "subscription" && <><label>الطالب<select value={studentId} onChange={event => setStudentId(event.target.value)}><option value="">اختر الطالب</option>{students.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}</select></label><label>المجموعة<select value={groupId} onChange={event => setGroupId(event.target.value)}><option value="">اختر المجموعة</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label><label>موعد الاستحقاق<input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)}/></label></>}<label>المبلغ<input inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} placeholder="150"/></label><label>الوصف<input value={description} onChange={event => setDescription(event.target.value)} placeholder="ملاحظة اختيارية"/></label><button className="primary wide" onClick={submit}>حفظ الحركة</button></div><div className="panel overdue-panel"><div className="eyebrow">المتابعة</div><h3>المستحقات المتأخرة</h3>{overdue.length ? overdue.map(row => <div className="overdue-row" key={row.id}><div><b>{studentName(row.studentId)}</b><small>{row.description || "اشتراك"} · {Number(row.amount)} ج.م</small></div><button className="secondary" onClick={() => onSettle(row.id)}>تحصيل</button></div>) : <div className="empty-inline"><CheckCircle2 size={20}/> لا توجد مستحقات متأخرة</div>}</div><div className="panel finance-ledger"><div className="ledger-heading"><div><span className="eyebrow">السجل المالي</span><h3>الحركات المطابقة</h3></div><span>{filteredRows.length} حركة</span></div>{filteredRows.length ? filteredRows.map(row => <div className="finance-row" key={row.id}><div><b>{studentName(row.studentId)}</b><small>{row.description || (row.kind === "expense" ? "مصروف تشغيلي" : "اشتراك طالب")} · {row.dueDate ? new Date(row.dueDate).toLocaleDateString("ar-EG") : "بدون استحقاق"}</small></div><strong className={row.paidAt ? "paid" : "remaining"}>{Number(row.amount).toLocaleString()} ج.م</strong>{row.kind === "subscription" && !row.paidAt ? <button className="secondary" onClick={() => onSettle(row.id)}>تحصيل</button> : <span className="ledger-status">{row.kind === "expense" ? "مصروف" : "مدفوع"}</span>}</div>) : <div className="empty-inline">لا توجد سجلات دفع مطابقة</div>}</div></div></> }
-function BehaviorPanel({ students, groups }: { students: Student[]; groups: Group[] }) { const behaviorQuery = trpc.app.behavior.list.useQuery(); const createBehavior = trpc.app.behavior.create.useMutation({ onSuccess: () => { behaviorQuery.refetch(); toast.success("تم حفظ ملاحظة السلوك"); }, onError: () => toast.error("تعذر حفظ ملاحظة السلوك") }); const [studentId, setStudentId] = useState(""); const [category, setCategory] = useState<"positive" | "warning" | "note">("positive"); const [title, setTitle] = useState(""); const [note, setNote] = useState(""); const [points, setPoints] = useState("0"); const selected = students.find(student => student.id === Number(studentId)); const rows = behaviorQuery.data || []; const submit = () => { if (!studentId || !title.trim()) return toast.error("اختر الطالب واكتب عنوان الملاحظة"); createBehavior.mutate({ studentId: Number(studentId), groupId: groups.find(group => group.name === selected?.group)?.id || null, category, title: title.trim(), note: note.trim() || null, points: Number(points) || 0 }); setTitle(""); setNote(""); setPoints("0"); }; return <><SectionTitle kicker="متابعة الطالب" title="السلوك والملاحظات" action={<span className="live-pill"><i/> سجل سحابي</span>}/><div className="behavior-layout"><div className="panel behavior-form"><div className="eyebrow">إضافة سجل سريع</div><h3>ملاحظة جديدة</h3><label>الطالب<select value={studentId} onChange={event => setStudentId(event.target.value)}><option value="">اختر الطالب</option>{students.map(student => <option key={student.id} value={student.id}>{student.name} · {student.group}</option>)}</select></label><label>نوع الملاحظة<select value={category} onChange={event => setCategory(event.target.value as typeof category)}><option value="positive">إيجابي</option><option value="warning">تنبيه</option><option value="note">ملاحظة</option></select></label><label>العنوان<input value={title} onChange={event => setTitle(event.target.value)} placeholder="مثال: مشاركة مميزة"/></label><label>التفاصيل<textarea value={note} onChange={event => setNote(event.target.value)} placeholder="اكتب ملاحظة مختصرة للمتابعة"/></label><label>النقاط<input inputMode="numeric" value={points} onChange={event => setPoints(event.target.value)} placeholder="0"/></label><button className="primary wide" onClick={submit} disabled={createBehavior.isPending}>حفظ الملاحظة</button></div><div className="panel behavior-history"><div className="eyebrow">السجل</div><h3>آخر ملاحظات الطلاب</h3>{rows.length ? rows.slice(0, 12).map((row: any) => <div className="behavior-row" key={row.id}><div className={`behavior-badge ${row.category}`}><span>{row.category === "positive" ? "إيجابي" : row.category === "warning" ? "تنبيه" : "ملاحظة"}</span></div><div><b>{students.find(student => student.id === row.studentId)?.name || "طالب"}</b><small>{row.title}{row.note ? ` · ${row.note}` : ""}</small></div><strong>{row.points > 0 ? `+${row.points}` : row.points}</strong></div>) : <div className="empty-inline">لم تُسجل ملاحظات سلوكية بعد</div>}</div></div></> }
+function FinancePanel({
+  rows,
+  students,
+  groups,
+  onCreate,
+  onSettle,
+}: {
+  rows: any[];
+  students: Student[];
+  groups: Group[];
+  onCreate: (input: any) => void;
+  onSettle: (id: number) => void;
+}) {
+  const [kind, setKind] = useState<"subscription" | "expense">("subscription");
+  const [scopeFilter, setScopeFilter] = useState("all");
+  const [groupFilter, setGroupFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth()));
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "paid" | "remaining"
+  >("all");
+  const [studentId, setStudentId] = useState("");
+  const [groupId, setGroupId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const studentName = (id: number | null) =>
+    students.find(student => student.id === id)?.name || "عام";
+  const filteredRows = rows.filter(row => {
+    const scopeMatch =
+      scopeFilter === "all" ||
+      (scopeFilter === "private" ? !row.groupId : Boolean(row.groupId));
+    const groupMatch =
+      groupFilter === "all" || String(row.groupId) === groupFilter;
+    const date = row.dueDate
+      ? new Date(row.dueDate)
+      : row.createdAt
+        ? new Date(row.createdAt)
+        : new Date();
+    const monthMatch =
+      monthFilter === "all" || String(date.getMonth()) === monthFilter;
+    const statusMatch =
+      statusFilter === "all" ||
+      (statusFilter === "paid" ? Boolean(row.paidAt) : !row.paidAt);
+    return scopeMatch && groupMatch && monthMatch && statusMatch;
+  });
+  const income = filteredRows
+    .filter(row => row.kind === "subscription" && row.paidAt)
+    .reduce((sum, row) => sum + Number(row.amount), 0);
+  const expenses = filteredRows
+    .filter(row => row.kind === "expense")
+    .reduce((sum, row) => sum + Number(row.amount), 0);
+  const overdue = filteredRows.filter(
+    row =>
+      row.kind === "subscription" &&
+      !row.paidAt &&
+      row.dueDate &&
+      new Date(row.dueDate) < new Date()
+  );
+  const submit = () => {
+    if (!amount || Number(amount) <= 0)
+      return toast.error("اكتب مبلغًا صحيحًا");
+    onCreate({
+      kind,
+      amount,
+      studentId: studentId ? Number(studentId) : null,
+      groupId: groupId ? Number(groupId) : null,
+      dueDate: dueDate ? new Date(`${dueDate}T23:59:59`) : null,
+      paidAt: kind === "expense" ? new Date() : null,
+      description:
+        description || (kind === "expense" ? "مصروف تشغيلي" : "اشتراك طالب"),
+    });
+    setAmount("");
+    setDescription("");
+    setDueDate("");
+  };
+  return (
+    <>
+      <SectionTitle
+        kicker="الخزينة والمستحقات"
+        title="السجل المالي"
+        action={
+          <div className="action-row">
+            <span className="live-pill">
+              <i /> مزامنة سحابية
+            </span>
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => window.print()}
+            >
+              <Download size={15} /> تصدير السجل PDF
+            </button>
+          </div>
+        }
+      />
+      <div className="finance-filter-panel panel">
+        <div className="finance-filter-grid">
+          <label>
+            تصفية حسب
+            <select
+              value={scopeFilter}
+              onChange={event => setScopeFilter(event.target.value)}
+            >
+              <option value="all">كل المجموعات والبرايفت</option>
+              <option value="private">البرايفت فقط</option>
+              <option value="groups">المجموعات فقط</option>
+            </select>
+          </label>
+          <label>
+            اختار المجموعة
+            <select
+              value={groupFilter}
+              onChange={event => setGroupFilter(event.target.value)}
+            >
+              <option value="all">كل المجموعات</option>
+              {groups.map(group => (
+                <option key={group.id} value={String(group.id)}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            الفترة المالية
+            <select
+              value={monthFilter}
+              onChange={event => setMonthFilter(event.target.value)}
+            >
+              <option value="all">كل الشهور</option>
+              {[
+                "يناير",
+                "فبراير",
+                "مارس",
+                "أبريل",
+                "مايو",
+                "يونيو",
+                "يوليو",
+                "أغسطس",
+                "سبتمبر",
+                "أكتوبر",
+                "نوفمبر",
+                "ديسمبر",
+              ].map((month, index) => (
+                <option key={month} value={String(index)}>
+                  {month}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="finance-status-tabs" role="tablist">
+          <button
+            type="button"
+            className={statusFilter === "all" ? "active" : ""}
+            onClick={() => setStatusFilter("all")}
+          >
+            الكل <b>{filteredRows.length}</b>
+          </button>
+          <button
+            type="button"
+            className={statusFilter === "paid" ? "active" : ""}
+            onClick={() => setStatusFilter("paid")}
+          >
+            مدفوع <b>{rows.filter(row => Boolean(row.paidAt)).length}</b>
+          </button>
+          <button
+            type="button"
+            className={statusFilter === "remaining" ? "active" : ""}
+            onClick={() => setStatusFilter("remaining")}
+          >
+            متبقي{" "}
+            <b>
+              {
+                rows.filter(row => !row.paidAt && row.kind === "subscription")
+                  .length
+              }
+            </b>
+          </button>
+        </div>
+      </div>
+      <div className="finance-stats">
+        <Stat
+          label="إيرادات محصلة"
+          value={`${income.toLocaleString()} ج.م`}
+          note="اشتراكات مسددة"
+          icon={CircleDollarSign}
+          tone="green"
+        />
+        <Stat
+          label="المصروفات"
+          value={`${expenses.toLocaleString()} ج.م`}
+          note="تشغيلية"
+          icon={WalletCards}
+          tone="red"
+        />
+        <Stat
+          label="صافي الخزينة"
+          value={`${(income - expenses).toLocaleString()} ج.م`}
+          note="إيرادات ناقص مصروفات"
+          icon={BarChart3}
+          tone="gold"
+        />
+        <Stat
+          label="متأخرات"
+          value={overdue.length}
+          note="حالة تحتاج متابعة"
+          icon={AlertTriangle}
+          tone="red"
+        />
+      </div>
+      <div className="finance-layout">
+        <div className="panel finance-form">
+          <div className="eyebrow">إضافة حركة</div>
+          <h3>تسجيل اشتراك أو مصروف</h3>
+          <div className="mode-switch">
+            <button
+              className={kind === "subscription" ? "selected" : ""}
+              onClick={() => setKind("subscription")}
+            >
+              اشتراك
+            </button>
+            <button
+              className={kind === "expense" ? "selected" : ""}
+              onClick={() => setKind("expense")}
+            >
+              مصروف
+            </button>
+          </div>
+          {kind === "subscription" && (
+            <>
+              <label>
+                الطالب
+                <select
+                  value={studentId}
+                  onChange={event => setStudentId(event.target.value)}
+                >
+                  <option value="">اختر الطالب</option>
+                  {students.map(student => (
+                    <option key={student.id} value={student.id}>
+                      {student.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                المجموعة
+                <select
+                  value={groupId}
+                  onChange={event => setGroupId(event.target.value)}
+                >
+                  <option value="">اختر المجموعة</option>
+                  {groups.map(group => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                موعد الاستحقاق
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={event => setDueDate(event.target.value)}
+                />
+              </label>
+            </>
+          )}
+          <label>
+            المبلغ
+            <input
+              inputMode="decimal"
+              value={amount}
+              onChange={event => setAmount(event.target.value)}
+              placeholder="150"
+            />
+          </label>
+          <label>
+            الوصف
+            <input
+              value={description}
+              onChange={event => setDescription(event.target.value)}
+              placeholder="ملاحظة اختيارية"
+            />
+          </label>
+          <button className="primary wide" onClick={submit}>
+            حفظ الحركة
+          </button>
+        </div>
+        <div className="panel overdue-panel">
+          <div className="eyebrow">المتابعة</div>
+          <h3>المستحقات المتأخرة</h3>
+          {overdue.length ? (
+            overdue.map(row => (
+              <div className="overdue-row" key={row.id}>
+                <div>
+                  <b>{studentName(row.studentId)}</b>
+                  <small>
+                    {row.description || "اشتراك"} · {Number(row.amount)} ج.م
+                  </small>
+                </div>
+                <button className="secondary" onClick={() => onSettle(row.id)}>
+                  تحصيل
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="empty-inline">
+              <CheckCircle2 size={20} /> لا توجد مستحقات متأخرة
+            </div>
+          )}
+        </div>
+        <div className="panel finance-ledger">
+          <div className="ledger-heading">
+            <div>
+              <span className="eyebrow">السجل المالي</span>
+              <h3>الحركات المطابقة</h3>
+            </div>
+            <span>{filteredRows.length} حركة</span>
+          </div>
+          {filteredRows.length ? (
+            filteredRows.map(row => (
+              <div className="finance-row" key={row.id}>
+                <div>
+                  <b>{studentName(row.studentId)}</b>
+                  <small>
+                    {row.description ||
+                      (row.kind === "expense"
+                        ? "مصروف تشغيلي"
+                        : "اشتراك طالب")}{" "}
+                    ·{" "}
+                    {row.dueDate
+                      ? new Date(row.dueDate).toLocaleDateString("ar-EG")
+                      : "بدون استحقاق"}
+                  </small>
+                </div>
+                <strong className={row.paidAt ? "paid" : "remaining"}>
+                  {Number(row.amount).toLocaleString()} ج.م
+                </strong>
+                {row.kind === "subscription" && !row.paidAt ? (
+                  <button
+                    className="secondary"
+                    onClick={() => onSettle(row.id)}
+                  >
+                    تحصيل
+                  </button>
+                ) : (
+                  <span className="ledger-status">
+                    {row.kind === "expense" ? "مصروف" : "مدفوع"}
+                  </span>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="empty-inline">لا توجد سجلات دفع مطابقة</div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+function BehaviorPanel({
+  students,
+  groups,
+}: {
+  students: Student[];
+  groups: Group[];
+}) {
+  const behaviorQuery = trpc.app.behavior.list.useQuery();
+  const createBehavior = trpc.app.behavior.create.useMutation({
+    onSuccess: () => {
+      behaviorQuery.refetch();
+      toast.success("تم حفظ ملاحظة السلوك");
+    },
+    onError: () => toast.error("تعذر حفظ ملاحظة السلوك"),
+  });
+  const [studentId, setStudentId] = useState("");
+  const [category, setCategory] = useState<"positive" | "warning" | "note">(
+    "positive"
+  );
+  const [title, setTitle] = useState("");
+  const [note, setNote] = useState("");
+  const [points, setPoints] = useState("");
+  const selected = students.find(student => student.id === Number(studentId));
+  const rows = behaviorQuery.data || [];
+  const submit = () => {
+    if (!studentId || !title.trim())
+      return toast.error("اختر الطالب واكتب عنوان الملاحظة");
+    createBehavior.mutate({
+      studentId: Number(studentId),
+      groupId: groups.find(group => group.name === selected?.group)?.id || null,
+      category,
+      title: title.trim(),
+      note: note.trim() || null,
+      points: Number(points) || 0,
+    });
+    setTitle("");
+    setNote("");
+    setPoints("");
+  };
+  return (
+    <>
+      <SectionTitle
+        kicker="متابعة الطالب"
+        title="السلوك والملاحظات"
+        action={
+          <span className="live-pill">
+            <i /> سجل سحابي
+          </span>
+        }
+      />
+      <div className="behavior-layout">
+        <div className="panel behavior-form">
+          <div className="eyebrow">إضافة سجل سريع</div>
+          <h3>ملاحظة جديدة</h3>
+          <label>
+            الطالب
+            <select
+              value={studentId}
+              onChange={event => setStudentId(event.target.value)}
+            >
+              <option value="">اختر الطالب</option>
+              {students.map(student => (
+                <option key={student.id} value={student.id}>
+                  {student.name} · {student.group}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            نوع الملاحظة
+            <select
+              value={category}
+              onChange={event =>
+                setCategory(event.target.value as typeof category)
+              }
+            >
+              <option value="positive">إيجابي</option>
+              <option value="warning">تنبيه</option>
+              <option value="note">ملاحظة</option>
+            </select>
+          </label>
+          <label>
+            العنوان
+            <input
+              value={title}
+              onChange={event => setTitle(event.target.value)}
+              placeholder="مثال: مشاركة مميزة"
+            />
+          </label>
+          <label>
+            التفاصيل
+            <textarea
+              value={note}
+              onChange={event => setNote(event.target.value)}
+              placeholder="اكتب ملاحظة مختصرة للمتابعة"
+            />
+          </label>
+          <label>
+            النقاط
+            <input
+              inputMode="numeric"
+              value={points}
+              onChange={event => setPoints(event.target.value)}
+              placeholder="مثال: 5"
+            />
+          </label>
+          <button
+            className="primary wide"
+            onClick={submit}
+            disabled={createBehavior.isPending}
+          >
+            حفظ الملاحظة
+          </button>
+        </div>
+        <div className="panel behavior-history">
+          <div className="eyebrow">السجل</div>
+          <h3>آخر ملاحظات الطلاب</h3>
+          {rows.length ? (
+            rows.slice(0, 12).map((row: any) => (
+              <div className="behavior-row" key={row.id}>
+                <div className={`behavior-badge ${row.category}`}>
+                  <span>
+                    {row.category === "positive"
+                      ? "إيجابي"
+                      : row.category === "warning"
+                        ? "تنبيه"
+                        : "ملاحظة"}
+                  </span>
+                </div>
+                <div>
+                  <b>
+                    {students.find(student => student.id === row.studentId)
+                      ?.name || "طالب"}
+                  </b>
+                  <small>
+                    {row.title}
+                    {row.note ? ` · ${row.note}` : ""}
+                  </small>
+                </div>
+                <strong>
+                  {row.points > 0 ? `+${row.points}` : row.points}
+                </strong>
+              </div>
+            ))
+          ) : (
+            <div className="empty-inline">لم تُسجل ملاحظات سلوكية بعد</div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
 
-function SchoolDaySettings() { const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem("ostazi-school-day") || '{"assembly":"07:30","lessonMinutes":45,"breakAfter":3,"breakMinutes":20}')); const save = () => { localStorage.setItem("ostazi-school-day", JSON.stringify(settings)); toast.success("تم حفظ إعدادات اليوم المدرسي"); }; return <div className="panel school-day-settings"><div><span className="eyebrow">إعدادات اليوم</span><h3>ضبط اليوم المدرسي</h3><p>تحكم في طابور الصباح ومدة الحصص والفسحة لتخصيص العداد المباشر.</p></div><div className="school-settings-grid"><label>طابور الصباح<input type="time" value={settings.assembly} onChange={event => setSettings({ ...settings, assembly: event.target.value })}/></label><label>مدة الحصة بالدقائق<input type="number" min="1" max="180" value={settings.lessonMinutes} onChange={event => setSettings({ ...settings, lessonMinutes: Number(event.target.value) })}/></label><label>الفسحة بعد حصة<input type="number" min="1" max="12" value={settings.breakAfter} onChange={event => setSettings({ ...settings, breakAfter: Number(event.target.value) })}/></label><label>مدة الفسحة بالدقائق<input type="number" min="1" max="90" value={settings.breakMinutes} onChange={event => setSettings({ ...settings, breakMinutes: Number(event.target.value) })}/></label></div><button className="primary" onClick={save}>حفظ إعدادات اليوم</button></div> }
-function ScheduleOcrPanel() { const [result, setResult] = useState<any>(null); const ocr = trpc.app.schedule.ocr.useMutation({ onSuccess: data => { setResult(data); toast.success(`تم استخراج ${data.entries?.length || 0} موعدًا للمراجعة`); }, onError: () => toast.error("تعذر قراءة صورة الجدول") }); const onFile = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 5_000_000) return toast.error("حجم الصورة يجب ألا يتجاوز 5 ميجابايت"); const reader = new FileReader(); reader.onload = () => ocr.mutate({ imageDataUrl: String(reader.result) }); reader.readAsDataURL(file); }; return <div className="panel schedule-ocr"><div><span className="eyebrow">OCR بالذكاء الاصطناعي</span><h3>اقرأ جدولًا ورقيًا</h3><p>التقط صورة واضحة للجدول، ثم راجع الخانات يدويًا قبل حفظها داخل النظام.</p></div><label className="upload-button secondary"><Upload size={16}/> {ocr.isPending ? "جارٍ التحليل..." : "اختيار صورة الجدول"}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} hidden/></label>{result?.entries?.length ? <div className="ocr-results">{result.entries.map((entry: any, index: number) => <div className="ocr-row" key={`${entry.day}-${entry.period}-${index}`}><b>{entry.day}</b><span>الحصة {entry.period}</span><span>{entry.classroom}</span><span>{entry.subject}</span><small>{entry.startTime} · {entry.status === "off" ? "أوف" : "نشطة"}</small></div>)}</div> : null}</div> }
-function AssessmentPanel({ rows, students, groups, onCreate }: { rows: any[]; students: Student[]; groups: Group[]; onCreate: (input: any) => void }) { const [studentId, setStudentId] = useState(""); const performancePdf = trpc.report.performancePdf.useQuery({ studentId: Number(studentId) || 0 }, { enabled: false, retry: false }); const [answerResult, setAnswerResult] = useState<any>(null); const answerOcr = trpc.app.assessments.answerOcr.useMutation({ onSuccess: data => { setAnswerResult(data); toast.success("تمت قراءة ورقة الإجابة للمراجعة"); }, onError: () => toast.error("تعذر قراءة ورقة الإجابة") }); const onAnswerFile = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 5_000_000) return toast.error("حجم الصورة يجب ألا يتجاوز 5 ميجابايت"); const reader = new FileReader(); reader.onload = () => answerOcr.mutate({ imageDataUrl: String(reader.result) }); reader.readAsDataURL(file); }; const [title, setTitle] = useState(""); const [period, setPeriod] = useState("lesson"); const [score, setScore] = useState(""); const [maxScore, setMaxScore] = useState("10"); const [note, setNote] = useState(""); const studentName = (id: number) => students.find(student => student.id === id)?.name || "طالب"; const submit = () => { if (!studentId || !title || !score) return toast.error("أكمل الطالب وعنوان التقييم والدرجة"); onCreate({ studentId: Number(studentId), groupId: groups.find(group => group.name === students.find(student => student.id === Number(studentId))?.group)?.id || null, title, period, score, maxScore, note: note || null }); setTitle(""); setScore(""); setNote(""); }; return <><SectionTitle kicker="المتابعة الأكاديمية" title="التقييمات والاختبارات" action={<div className="action-row"><button className="secondary" onClick={() => window.print()}><Download size={16}/> هيدر اختبار</button><button className="primary" disabled={!studentId} onClick={async () => { if (!studentId) return toast.error("اختر طالبًا أولًا"); const result = await performancePdf.refetch(); if (result.data) downloadBase64File(result.data.contentBase64, result.data.filename); else toast.error("تعذر إنشاء بطاقة الأداء"); }}><Download size={16}/> بطاقة أداء PDF</button></div>}/><div className="answer-ocr-bar"><label className="secondary file-label"><Upload size={16}/> {answerOcr.isPending ? "جارٍ قراءة الورقة..." : "قراءة ورقة إجابة"}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={onAnswerFile} hidden/></label>{answerResult && <span>الكود: <b>{answerResult.studentCode || "غير واضح"}</b> · الدرجة: <b>{answerResult.score || "غير واضحة"}/{answerResult.maxScore || "—"}</b> · الثقة: {answerResult.confidence}</span>}</div><div className="paper-header"><span>اسم الطالب: ____________________</span><span>الكود: ____________________</span><span>الدرجة: ______ / ______</span></div><div className="assessment-layout"><div className="panel assessment-form"><div className="eyebrow">إدخال سريع</div><h3>نتيجة اختبار أو تقييم</h3><label>الطالب<select value={studentId} onChange={event => setStudentId(event.target.value)}><option value="">اختر الطالب</option>{students.map(student => <option key={student.id} value={student.id}>{student.name} · {student.group}</option>)}</select></label><label>عنوان التقييم<input value={title} onChange={event => setTitle(event.target.value)} placeholder="اختبار الدرس الأول"/></label><label>الفترة<select value={period} onChange={event => setPeriod(event.target.value)}><option value="lesson">تقييم الدرس</option><option value="daily">يومي</option><option value="weekly">أسبوعي</option><option value="monthly">شهري</option><option value="term">فصلي</option></select></label><div className="score-fields"><label>الدرجة<input inputMode="decimal" value={score} onChange={event => setScore(event.target.value)} placeholder="8"/></label><label>من<input inputMode="decimal" value={maxScore} onChange={event => setMaxScore(event.target.value)}/></label></div><label>ملاحظة<input value={note} onChange={event => setNote(event.target.value)} placeholder="اختياري"/></label><button className="primary wide" onClick={submit}>حفظ التقييم</button></div><div className="panel assessment-list"><div className="eyebrow">سجل النتائج</div><h3>آخر التقييمات</h3>{rows.length ? rows.slice(0, 12).map(row => <div className="assessment-row" key={row.id}><div><b>{studentName(row.studentId)}</b><small>{row.title} · {row.period}</small></div><strong>{row.score ?? "—"}/{row.maxScore ?? "—"}</strong></div>) : <div className="empty-inline">لم تتم إضافة تقييمات بعد.</div>}</div></div></> }
+function SchoolDaySettings() {
+  const [settings, setSettings] = useState(() =>
+    JSON.parse(
+      localStorage.getItem("ostazi-school-day") ||
+        '{"assembly":"07:30","lessonMinutes":45,"breakAfter":3,"breakMinutes":20}'
+    )
+  );
+  const save = () => {
+    localStorage.setItem("ostazi-school-day", JSON.stringify(settings));
+    toast.success("تم حفظ إعدادات اليوم المدرسي");
+  };
+  return (
+    <div className="panel school-day-settings">
+      <div>
+        <span className="eyebrow">إعدادات اليوم</span>
+        <h3>ضبط اليوم المدرسي</h3>
+        <p>تحكم في طابور الصباح ومدة الحصص والفسحة لتخصيص العداد المباشر.</p>
+      </div>
+      <div className="school-settings-grid">
+        <label>
+          طابور الصباح
+          <input
+            type="time"
+            value={settings.assembly}
+            onChange={event =>
+              setSettings({ ...settings, assembly: event.target.value })
+            }
+          />
+        </label>
+        <label>
+          مدة الحصة بالدقائق
+          <input
+            type="number"
+            min="1"
+            max="180"
+            value={settings.lessonMinutes}
+            onChange={event =>
+              setSettings({
+                ...settings,
+                lessonMinutes: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+        <label>
+          الفسحة بعد حصة
+          <input
+            type="number"
+            min="1"
+            max="12"
+            value={settings.breakAfter}
+            onChange={event =>
+              setSettings({
+                ...settings,
+                breakAfter: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+        <label>
+          مدة الفسحة بالدقائق
+          <input
+            type="number"
+            min="1"
+            max="90"
+            value={settings.breakMinutes}
+            onChange={event =>
+              setSettings({
+                ...settings,
+                breakMinutes: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+      </div>
+      <button className="primary" onClick={save}>
+        حفظ إعدادات اليوم
+      </button>
+    </div>
+  );
+}
+function ScheduleOcrPanel() {
+  const [result, setResult] = useState<any>(null);
+  const ocr = trpc.app.schedule.ocr.useMutation({
+    onSuccess: data => {
+      setResult(data);
+      toast.success(`تم استخراج ${data.entries?.length || 0} موعدًا للمراجعة`);
+    },
+    onError: () => toast.error("تعذر قراءة صورة الجدول"),
+  });
+  const onFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5_000_000)
+      return toast.error("حجم الصورة يجب ألا يتجاوز 5 ميجابايت");
+    const reader = new FileReader();
+    reader.onload = () => ocr.mutate({ imageDataUrl: String(reader.result) });
+    reader.readAsDataURL(file);
+  };
+  return (
+    <div className="panel schedule-ocr">
+      <div>
+        <span className="eyebrow">OCR بالذكاء الاصطناعي</span>
+        <h3>اقرأ جدولًا ورقيًا</h3>
+        <p>
+          التقط صورة واضحة للجدول، ثم راجع الخانات يدويًا قبل حفظها داخل النظام.
+        </p>
+      </div>
+      <label className="upload-button secondary">
+        <Upload size={16} />{" "}
+        {ocr.isPending ? "جارٍ التحليل..." : "اختيار صورة الجدول"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={onFile}
+          hidden
+        />
+      </label>
+      {result?.entries?.length ? (
+        <div className="ocr-results">
+          {result.entries.map((entry: any, index: number) => (
+            <div
+              className="ocr-row"
+              key={`${entry.day}-${entry.period}-${index}`}
+            >
+              <b>{entry.day}</b>
+              <span>الحصة {entry.period}</span>
+              <span>{entry.classroom}</span>
+              <span>{entry.subject}</span>
+              <small>
+                {entry.startTime} · {entry.status === "off" ? "أوف" : "نشطة"}
+              </small>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+function AssessmentPanel({
+  rows,
+  students,
+  groups,
+  onCreate,
+}: {
+  rows: any[];
+  students: Student[];
+  groups: Group[];
+  onCreate: (input: any) => void;
+}) {
+  const [studentId, setStudentId] = useState("");
+  const performancePdf = trpc.report.performancePdf.useQuery(
+    { studentId: Number(studentId) || 0 },
+    { enabled: false, retry: false }
+  );
+  const [answerResult, setAnswerResult] = useState<any>(null);
+  const answerOcr = trpc.app.assessments.answerOcr.useMutation({
+    onSuccess: data => {
+      setAnswerResult(data);
+      toast.success("تمت قراءة ورقة الإجابة للمراجعة");
+    },
+    onError: () => toast.error("تعذر قراءة ورقة الإجابة"),
+  });
+  const onAnswerFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5_000_000)
+      return toast.error("حجم الصورة يجب ألا يتجاوز 5 ميجابايت");
+    const reader = new FileReader();
+    reader.onload = () =>
+      answerOcr.mutate({ imageDataUrl: String(reader.result) });
+    reader.readAsDataURL(file);
+  };
+  const [title, setTitle] = useState("");
+  const [period, setPeriod] = useState("lesson");
+  const [score, setScore] = useState("");
+  const [maxScore, setMaxScore] = useState("10");
+  const [note, setNote] = useState("");
+  const studentName = (id: number) =>
+    students.find(student => student.id === id)?.name || "طالب";
+  const submit = () => {
+    if (!studentId || !title || !score)
+      return toast.error("أكمل الطالب وعنوان التقييم والدرجة");
+    onCreate({
+      studentId: Number(studentId),
+      groupId:
+        groups.find(
+          group =>
+            group.name ===
+            students.find(student => student.id === Number(studentId))?.group
+        )?.id || null,
+      title,
+      period,
+      score,
+      maxScore,
+      note: note || null,
+    });
+    setTitle("");
+    setScore("");
+    setNote("");
+  };
+  return (
+    <>
+      <SectionTitle
+        kicker="المتابعة الأكاديمية"
+        title="التقييمات والاختبارات"
+        action={
+          <div className="action-row">
+            <button className="secondary" onClick={() => window.print()}>
+              <Download size={16} /> هيدر اختبار
+            </button>
+            <button
+              className="primary"
+              disabled={!studentId}
+              onClick={async () => {
+                if (!studentId) return toast.error("اختر طالبًا أولًا");
+                const result = await performancePdf.refetch();
+                if (result.data)
+                  downloadBase64File(
+                    result.data.contentBase64,
+                    result.data.filename
+                  );
+                else toast.error("تعذر إنشاء بطاقة الأداء");
+              }}
+            >
+              <Download size={16} /> بطاقة أداء PDF
+            </button>
+          </div>
+        }
+      />
+      <div className="answer-ocr-bar">
+        <label className="secondary file-label">
+          <Upload size={16} />{" "}
+          {answerOcr.isPending ? "جارٍ قراءة الورقة..." : "قراءة ورقة إجابة"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={onAnswerFile}
+            hidden
+          />
+        </label>
+        {answerResult && (
+          <span>
+            الكود: <b>{answerResult.studentCode || "غير واضح"}</b> · الدرجة:{" "}
+            <b>
+              {answerResult.score || "غير واضحة"}/{answerResult.maxScore || "—"}
+            </b>{" "}
+            · الثقة: {answerResult.confidence}
+          </span>
+        )}
+      </div>
+      <div className="paper-header">
+        <span>اسم الطالب: ____________________</span>
+        <span>الكود: ____________________</span>
+        <span>الدرجة: ______ / ______</span>
+      </div>
+      <div className="assessment-layout">
+        <div className="panel assessment-form">
+          <div className="eyebrow">إدخال سريع</div>
+          <h3>نتيجة اختبار أو تقييم</h3>
+          <label>
+            الطالب
+            <select
+              value={studentId}
+              onChange={event => setStudentId(event.target.value)}
+            >
+              <option value="">اختر الطالب</option>
+              {students.map(student => (
+                <option key={student.id} value={student.id}>
+                  {student.name} · {student.group}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            عنوان التقييم
+            <input
+              value={title}
+              onChange={event => setTitle(event.target.value)}
+              placeholder="اختبار الدرس الأول"
+            />
+          </label>
+          <label>
+            الفترة
+            <select
+              value={period}
+              onChange={event => setPeriod(event.target.value)}
+            >
+              <option value="lesson">تقييم الدرس</option>
+              <option value="daily">يومي</option>
+              <option value="weekly">أسبوعي</option>
+              <option value="monthly">شهري</option>
+              <option value="term">فصلي</option>
+            </select>
+          </label>
+          <div className="score-fields">
+            <label>
+              الدرجة
+              <input
+                inputMode="decimal"
+                value={score}
+                onChange={event => setScore(event.target.value)}
+                placeholder="8"
+              />
+            </label>
+            <label>
+              من
+              <input
+                inputMode="decimal"
+                value={maxScore}
+                onChange={event => setMaxScore(event.target.value)}
+              />
+            </label>
+          </div>
+          <label>
+            ملاحظة
+            <input
+              value={note}
+              onChange={event => setNote(event.target.value)}
+              placeholder="اختياري"
+            />
+          </label>
+          <button className="primary wide" onClick={submit}>
+            حفظ التقييم
+          </button>
+        </div>
+        <div className="panel assessment-list">
+          <div className="eyebrow">سجل النتائج</div>
+          <h3>آخر التقييمات</h3>
+          {rows.length ? (
+            rows.slice(0, 12).map(row => (
+              <div className="assessment-row" key={row.id}>
+                <div>
+                  <b>{studentName(row.studentId)}</b>
+                  <small>
+                    {row.title} · {row.period}
+                  </small>
+                </div>
+                <strong>
+                  {row.score ?? "—"}/{row.maxScore ?? "—"}
+                </strong>
+              </div>
+            ))
+          ) : (
+            <div className="empty-inline">لم تتم إضافة تقييمات بعد.</div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
 function Page({ profile }: { profile: any }) {
   const auth = useAuth();
   const [workspace] = useWorkspace();
   const [location] = useLocation();
-  const boot = trpc.app.bootstrap.useQuery({ workspace }, { enabled: auth.isAuthenticated, retry: false });
-  const createGroupRemote = trpc.app.groups.create.useMutation({ onSuccess: () => boot.refetch() });
-  const updateGroupRemote = trpc.app.groups.update.useMutation({ onSuccess: () => boot.refetch() });
-  const deleteGroupRemote = trpc.app.groups.delete.useMutation({ onSuccess: () => boot.refetch() });
-  const createStudentRemote = trpc.app.students.create.useMutation({ onSuccess: () => boot.refetch() });
-  const updateStudentRemote = trpc.app.students.update.useMutation({ onSuccess: () => boot.refetch() });
-  const deleteStudentRemote = trpc.app.students.delete.useMutation({ onSuccess: () => boot.refetch() });
+  const boot = trpc.app.bootstrap.useQuery(
+    { workspace },
+    { enabled: auth.isAuthenticated, retry: false }
+  );
+  const createGroupRemote = trpc.app.groups.create.useMutation({
+    onSuccess: () => boot.refetch(),
+  });
+  const updateGroupRemote = trpc.app.groups.update.useMutation({
+    onSuccess: () => boot.refetch(),
+  });
+  const deleteGroupRemote = trpc.app.groups.delete.useMutation({
+    onSuccess: () => boot.refetch(),
+  });
+  const createStudentRemote = trpc.app.students.create.useMutation({
+    onSuccess: () => boot.refetch(),
+  });
+  const updateStudentRemote = trpc.app.students.update.useMutation({
+    onSuccess: () => boot.refetch(),
+  });
+  const deleteStudentRemote = trpc.app.students.delete.useMutation({
+    onSuccess: () => boot.refetch(),
+  });
   const reportPdf = trpc.report.pdf.useQuery(undefined, { enabled: false });
   const markAttendanceRemote = trpc.app.attendance.mark.useMutation();
   const createTransactionRemote = trpc.app.finance.create.useMutation();
-  const financeQuery = trpc.app.finance.list.useQuery({ workspace }, { enabled: auth.isAuthenticated && location === "/finance", retry: false });
-  const assessmentQuery = trpc.app.assessments.list.useQuery({ workspace }, { enabled: auth.isAuthenticated && location === "/assessments", retry: false });
-  const createAssessmentRemote = trpc.app.assessments.create.useMutation({ onSuccess: () => assessmentQuery.refetch() });
-  const settleTransactionRemote = trpc.app.finance.settle.useMutation({ onSuccess: () => financeQuery.refetch() });
+  const financeQuery = trpc.app.finance.list.useQuery(
+    { workspace },
+    { enabled: auth.isAuthenticated && location === "/finance", retry: false }
+  );
+  const assessmentQuery = trpc.app.assessments.list.useQuery(
+    { workspace },
+    {
+      enabled: auth.isAuthenticated && location === "/assessments",
+      retry: false,
+    }
+  );
+  const createAssessmentRemote = trpc.app.assessments.create.useMutation({
+    onSuccess: () => assessmentQuery.refetch(),
+  });
+  const settleTransactionRemote = trpc.app.finance.settle.useMutation({
+    onSuccess: () => financeQuery.refetch(),
+  });
   const [groups, setGroups] = useStore<Group[]>("groups", []);
   const [students, setStudents] = useStore<Student[]>("students", []);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("الكل");
   const [studentFilter, setStudentFilter] = useState("الكل");
-  const [groupSort, setGroupSort] = useState(() => localStorage.getItem("ostazi-group-sort") || "soon");
+  const [groupSort, setGroupSort] = useState(
+    () => localStorage.getItem("ostazi-group-sort") || "soon"
+  );
   const [modal, setModal] = useState<"group" | "student" | null>(null);
   const [editItem, setEditItem] = useState<any>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
   const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
   const [cardStudent, setCardStudent] = useState<Student | null>(null);
-  const [attendanceResult, setAttendanceResult] = useState<Student | null>(null);
+  const [attendanceResult, setAttendanceResult] = useState<Student | null>(
+    null
+  );
   const financeRows = financeQuery.data || [];
   const assessmentRows = assessmentQuery.data || [];
-  const [todayDate] = useState(() => { const date = new Date(); date.setHours(0, 0, 0, 0); return date; });
-  const attendanceQuery = trpc.app.attendance.list.useQuery({ lessonDate: todayDate, workspace }, { enabled: auth.isAuthenticated && (location === "/attendance" || location === "/reports"), retry: false });
-  useEffect(() => { setGroups([]); setStudents([]); setExpandedGroupId(null); setAttendanceResult(null); }, [workspace]);
-  useEffect(() => { const sync = () => setGroupSort(localStorage.getItem("ostazi-group-sort") || "soon"); window.addEventListener("ostazi-group-sort-change", sync); return () => window.removeEventListener("ostazi-group-sort-change", sync); }, []);
-  useEffect(() => { if (!boot.data) return; const groupRows = boot.data.groups.map(g => ({ id: g.id, name: g.name, place: g.place, mode: g.mode, students: g.studentsCount, day: g.day, time: g.time, scheduleJson: g.scheduleJson, schedule: scheduleForGroup(g), fee: Number(g.fee), collectionPeriod: g.collectionPeriod || "monthly" })); const groupName = new Map(groupRows.map(g => [g.id, g.name])); const studentRows = boot.data.students.map(s => ({ id: s.id, name: s.name, group: groupName.get(s.groupId || 0) || "بدون مجموعة", phone: s.phone || "", guardianName: s.guardianName || "", guardianPhone: s.guardianPhone || "", studentCode: displayStudentCode(s.studentCode, s.id), age: s.age ?? null, grade: s.grade ?? null, avatarUrl: s.avatarUrl ?? null, paid: s.paid, paidAmount: Number(s.paidAmount || 0), createdAt: s.createdAt, joinedGroupAt: s.joinedGroupAt })); setGroups(groupRows); setStudents(studentRows); }, [boot.data]); const today = new Date().toLocaleDateString("ar-EG", { weekday: "long" }); const normalizedQuery = query.trim().toLocaleLowerCase(); const filteredGroups = groups.filter(g => { const groupStudents = studentsForGroup(students, g.name); const matchesQuery = !normalizedQuery || g.name.toLocaleLowerCase().includes(normalizedQuery) || groupStudents.some(student => student.name.toLocaleLowerCase().includes(normalizedQuery)); const matchesStudents = studentFilter === "الكل" || (studentFilter === "بها طلاب" ? groupStudents.length > 0 : groupStudents.length === 0); return matchesQuery && matchesStudents; }).sort((a, b) => { if (groupSort === "name") return a.name.localeCompare(b.name, "ar"); if (groupSort === "count" || groupSort === "active") return Number(b.students) - Number(a.students); return sortGroupsByTime([a, b])[0]?.id === a.id ? -1 : 1; }); const filteredStudents = students.filter(s => s.name.includes(query) || s.group.includes(query));
-		const addGroup = (g: Group) => { setGroups([...groups, { ...g, id: Date.now() }]); createGroupRemote.mutate({ workspace, name: g.name, place: g.place, mode: g.mode, studentsCount: g.students, day: g.day, time: g.time, scheduleJson: g.scheduleJson || serializeSchedule(scheduleForGroup(g)), fee: g.fee, collectionPeriod: g.collectionPeriod || "monthly" }, { onSuccess: () => boot.refetch(), onError: () => toast.error("تعذر حفظ المجموعة سحابيًا") }); };
+  const [todayDate] = useState(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  });
+  const attendanceQuery = trpc.app.attendance.list.useQuery(
+    { lessonDate: todayDate, workspace },
+    {
+      enabled:
+        auth.isAuthenticated &&
+        (location === "/attendance" || location === "/reports"),
+      retry: false,
+    }
+  );
+  useEffect(() => {
+    setGroups([]);
+    setStudents([]);
+    setExpandedGroupId(null);
+    setAttendanceResult(null);
+  }, [workspace]);
+  useEffect(() => {
+    const sync = () =>
+      setGroupSort(localStorage.getItem("ostazi-group-sort") || "soon");
+    window.addEventListener("ostazi-group-sort-change", sync);
+    return () => window.removeEventListener("ostazi-group-sort-change", sync);
+  }, []);
+  useEffect(() => {
+    if (!boot.data) return;
+    const groupRows = boot.data.groups.map(g => ({
+      id: g.id,
+      name: g.name,
+      grade: g.grade,
+      place: g.place,
+      mode: g.mode,
+      isPinned: g.isPinned,
+      students: g.studentsCount,
+      day: g.day,
+      time: g.time,
+      durationMinutes: g.durationMinutes,
+      scheduleJson: g.scheduleJson,
+      schedule: scheduleForGroup(g),
+      fee: Number(g.fee),
+      collectionPeriod: g.collectionPeriod || "monthly",
+    }));
+    const groupName = new Map(groupRows.map(g => [g.id, g.name]));
+    const studentRows = boot.data.students.map(s => ({
+      id: s.id,
+      name: s.name,
+      group: groupName.get(s.groupId || 0) || "بدون مجموعة",
+      phone: s.phone || "",
+      guardianName: s.guardianName || "",
+      guardianPhone: s.guardianPhone || "",
+      studentCode: displayStudentCode(s.studentCode, s.id),
+      age: s.age ?? null,
+      grade: s.grade ?? null,
+      avatarUrl: s.avatarUrl ?? null,
+      paid: s.paid,
+      paidAmount: Number(s.paidAmount || 0),
+      createdAt: s.createdAt,
+      joinedGroupAt: s.joinedGroupAt,
+    }));
+    setGroups(groupRows);
+    setStudents(studentRows);
+  }, [boot.data]);
+  const today = new Date().toLocaleDateString("ar-EG", { weekday: "long" });
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const filteredGroups = groups
+    .filter(g => {
+      const groupStudents = studentsForGroup(students, g.name);
+      const matchesQuery =
+        !normalizedQuery ||
+        g.name.toLocaleLowerCase().includes(normalizedQuery) ||
+        groupStudents.some(student =>
+          student.name.toLocaleLowerCase().includes(normalizedQuery)
+        );
+      const matchesStudents =
+        studentFilter === "الكل" ||
+        (studentFilter === "بها طلاب"
+          ? groupStudents.length > 0
+          : groupStudents.length === 0);
+      return matchesQuery && matchesStudents;
+    })
+    .sort((a, b) => {
+      const pinOrder = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+      if (pinOrder) return pinOrder;
+      if (groupSort === "name") return a.name.localeCompare(b.name, "ar");
+      if (groupSort === "count" || groupSort === "active")
+        return Number(b.students) - Number(a.students);
+      return sortGroupsByTime([a, b])[0]?.id === a.id ? -1 : 1;
+    });
+  const filteredStudents = students.filter(
+    s => s.name.includes(query) || s.group.includes(query)
+  );
+  const addGroup = (g: Group) => {
+    setGroups([...groups, { ...g, id: Date.now() }]);
+    createGroupRemote.mutate(
+      {
+        workspace,
+        name: g.name,
+        grade: g.grade || null,
+        place: g.place,
+        mode: g.mode,
+        isPinned: Boolean(g.isPinned),
+        studentsCount: g.students,
+        day: g.day,
+        time: g.time,
+        durationMinutes: g.durationMinutes || 60,
+        scheduleJson: g.scheduleJson || serializeSchedule(scheduleForGroup(g)),
+        fee: g.fee,
+        collectionPeriod: g.collectionPeriod || "monthly",
+      },
+      {
+        onSuccess: () => boot.refetch(),
+        onError: () => toast.error("تعذر حفظ المجموعة سحابيًا"),
+      }
+    );
+  };
   const addStudent = (draft: Student) => {
     const targetGroup = groups.find(group => group.name === draft.group);
     const paidAmount = Number(draft.paidAmount || 0);
     const fee = Number(targetGroup?.fee || 0);
-    const student = { ...draft, id: Date.now(), paidAmount, paid: fee > 0 ? paidAmount >= fee : draft.paid };
+    const student = {
+      ...draft,
+      id: Date.now(),
+      paidAmount,
+      paid: fee > 0 ? paidAmount >= fee : draft.paid,
+    };
     const next = addStudentToGroupState(groups, students, student);
     setStudents(next.students as Student[]);
     setGroups(next.groups as Group[]);
-    createStudentRemote.mutate({ workspace, data: { name: student.name, phone: student.phone, guardianName: student.guardianName, guardianPhone: student.guardianPhone, studentCode: student.studentCode, age: student.age ?? null, grade: student.grade ?? null, paid: student.paid, paidAmount: student.paidAmount || 0, groupId: next.groupId } }, { onSuccess: () => boot.refetch(), onError: () => toast.error("تم حفظ الطالب محليًا وسيعاد إرسال بياناته عند عودة الاتصال") });
+    createStudentRemote.mutate(
+      {
+        workspace,
+        data: {
+          name: student.name,
+          phone: student.phone,
+          guardianName: student.guardianName,
+          guardianPhone: student.guardianPhone,
+          studentCode: student.studentCode,
+          age: student.age ?? null,
+          grade: student.grade ?? null,
+          paid: student.paid,
+          paidAmount: student.paidAmount || 0,
+          groupId: next.groupId,
+        },
+      },
+      {
+        onSuccess: () => boot.refetch(),
+        onError: () =>
+          toast.error(
+            "تم حفظ الطالب محليًا وسيعاد إرسال بياناته عند عودة الاتصال"
+          ),
+      }
+    );
   };
-  useEffect(() => { const checkLateStudents = () => { const now = new Date(); const todayName = now.toLocaleDateString("ar-EG", { weekday: "long" }) as typeof WEEK_DAYS[number]; const currentLesson = groups.flatMap(group => scheduleForGroup(group).map(schedule => ({ group, schedule }))).find(({ schedule }) => { if (schedule.day !== todayName) return false; const clock = parseClockTime(schedule.time); const hour = Number(clock.hour) % 12 + (clock.period === "م" ? 12 : 0); const start = new Date(now); start.setHours(hour, 0, 0, 0); const remaining = (start.getTime() + 60 * 60 * 1000 - now.getTime()) / 60_000; return remaining <= 10 && remaining > 0; }); if (!currentLesson) return; const lateStudents = (attendanceQuery.data || []).filter(row => row.groupId === currentLesson.group.id && row.status === "late"); const minutes = Math.max(1, Math.ceil(((new Date().setHours((Number(parseClockTime(currentLesson.schedule.time).hour) % 12) + (parseClockTime(currentLesson.schedule.time).period === "م" ? 12 : 0), 0, 0, 0) + 60 * 60 * 1000) - Date.now()) / 60_000)); if (!shouldPromptLateAttendanceReview(minutes, lateStudents.length)) return; const key = `ostazi-late-review-${currentLesson.group.id}-${todayDate.toISOString()}`; if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); const message = `تبقى ${minutes} دقائق: راجع ${lateStudents.length} طالب متأخر في مجموعة ${currentLesson.group.name} وحدد حاضر أو غائب.`; toast.warning(message, { duration: 15_000 }); if ("Notification" in window && Notification.permission === "granted") new Notification("مراجعة المتأخرين", { body: message }); }; checkLateStudents(); const timer = window.setInterval(checkLateStudents, 30_000); return () => window.clearInterval(timer); }, [groups, attendanceQuery.data, todayDate]);
-  if (location === "/reports") return <ContextReports groups={groups} students={students} attendanceRows={attendanceQuery.data || []}/>;
-  if (location === "/materials") return <MaterialsLibrary groups={groups}/>;
-  if (location === "/assessments") return <><WeeklyQuizPanel groups={groups} students={students}/><PerformanceLeaderboard/><AssessmentPanel rows={assessmentRows} students={students} groups={groups} onCreate={input => { createAssessmentRemote.mutate(input, { onSuccess: () => toast.success("تم حفظ التقييم"), onError: () => toast.error("تعذر حفظ التقييم") }); }}/></>;
-  if (location === "/finance") return <FinancePanel rows={financeRows} students={students} groups={groups} onCreate={input => { createTransactionRemote.mutate(input, { onSuccess: () => { financeQuery.refetch(); toast.success("تم حفظ الحركة المالية"); }, onError: () => toast.error("تعذر حفظ الحركة") }); }} onSettle={id => { settleTransactionRemote.mutate({ id }); toast.success("تم تسجيل التحصيل"); }}/ >;
-  if (location === "/attendance") return <><SectionTitle kicker="إدارة الحضور" title="الحضور السريع" action={<span className="live-pill"><i/> اليوم · {todayDate.toLocaleDateString("ar-EG")}</span>}/><QuickAttendance students={students} onCheckin={student => { setAttendanceResult(student); markAttendanceRemote.mutate({ studentId: student.id, groupId: groups.find(group => group.name === student.group)?.id || null, lessonDate: todayDate, status: "present" }); if (student.paid) toast.success(`تم تسجيل حضور ${student.name}`); else toast.error(`تم الحضور، توجد مستحقات على ${student.name}`); }}/>{attendanceResult && <div className={`attendance-result panel ${attendanceResult.paid ? "is-paid" : "is-due"}`}><div className="result-icon">{attendanceResult.paid ? <CheckCircle2 size={24}/> : <AlertTriangle size={24}/>}</div><div><span className="eyebrow">نتيجة آخر تسجيل</span><h3>{attendanceResult.name}</h3><p>{attendanceResult.group} · {attendanceResult.paid ? "الحساب مسدد" : "توجد مبالغ مستحقة"}</p></div><div className="result-actions">{!attendanceResult.paid && <button type="button" className="primary" onClick={() => { const next = students.map(student => student.id === attendanceResult.id ? { ...student, paid: true } : student); setStudents(next); createTransactionRemote.mutate({ studentId: attendanceResult.id, groupId: groups.find(group => group.name === attendanceResult.group)?.id || null, kind: "subscription", amount: String(groups.find(group => group.name === attendanceResult.group)?.fee || 0), paidAt: new Date(), dueDate: null, description: "تحصيل اشتراك عند الحضور" }); setAttendanceResult({ ...attendanceResult, paid: true }); toast.success("تم تسجيل التحصيل"); }}>تحصيل المبلغ</button>} {(attendanceResult.guardianPhone || attendanceResult.phone) && <button type="button" className="secondary" onClick={() => { const phone = (attendanceResult.guardianPhone || attendanceResult.phone || "").replace(/\\D/g, ""); const message = encodeURIComponent(`تم تسجيل حضور ${attendanceResult.name} اليوم${attendanceResult.paid ? " وتم تأكيد الدفع" : ""}.`); window.open(`https://wa.me/${phone}?text=${message}`, "_blank"); }}><MessageSquareText size={16}/> رسالة ولي الأمر</button>}</div></div>}</>;
-  if (location === "/groups") return <><SectionTitle kicker="إدارة التشغيل" title="المجموعات الدراسية" action={<div className="action-row"><button className="secondary" onClick={() => { setEditItem(null); setModal("student"); }}><Plus size={16}/> إضافة طالب</button><button className="primary" onClick={() => setModal("group")}><Plus size={16}/> إضافة مجموعة</button></div>}/><div className="toolbar groups-toolbar"><div className="search"><Search size={18}/><input aria-label="البحث في المجموعات والطلاب" placeholder="ابحث باسم المجموعة أو الطالب..." value={query} onChange={e => setQuery(e.target.value)}/>{query && <button type="button" className="search-clear" aria-label="مسح البحث" onClick={() => setQuery("")}>×</button>}</div><div className="filter-row"><div className="filters" aria-label="تصفية المكان">{["الكل", "مدرسة", "سنتر", "أونلاين"].map(x => <button type="button" className={filter === x ? "selected" : ""} onClick={() => setFilter(x)} key={x}>{x} <b>{x === "الكل" ? groups.length : groups.filter(g => g.place === x).length}</b></button>)}</div><div className="filters student-filters" aria-label="تصفية الطلاب">{["الكل", "بها طلاب", "فارغة"].map(x => <button type="button" className={studentFilter === x ? "selected" : ""} onClick={() => setStudentFilter(x)} key={x}>{x}</button>)}</div></div><span className="result-count">{filteredGroups.length} مجموعة</span>{(query || filter !== "الكل" || studentFilter !== "الكل") && <button type="button" className="clear-filters" onClick={() => { setQuery(""); setFilter("الكل"); setStudentFilter("الكل"); }}>مسح الكل</button>}</div><div className="group-grid">{filteredGroups.map(g => <div className="group-card group-card-clickable" key={g.id}><div className="card-top"><span className={`tag ${g.place === "أونلاين" ? "tag-blue" : "tag-gold"}`}>{g.place}</span></div><h3>{g.name}</h3><button type="button" className="card-add-student" onClick={e => { e.stopPropagation(); setEditItem({ __newStudent: true, group: g.name }); setModal("student"); }}><Plus size={14}/> طالب جديد</button><div className="group-meta"><span><Users size={15}/> {studentsForGroup(students, g.name).length} طالب</span><span><CalendarDays size={15}/> {scheduleForGroup(g).length > 1 ? `${scheduleForGroup(g).length} أيام` : `${g.day} · ${g.time}`}</span></div><div className="card-footer"><span>{g.mode}</span><strong>{g.fee} ج.م <small>/ {g.collectionPeriod === "term" ? "الترم" : "شهري"}</small></strong></div><button type="button" className="card-expand-more" aria-expanded={expandedGroupId === g.id} onClick={() => setExpandedGroupId(expandedGroupId === g.id ? null : g.id)}>{expandedGroupId === g.id ? "إخفاء التفاصيل" : "المزيد"}<ChevronLeft size={15} className={expandedGroupId === g.id ? "rotate-90" : ""}/></button>{expandedGroupId === g.id && <div className="group-inline-details" onClick={e => e.stopPropagation()}><div className="inline-students-heading"><b>طلاب المجموعة</b><span>{studentsForGroup(students, g.name).length} طالب</span></div>{studentsForGroup(students, g.name).length ? <div className="inline-student-list">{studentsForGroup(students, g.name).slice(0, 5).map(student => <span key={student.id}>{student.name}</span>)}</div> : <small className="muted">لا يوجد طلاب مضافون بعد.</small>}<div className="inline-card-actions"><a className="secondary" href={`/groups/${g.id}`}>بروفايل المجموعة</a><button type="button" className="secondary" onClick={() => { setEditItem(g); setModal("group"); }}><Pencil size={14}/> تعديل</button><button type="button" className="secondary danger-action" onClick={() => { setGroups(groups.filter(item => item.id !== g.id)); deleteGroupRemote.mutate({ id: g.id }); setExpandedGroupId(null); toast.success("تم حذف المجموعة"); }}><Trash2 size={14}/> حذف</button><button type="button" className="primary" onClick={() => { setEditItem({ __newStudent: true, group: g.name }); setModal("student"); }}><Plus size={14}/> إضافة طالب</button></div></div>}</div>)}</div>{!filteredGroups.length && <Empty icon={LayoutGrid} title="لا توجد نتائج مطابقة" text={query || filter !== "الكل" || studentFilter !== "الكل" ? "جرّب تعديل البحث أو مسح الفلاتر للوصول إلى النتائج." : "أنشئ مجموعتك الأولى لتنظيم اليوم الدراسي."} action={query || filter !== "الكل" || studentFilter !== "الكل" ? <button className="secondary" onClick={() => { setQuery(""); setFilter("الكل"); setStudentFilter("الكل"); }}>مسح البحث والتصفية</button> : <button className="primary" onClick={() => setModal("group")}><Plus size={16}/> أضف أول مجموعة</button>}/>} {modal === "group" && <FormModal type="group" initial={editItem} close={() => { setModal(null); setEditItem(null); }} onSubmit={(value: Group) => { if (editItem) { setGroups(renameGroupWithStudentCount(groups.map(item => item.id === editItem.id ? {...item, ...value} : item), students, editItem.id, value.name) as Group[]); updateGroupRemote.mutate({ id: editItem.id, data: { name: value.name, place: value.place, mode: value.mode, studentsCount: studentsForGroup(students, editItem.name).length, day: value.day, time: value.time, scheduleJson: value.scheduleJson || serializeSchedule(scheduleForGroup(value)), fee: value.fee, collectionPeriod: value.collectionPeriod } }); toast.success("تم تعديل المجموعة"); setEditItem(null); } else addGroup(value); }}/>} {modal === "student" && <FormModal type="student" initial={editItem} close={() => { setModal(null); setEditItem(null); }} onSubmit={(value: Student) => { if (isExistingStudentDraft(editItem)) { const groupId = groups.find(g => g.name === value.group)?.id || null; const fee = Number(groups.find(g => g.id === groupId)?.fee || 0); const paidAmount = Number(value.paidAmount || 0); const paid = fee > 0 ? paidAmount >= fee : value.paid; setStudents(students.map(item => item.id === editItem.id ? {...item, ...value, paidAmount, paid} : item)); const previousStudent = students.find(item => item.id === editItem.id); const previousGroupId = groups.find(g => g.name === previousStudent?.group)?.id || null; if (previousGroupId !== groupId) setGroups(groups.map(g => g.id === previousGroupId ? { ...g, students: Math.max(0, g.students - 1) } : g.id === groupId ? { ...g, students: g.students + 1 } : g)); updateStudentRemote.mutate({ id: editItem.id, data: { name: value.name, phone: value.phone, guardianName: value.guardianName, guardianPhone: value.guardianPhone, studentCode: value.studentCode, paid, paidAmount, groupId } }); toast.success("تم تعديل الطالب"); setEditItem(null); } else addStudent(value); }} groups={groups}/>} {cardStudent && <StudentCard student={cardStudent} close={() => setCardStudent(null)}/>}</>;
-  if (location === "/students") return <><SectionTitle kicker="ملف الطلاب" title="قائمة الطلاب" action={<button className="primary" onClick={() => { setEditItem(null); setModal("student"); }}><Plus size={16}/> إضافة طالب</button>}/><div className="toolbar single"><div className="search"><Search size={18}/><input placeholder="البحث عن طالب..." value={query} onChange={e => setQuery(e.target.value)}/></div><span className="result-count">{filteredStudents.length} طالب مسجل</span></div><div className="table-card"><div className="table-head"><span>الطالب</span><span>المجموعة</span><span>رقم الواتساب</span><span>حالة الدفع</span><span/></div>{filteredStudents.map(s => <div className="table-row" key={s.id}><div className="student-name"><span className="student-avatar">{s.name.slice(0,1)}</span><b>{s.name}</b></div><span>{s.group}</span><span className="muted">{s.phone}</span><span className={s.paid ? "paid" : "due"}>{s.paid ? "مدفوع" : "متبقي"}</span><div className="menu-wrap"><button className="more" onClick={() => setMenuId(menuId === s.id ? null : s.id)}><MoreHorizontal size={18}/></button>{menuId === s.id && <div className="row-menu"><button onClick={() => { setCardStudent(s); setMenuId(null); }}><CreditCard size={14}/> بطاقة الطالب</button><button onClick={() => { setEditItem(s); setModal("student"); setMenuId(null); }}><Pencil size={14}/> تعديل</button><button onClick={() => { setStudents(students.filter(item => item.id !== s.id)); const groupId = groups.find(g => g.name === s.group)?.id || null; if (groupId) setGroups(groups.map(g => g.id === groupId ? { ...g, students: Math.max(0, g.students - 1) } : g)); deleteStudentRemote.mutate({ id: s.id }); setMenuId(null); toast.success("تم حذف الطالب"); }}><Trash2 size={14}/> حذف</button></div>}</div></div>)}</div>{!filteredStudents.length && <Empty icon={Users} title="لا يوجد طلاب مسجلين" text="أضف أول طالب واربطه بإحدى مجموعاتك." action={<button className="primary" onClick={() => setModal("student")}><Plus size={16}/> أضف أول طالب</button>}/>} {modal === "student" && <FormModal type="student" initial={editItem} close={() => { setModal(null); setEditItem(null); }} onSubmit={(value: Student) => { if (isExistingStudentDraft(editItem)) { const groupId = groups.find(g => g.name === value.group)?.id || null; setStudents(students.map(item => item.id === editItem.id ? {...item, ...value} : item)); const previousStudent = students.find(item => item.id === editItem.id); const previousGroupId = groups.find(g => g.name === previousStudent?.group)?.id || null; if (previousGroupId !== groupId) setGroups(groups.map(g => g.id === previousGroupId ? { ...g, students: Math.max(0, g.students - 1) } : g.id === groupId ? { ...g, students: g.students + 1 } : g)); updateStudentRemote.mutate({ id: editItem.id, data: { name: value.name, phone: value.phone, guardianName: value.guardianName, guardianPhone: value.guardianPhone, studentCode: value.studentCode, paid: value.paid, groupId } }); toast.success("تم تعديل الطالب"); setEditItem(null); } else addStudent(value); }} groups={groups}/>} {cardStudent && <StudentCard student={cardStudent} close={() => setCardStudent(null)}/>}</>;
-  if (location === "/year-work") return document.documentElement.dataset.workspace === "school" ? <YearWorkAssistant students={students}/> : <Empty icon={BookOpen} title="مساعد أعمال السنة خاص بالمدرسة" text="اختر سياق المدرسة أولًا للوصول إلى كشف درجات الترم والغياب اليومي." action={<button className="primary" onClick={() => { localStorage.setItem("ostazi-workspace", "school"); window.dispatchEvent(new Event("ostazi-workspace-change")); window.location.href = "/"; }}>الانتقال إلى المدرسة</button>}/>;
-  if (location === "/behavior") return workspace === "center" ? <BehaviorPanel students={students} groups={groups}/> : <Empty icon={ShieldCheck} title="سجل السلوك غير متاح في هذا السياق" text="لن نعرض هنا أي بيانات من سياق السنتر. استخدم السنتر لمتابعة سجل السلوك، أو أضف الملاحظات الأكاديمية داخل السياق الحالي."/>;
-  if (location === "/timetable") return <><SectionTitle kicker="تنظيم الأسبوع" title="الجدول الأسبوعي" action={<button className="secondary" onClick={() => window.print()}><Download size={16}/> طباعة الجدول</button>}/><SchoolDaySettings/><ScheduleOcrPanel/><div className="mode-switch"><button className="selected">احترافي</button><button>تقليدي</button></div><div className="week-grid">{WEEK_DAYS.map((day, i) => <div className={`day-column ${day === today ? "today" : ""}`} key={day}><div className="day-label"><span>{day}</span><b>{i + 1}</b></div>{groups.flatMap(g => scheduleForGroup(g).filter(item => item.day === day).map(item => <div className="event" key={`${g.id}-${item.day}-${item.time}`}><span>{item.time}</span><b>{g.name}</b><small>{g.place} · {g.students} طالب</small></div>))}{!groups.some(g => scheduleForGroup(g).some(item => item.day === day)) && <small className="no-event">—</small>}</div>)}</div></>;
-  if (location === "/stats") return <><SectionTitle kicker="قراءة سريعة" title="إحصائيات الأداء" action={<button className="secondary" onClick={async () => { const result = await reportPdf.refetch(); if (result.data) downloadBase64File(result.data.contentBase64, result.data.filename); else toast.error("تعذر إنشاء التقرير"); }}><Download size={16}/> تصدير PDF</button>}/><div className="finance-stats"><Stat label="إجمالي الطلاب" value={students.length} note="طالب مسجل" icon={Users}/><Stat label="المجموعات" value={groups.length} note="مجموعة نشطة" icon={LayoutGrid} tone="gold"/><Stat label="نسبة التحصيل" value={`${students.length ? Math.round((students.filter(s => s.paid).length / students.length) * 100) : 0}%`} note="من الطلاب مدفوع" icon={CircleDollarSign} tone="green"/><Stat label="مواعيد الأسبوع" value={countScheduledLessons(groups)} note="موعد مجدول" icon={CalendarDays} tone="red"/></div><div className="stats-panels"><div className="panel"><SectionTitle kicker="توزيع المجموعات" title="حسب النوع"/><div className="bar-stat"><span>سنتر</span><div><i style={{width: `${groups.length ? Math.max(18, (groups.filter(g => g.place === "سنتر").length / groups.length) * 100) : 18}%`}}/></div><b>{groups.filter(g => g.place === "سنتر").length}</b></div><div className="bar-stat"><span>أونلاين</span><div><i className="bar-blue" style={{width: `${groups.length ? Math.max(18, (groups.filter(g => g.place === "أونلاين").length / groups.length) * 100) : 18}%`}}/></div><b>{groups.filter(g => g.place === "أونلاين").length}</b></div></div><div className="panel"><SectionTitle kicker="حالة التحصيل" title="متابعة الدفع"/><div className="big-stat"><strong>{students.filter(s => s.paid).length}</strong><span>مدفوع بالكامل</span></div><div className="big-stat warning"><strong>{students.filter(s => !s.paid).length}</strong><span>يحتاجون متابعة</span></div></div></div><div className="toolbar single"><div className="filters"><button className="selected">الكل</button><button>مدفوع</button><button>متبقي</button></div><span className="result-count">أغسطس ٢٠٢٦</span></div><div className="table-card"><div className="table-head"><span>الطالب</span><span>المجموعة</span><span>المطلوب</span><span>الحالة</span><span/></div>{students.map(s => <div className="table-row" key={s.id}><div className="student-name"><span className="student-avatar">{s.name.slice(0,1)}</span><b>{s.name}</b></div><span>{s.group}</span><span>{s.paid ? "180" : "150"} ج.م</span><span className={s.paid ? "paid" : "due"}>{s.paid ? "مدفوع" : "متبقي"}</span><button className="more" onClick={() => toast.success("تم تسجيل المتابعة")}>...</button></div>)}</div></>;
-  if (location === "/settings" || location.startsWith("/settings/")) return <SettingsPage profile={profile} groups={groups} students={students} setGroups={setGroups} setStudents={setStudents}/>;
-  return <HomePage profile={profile} groups={groups} students={students} onAdd={() => setModal("group")} modal={modal} close={() => setModal(null)} addGroup={addGroup}/>;
+  useEffect(() => {
+    const checkLateStudents = () => {
+      const now = new Date();
+      const todayName = now.toLocaleDateString("ar-EG", {
+        weekday: "long",
+      }) as (typeof WEEK_DAYS)[number];
+      const currentLesson = groups
+        .flatMap(group =>
+          scheduleForGroup(group).map(schedule => ({ group, schedule }))
+        )
+        .find(({ group, schedule }) => {
+          if (schedule.day !== todayName) return false;
+          const clockMinutes = clockTimeToMinutes(parseClockTime(schedule.time));
+          const start = new Date(now);
+          start.setHours(
+            Math.floor(clockMinutes / 60),
+            clockMinutes % 60,
+            0,
+            0
+          );
+          const remaining =
+            (start.getTime() +
+              Number(group.durationMinutes || 60) * 60_000 -
+              now.getTime()) /
+            60_000;
+          return remaining <= 10 && remaining > 0;
+        });
+      if (!currentLesson) return;
+      const lateStudents = (attendanceQuery.data || []).filter(
+        row => row.groupId === currentLesson.group.id && row.status === "late"
+      );
+      const clockMinutes = clockTimeToMinutes(
+        parseClockTime(currentLesson.schedule.time)
+      );
+      const lessonStart = new Date();
+      lessonStart.setHours(
+        Math.floor(clockMinutes / 60),
+        clockMinutes % 60,
+        0,
+        0
+      );
+      const minutes = Math.max(
+        1,
+        Math.ceil(
+          (lessonStart.getTime() +
+            Number(currentLesson.group.durationMinutes || 60) * 60_000 -
+            Date.now()) /
+            60_000
+        )
+      );
+      if (!shouldPromptLateAttendanceReview(minutes, lateStudents.length))
+        return;
+      const key = `ostazi-late-review-${currentLesson.group.id}-${todayDate.toISOString()}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      const message = `تبقى ${minutes} دقائق: راجع ${lateStudents.length} طالب متأخر في مجموعة ${currentLesson.group.name} وحدد حاضر أو غائب.`;
+      toast.warning(message, { duration: 15_000 });
+      if ("Notification" in window && Notification.permission === "granted")
+        new Notification("مراجعة المتأخرين", { body: message });
+    };
+    checkLateStudents();
+    const timer = window.setInterval(checkLateStudents, 30_000);
+    return () => window.clearInterval(timer);
+  }, [groups, attendanceQuery.data, todayDate]);
+  if (location === "/reports")
+    return (
+      <ContextReports
+        groups={groups}
+        students={students}
+        attendanceRows={attendanceQuery.data || []}
+      />
+    );
+  if (location === "/materials") return <MaterialsLibrary groups={groups} />;
+  if (location === "/assessments")
+    return (
+      <>
+        <WeeklyQuizPanel groups={groups} students={students} />
+        <PerformanceLeaderboard />
+        <AssessmentPanel
+          rows={assessmentRows}
+          students={students}
+          groups={groups}
+          onCreate={input => {
+            createAssessmentRemote.mutate(input, {
+              onSuccess: () => toast.success("تم حفظ التقييم"),
+              onError: () => toast.error("تعذر حفظ التقييم"),
+            });
+          }}
+        />
+      </>
+    );
+  if (location === "/finance")
+    return (
+      <FinancePanel
+        rows={financeRows}
+        students={students}
+        groups={groups}
+        onCreate={input => {
+          createTransactionRemote.mutate(input, {
+            onSuccess: () => {
+              financeQuery.refetch();
+              toast.success("تم حفظ الحركة المالية");
+            },
+            onError: () => toast.error("تعذر حفظ الحركة"),
+          });
+        }}
+        onSettle={id => {
+          settleTransactionRemote.mutate({ id });
+          toast.success("تم تسجيل التحصيل");
+        }}
+      />
+    );
+  if (location === "/attendance")
+    return (
+      <>
+        <SectionTitle
+          kicker="إدارة الحضور"
+          title="الحضور السريع"
+          action={
+            <span className="live-pill">
+              <i /> اليوم · {todayDate.toLocaleDateString("ar-EG")}
+            </span>
+          }
+        />
+        <QuickAttendance
+          students={students}
+          onCheckin={student => {
+            setAttendanceResult(student);
+            markAttendanceRemote.mutate({
+              studentId: student.id,
+              groupId:
+                groups.find(group => group.name === student.group)?.id || null,
+              lessonDate: todayDate,
+              status: "present",
+            });
+            if (student.paid) toast.success(`تم تسجيل حضور ${student.name}`);
+            else toast.error(`تم الحضور، توجد مستحقات على ${student.name}`);
+          }}
+        />
+        {attendanceResult && (
+          <div
+            className={`attendance-result panel ${attendanceResult.paid ? "is-paid" : "is-due"}`}
+          >
+            <div className="result-icon">
+              {attendanceResult.paid ? (
+                <CheckCircle2 size={24} />
+              ) : (
+                <AlertTriangle size={24} />
+              )}
+            </div>
+            <div>
+              <span className="eyebrow">نتيجة آخر تسجيل</span>
+              <h3>{attendanceResult.name}</h3>
+              <p>
+                {attendanceResult.group} ·{" "}
+                {attendanceResult.paid ? "الحساب مسدد" : "توجد مبالغ مستحقة"}
+              </p>
+            </div>
+            <div className="result-actions">
+              {!attendanceResult.paid && (
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => {
+                    const next = students.map(student =>
+                      student.id === attendanceResult.id
+                        ? { ...student, paid: true }
+                        : student
+                    );
+                    setStudents(next);
+                    createTransactionRemote.mutate({
+                      studentId: attendanceResult.id,
+                      groupId:
+                        groups.find(
+                          group => group.name === attendanceResult.group
+                        )?.id || null,
+                      kind: "subscription",
+                      amount: String(
+                        groups.find(
+                          group => group.name === attendanceResult.group
+                        )?.fee || 0
+                      ),
+                      paidAt: new Date(),
+                      dueDate: null,
+                      description: "تحصيل اشتراك عند الحضور",
+                    });
+                    setAttendanceResult({ ...attendanceResult, paid: true });
+                    toast.success("تم تسجيل التحصيل");
+                  }}
+                >
+                  تحصيل المبلغ
+                </button>
+              )}{" "}
+              {(attendanceResult.guardianPhone || attendanceResult.phone) && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    const phone = (
+                      attendanceResult.guardianPhone ||
+                      attendanceResult.phone ||
+                      ""
+                    ).replace(/\\D/g, "");
+                    const message = encodeURIComponent(
+                      `تم تسجيل حضور ${attendanceResult.name} اليوم${attendanceResult.paid ? " وتم تأكيد الدفع" : ""}.`
+                    );
+                    window.open(
+                      `https://wa.me/${phone}?text=${message}`,
+                      "_blank"
+                    );
+                  }}
+                >
+                  <MessageSquareText size={16} /> رسالة ولي الأمر
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  if (location === "/groups")
+    return (
+      <>
+        <SectionTitle
+          kicker="إدارة التشغيل"
+          title="المجموعات الدراسية"
+          action={
+            <div className="action-row">
+              <button
+                className="secondary"
+                onClick={() => {
+                  setEditItem(null);
+                  setModal("student");
+                }}
+              >
+                <Plus size={16} /> إضافة طالب
+              </button>
+              <button className="primary" onClick={() => setModal("group")}>
+                <Plus size={16} /> إضافة مجموعة
+              </button>
+            </div>
+          }
+        />
+        <div className="toolbar groups-toolbar">
+          <div className="search">
+            <Search size={18} />
+            <input
+              aria-label="البحث في المجموعات والطلاب"
+              placeholder="ابحث باسم المجموعة أو الطالب..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+            {query && (
+              <button
+                type="button"
+                className="search-clear"
+                aria-label="مسح البحث"
+                onClick={() => setQuery("")}
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <div className="filter-row">
+            <div className="filters" aria-label="تصفية المكان">
+              {["الكل", "مدرسة", "سنتر", "أونلاين"].map(x => (
+                <button
+                  type="button"
+                  className={filter === x ? "selected" : ""}
+                  onClick={() => setFilter(x)}
+                  key={x}
+                >
+                  {x}{" "}
+                  <b>
+                    {x === "الكل"
+                      ? groups.length
+                      : groups.filter(g => g.place === x).length}
+                  </b>
+                </button>
+              ))}
+            </div>
+            <div className="filters student-filters" aria-label="تصفية الطلاب">
+              {["الكل", "بها طلاب", "فارغة"].map(x => (
+                <button
+                  type="button"
+                  className={studentFilter === x ? "selected" : ""}
+                  onClick={() => setStudentFilter(x)}
+                  key={x}
+                >
+                  {x}
+                </button>
+              ))}
+            </div>
+          </div>
+          <span className="result-count">{filteredGroups.length} مجموعة</span>
+          {(query || filter !== "الكل" || studentFilter !== "الكل") && (
+            <button
+              type="button"
+              className="clear-filters"
+              onClick={() => {
+                setQuery("");
+                setFilter("الكل");
+                setStudentFilter("الكل");
+              }}
+            >
+              مسح الكل
+            </button>
+          )}
+        </div>
+        <div className="group-grid">
+          {filteredGroups.map(g => (
+            <div className="group-card group-card-clickable" key={g.id}>
+              <div className="card-top">
+                <span
+                  className={`tag ${g.place === "أونلاين" ? "tag-blue" : "tag-gold"}`}
+                >
+                  {g.place}
+                </span>
+              </div>
+              <h3>{g.name}</h3>
+              <button
+                type="button"
+                className="card-add-student"
+                onClick={e => {
+                  e.stopPropagation();
+                  setEditItem({ __newStudent: true, group: g.name });
+                  setModal("student");
+                }}
+              >
+                <Plus size={14} /> طالب جديد
+              </button>
+              <div className="group-meta">
+                <span>
+                  <Users size={15} />{" "}
+                  {studentsForGroup(students, g.name).length} طالب
+                </span>
+                <span>
+                  <CalendarDays size={15} />{" "}
+                  {scheduleForGroup(g).length > 1
+                    ? `${scheduleForGroup(g).length} أيام`
+                    : `${g.day} · ${g.time}`}
+                </span>
+              </div>
+              <div className="card-footer">
+                <span>{g.mode}</span>
+                <strong>
+                  {g.fee} ج.م{" "}
+                  <small>
+                    / {g.collectionPeriod === "term" ? "الترم" : "شهري"}
+                  </small>
+                </strong>
+              </div>
+              <button
+                type="button"
+                className="card-expand-more"
+                aria-expanded={expandedGroupId === g.id}
+                onClick={() =>
+                  setExpandedGroupId(expandedGroupId === g.id ? null : g.id)
+                }
+              >
+                {expandedGroupId === g.id ? "إخفاء التفاصيل" : "المزيد"}
+                <ChevronLeft
+                  size={15}
+                  className={expandedGroupId === g.id ? "rotate-90" : ""}
+                />
+              </button>
+              {expandedGroupId === g.id && (
+                <div
+                  className="group-inline-details"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="inline-students-heading">
+                    <b>طلاب المجموعة</b>
+                    <span>
+                      {studentsForGroup(students, g.name).length} طالب
+                    </span>
+                  </div>
+                  {studentsForGroup(students, g.name).length ? (
+                    <div className="inline-student-list">
+                      {studentsForGroup(students, g.name)
+                        .slice(0, 5)
+                        .map(student => (
+                          <span key={student.id}>{student.name}</span>
+                        ))}
+                    </div>
+                  ) : (
+                    <small className="muted">لا يوجد طلاب مضافون بعد.</small>
+                  )}
+                  <div className="inline-card-actions">
+                    <a className="secondary" href={`/groups/${g.id}`}>
+                      بروفايل المجموعة
+                    </a>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => {
+                        setEditItem(g);
+                        setModal("group");
+                      }}
+                    >
+                      <Pencil size={14} /> تعديل
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => {
+                        updateGroupRemote.mutate(
+                          { id: g.id, data: { isPinned: !g.isPinned } },
+                          {
+                            onSuccess: () => {
+                              setGroups(
+                                groups.map(item =>
+                                  item.id === g.id
+                                    ? { ...item, isPinned: !g.isPinned }
+                                    : item
+                                )
+                              );
+                              toast.success(
+                                g.isPinned
+                                  ? "تم إلغاء تثبيت المجموعة"
+                                  : "تم تثبيت المجموعة"
+                              );
+                            },
+                            onError: () => toast.error("تعذر تثبيت المجموعة"),
+                          }
+                        );
+                      }}
+                    >
+                      <Pin size={14} /> {g.isPinned ? "إلغاء التثبيت" : "تثبيت"}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary danger-action"
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            `هل تريد حذف مجموعة ${g.name}؟ سيبقى الطلاب مسجلين دون مجموعة.`
+                          )
+                        )
+                          return;
+                        deleteGroupRemote.mutate(
+                          { id: g.id },
+                          {
+                            onSuccess: () => {
+                              setGroups(groups.filter(item => item.id !== g.id));
+                              setStudents(
+                                students.map(student =>
+                                  student.group === g.name
+                                    ? { ...student, group: "بدون مجموعة" }
+                                    : student
+                                )
+                              );
+                              setExpandedGroupId(null);
+                              toast.success("تم حذف المجموعة مع إبقاء الطلاب");
+                            },
+                            onError: () => toast.error("تعذر حذف المجموعة"),
+                          }
+                        );
+                      }}
+                    >
+                      <Trash2 size={14} /> حذف
+                    </button>
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => {
+                        setEditItem({ __newStudent: true, group: g.name });
+                        setModal("student");
+                      }}
+                    >
+                      <Plus size={14} /> إضافة طالب
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {!filteredGroups.length && (
+          <Empty
+            icon={LayoutGrid}
+            title="لا توجد نتائج مطابقة"
+            text={
+              query || filter !== "الكل" || studentFilter !== "الكل"
+                ? "جرّب تعديل البحث أو مسح الفلاتر للوصول إلى النتائج."
+                : "أنشئ مجموعتك الأولى لتنظيم اليوم الدراسي."
+            }
+            action={
+              query || filter !== "الكل" || studentFilter !== "الكل" ? (
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    setQuery("");
+                    setFilter("الكل");
+                    setStudentFilter("الكل");
+                  }}
+                >
+                  مسح البحث والتصفية
+                </button>
+              ) : (
+                <button className="primary" onClick={() => setModal("group")}>
+                  <Plus size={16} /> أضف أول مجموعة
+                </button>
+              )
+            }
+          />
+        )}{" "}
+        {modal === "group" && (
+          <FormModal
+            type="group"
+            initial={editItem}
+            close={() => {
+              setModal(null);
+              setEditItem(null);
+            }}
+            onSubmit={(value: Group) => {
+              if (editItem) {
+                setGroups(
+                  renameGroupWithStudentCount(
+                    groups.map(item =>
+                      item.id === editItem.id ? { ...item, ...value } : item
+                    ),
+                    students,
+                    editItem.id,
+                    value.name
+                  ) as Group[]
+                );
+                updateGroupRemote.mutate({
+                  id: editItem.id,
+                  data: {
+                    name: value.name,
+                    grade: value.grade || null,
+                    place: value.place,
+                    mode: value.mode,
+                    isPinned: Boolean(value.isPinned),
+                    studentsCount: studentsForGroup(students, editItem.name)
+                      .length,
+                    day: value.day,
+                    time: value.time,
+                    durationMinutes: value.durationMinutes || 60,
+                    scheduleJson:
+                      value.scheduleJson ||
+                      serializeSchedule(scheduleForGroup(value)),
+                    fee: value.fee,
+                    collectionPeriod: value.collectionPeriod,
+                  },
+                });
+                toast.success("تم تعديل المجموعة");
+                setEditItem(null);
+              } else addGroup(value);
+            }}
+          />
+        )}{" "}
+        {modal === "student" && (
+          <FormModal
+            type="student"
+            initial={editItem}
+            close={() => {
+              setModal(null);
+              setEditItem(null);
+            }}
+            onSubmit={(value: Student) => {
+              if (isExistingStudentDraft(editItem)) {
+                const groupId =
+                  groups.find(g => g.name === value.group)?.id || null;
+                const fee = Number(
+                  groups.find(g => g.id === groupId)?.fee || 0
+                );
+                const paidAmount = Number(value.paidAmount || 0);
+                const paid = fee > 0 ? paidAmount >= fee : value.paid;
+                setStudents(
+                  students.map(item =>
+                    item.id === editItem.id
+                      ? { ...item, ...value, paidAmount, paid }
+                      : item
+                  )
+                );
+                const previousStudent = students.find(
+                  item => item.id === editItem.id
+                );
+                const previousGroupId =
+                  groups.find(g => g.name === previousStudent?.group)?.id ||
+                  null;
+                if (previousGroupId !== groupId)
+                  setGroups(
+                    groups.map(g =>
+                      g.id === previousGroupId
+                        ? { ...g, students: Math.max(0, g.students - 1) }
+                        : g.id === groupId
+                          ? { ...g, students: g.students + 1 }
+                          : g
+                    )
+                  );
+                updateStudentRemote.mutate({
+                  id: editItem.id,
+                  data: {
+                    name: value.name,
+                    phone: value.phone,
+                    guardianName: value.guardianName,
+                    guardianPhone: value.guardianPhone,
+                    studentCode: value.studentCode,
+                    paid,
+                    paidAmount,
+                    groupId,
+                  },
+                });
+                toast.success("تم تعديل الطالب");
+                setEditItem(null);
+              } else addStudent(value);
+            }}
+            groups={groups}
+          />
+        )}{" "}
+        {cardStudent && (
+          <StudentCard
+            student={cardStudent}
+            close={() => setCardStudent(null)}
+          />
+        )}
+      </>
+    );
+  if (location === "/students")
+    return (
+      <>
+        <SectionTitle
+          kicker="ملف الطلاب"
+          title="قائمة الطلاب"
+          action={
+            <button
+              className="primary"
+              onClick={() => {
+                setEditItem(null);
+                setModal("student");
+              }}
+            >
+              <Plus size={16} /> إضافة طالب
+            </button>
+          }
+        />
+        <div className="toolbar single">
+          <div className="search">
+            <Search size={18} />
+            <input
+              placeholder="البحث عن طالب..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+          </div>
+          <span className="result-count">
+            {filteredStudents.length} طالب مسجل
+          </span>
+        </div>
+        <div className="table-card">
+          <div className="table-head">
+            <span>الطالب</span>
+            <span>المجموعة</span>
+            <span>رقم الواتساب</span>
+            <span>حالة الدفع</span>
+            <span />
+          </div>
+          {filteredStudents.map(s => (
+            <div className="table-row" key={s.id}>
+              <div className="student-name">
+                <span className="student-avatar">{s.name.slice(0, 1)}</span>
+                <b>{s.name}</b>
+              </div>
+              <span>{s.group}</span>
+              <span className="muted">{s.phone}</span>
+              <span className={s.paid ? "paid" : "due"}>
+                {s.paid ? "مدفوع" : "متبقي"}
+              </span>
+              <div className="menu-wrap">
+                <button
+                  className="more"
+                  onClick={() => setMenuId(menuId === s.id ? null : s.id)}
+                >
+                  <MoreHorizontal size={18} />
+                </button>
+                {menuId === s.id && (
+                  <div className="row-menu">
+                    <button
+                      onClick={() => {
+                        setCardStudent(s);
+                        setMenuId(null);
+                      }}
+                    >
+                      <CreditCard size={14} /> بطاقة الطالب
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditItem(s);
+                        setModal("student");
+                        setMenuId(null);
+                      }}
+                    >
+                      <Pencil size={14} /> تعديل
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`هل تريد حذف الطالب ${s.name}؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+                        deleteStudentRemote.mutate(
+                          { id: s.id },
+                          {
+                            onSuccess: () => {
+                              setStudents(students.filter(item => item.id !== s.id));
+                              const groupId = groups.find(g => g.name === s.group)?.id || null;
+                              if (groupId) setGroups(groups.map(g => g.id === groupId ? { ...g, students: Math.max(0, g.students - 1) } : g));
+                              setMenuId(null);
+                              toast.success("تم حذف الطالب");
+                            },
+                            onError: () => toast.error("تعذر حذف الطالب"),
+                          }
+                        );
+                      }}
+                    >
+                      <Trash2 size={14} /> حذف
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        {!filteredStudents.length && (
+          <Empty
+            icon={Users}
+            title="لا يوجد طلاب مسجلين"
+            text="أضف أول طالب واربطه بإحدى مجموعاتك."
+            action={
+              <button className="primary" onClick={() => setModal("student")}>
+                <Plus size={16} /> أضف أول طالب
+              </button>
+            }
+          />
+        )}{" "}
+        {modal === "student" && (
+          <FormModal
+            type="student"
+            initial={editItem}
+            close={() => {
+              setModal(null);
+              setEditItem(null);
+            }}
+            onSubmit={(value: Student) => {
+              if (isExistingStudentDraft(editItem)) {
+                const groupId =
+                  groups.find(g => g.name === value.group)?.id || null;
+                setStudents(
+                  students.map(item =>
+                    item.id === editItem.id ? { ...item, ...value } : item
+                  )
+                );
+                const previousStudent = students.find(
+                  item => item.id === editItem.id
+                );
+                const previousGroupId =
+                  groups.find(g => g.name === previousStudent?.group)?.id ||
+                  null;
+                if (previousGroupId !== groupId)
+                  setGroups(
+                    groups.map(g =>
+                      g.id === previousGroupId
+                        ? { ...g, students: Math.max(0, g.students - 1) }
+                        : g.id === groupId
+                          ? { ...g, students: g.students + 1 }
+                          : g
+                    )
+                  );
+                updateStudentRemote.mutate({
+                  id: editItem.id,
+                  data: {
+                    name: value.name,
+                    phone: value.phone,
+                    guardianName: value.guardianName,
+                    guardianPhone: value.guardianPhone,
+                    studentCode: value.studentCode,
+                    paid: value.paid,
+                    groupId,
+                  },
+                });
+                toast.success("تم تعديل الطالب");
+                setEditItem(null);
+              } else addStudent(value);
+            }}
+            groups={groups}
+          />
+        )}{" "}
+        {cardStudent && (
+          <StudentCard
+            student={cardStudent}
+            close={() => setCardStudent(null)}
+          />
+        )}
+      </>
+    );
+  if (location === "/year-work")
+    return document.documentElement.dataset.workspace === "school" ? (
+      <YearWorkAssistant students={students} />
+    ) : (
+      <Empty
+        icon={BookOpen}
+        title="مساعد أعمال السنة خاص بالمدرسة"
+        text="اختر سياق المدرسة أولًا للوصول إلى كشف درجات الترم والغياب اليومي."
+        action={
+          <button
+            className="primary"
+            onClick={() => {
+              localStorage.setItem("ostazi-workspace", "school");
+              window.dispatchEvent(new Event("ostazi-workspace-change"));
+              window.location.href = "/";
+            }}
+          >
+            الانتقال إلى المدرسة
+          </button>
+        }
+      />
+    );
+  if (location === "/behavior")
+    return workspace === "center" ? (
+      <BehaviorPanel students={students} groups={groups} />
+    ) : (
+      <Empty
+        icon={ShieldCheck}
+        title="سجل السلوك غير متاح في هذا السياق"
+        text="لن نعرض هنا أي بيانات من سياق السنتر. استخدم السنتر لمتابعة سجل السلوك، أو أضف الملاحظات الأكاديمية داخل السياق الحالي."
+      />
+    );
+  if (location === "/timetable")
+    return (
+      <>
+        <SectionTitle
+          kicker="تنظيم الأسبوع"
+          title="الجدول الأسبوعي"
+          action={
+            <button className="secondary" onClick={() => window.print()}>
+              <Download size={16} /> طباعة الجدول
+            </button>
+          }
+        />
+        <SchoolDaySettings />
+        <ScheduleOcrPanel />
+        <div className="mode-switch">
+          <button className="selected">احترافي</button>
+          <button>تقليدي</button>
+        </div>
+        <div className="week-grid">
+          {WEEK_DAYS.map((day, i) => (
+            <div
+              className={`day-column ${day === today ? "today" : ""}`}
+              key={day}
+            >
+              <div className="day-label">
+                <span>{day}</span>
+                <b>{i + 1}</b>
+              </div>
+              {groups.flatMap(g =>
+                scheduleForGroup(g)
+                  .filter(item => item.day === day)
+                  .map(item => (
+                    <div
+                      className="event"
+                      key={`${g.id}-${item.day}-${item.time}`}
+                    >
+                      <span>{item.time}</span>
+                      <b>{g.name}</b>
+                      <small>
+                        {g.place} · {g.students} طالب
+                      </small>
+                    </div>
+                  ))
+              )}
+              {!groups.some(g =>
+                scheduleForGroup(g).some(item => item.day === day)
+              ) && <small className="no-event">—</small>}
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  if (location === "/stats")
+    return (
+      <>
+        <SectionTitle
+          kicker="قراءة سريعة"
+          title="إحصائيات الأداء"
+          action={
+            <button
+              className="secondary"
+              onClick={async () => {
+                const result = await reportPdf.refetch();
+                if (result.data)
+                  downloadBase64File(
+                    result.data.contentBase64,
+                    result.data.filename
+                  );
+                else toast.error("تعذر إنشاء التقرير");
+              }}
+            >
+              <Download size={16} /> تصدير PDF
+            </button>
+          }
+        />
+        <div className="finance-stats">
+          <Stat
+            label="إجمالي الطلاب"
+            value={students.length}
+            note="طالب مسجل"
+            icon={Users}
+          />
+          <Stat
+            label="المجموعات"
+            value={groups.length}
+            note="مجموعة نشطة"
+            icon={LayoutGrid}
+            tone="gold"
+          />
+          <Stat
+            label="نسبة التحصيل"
+            value={`${students.length ? Math.round((students.filter(s => s.paid).length / students.length) * 100) : 0}%`}
+            note="من الطلاب مدفوع"
+            icon={CircleDollarSign}
+            tone="green"
+          />
+          <Stat
+            label="مواعيد الأسبوع"
+            value={countScheduledLessons(groups)}
+            note="موعد مجدول"
+            icon={CalendarDays}
+            tone="red"
+          />
+        </div>
+        <div className="stats-panels">
+          <div className="panel">
+            <SectionTitle kicker="توزيع المجموعات" title="حسب النوع" />
+            <div className="bar-stat">
+              <span>سنتر</span>
+              <div>
+                <i
+                  style={{
+                    width: `${groups.length ? Math.max(18, (groups.filter(g => g.place === "سنتر").length / groups.length) * 100) : 18}%`,
+                  }}
+                />
+              </div>
+              <b>{groups.filter(g => g.place === "سنتر").length}</b>
+            </div>
+            <div className="bar-stat">
+              <span>أونلاين</span>
+              <div>
+                <i
+                  className="bar-blue"
+                  style={{
+                    width: `${groups.length ? Math.max(18, (groups.filter(g => g.place === "أونلاين").length / groups.length) * 100) : 18}%`,
+                  }}
+                />
+              </div>
+              <b>{groups.filter(g => g.place === "أونلاين").length}</b>
+            </div>
+          </div>
+          <div className="panel">
+            <SectionTitle kicker="حالة التحصيل" title="متابعة الدفع" />
+            <div className="big-stat">
+              <strong>{students.filter(s => s.paid).length}</strong>
+              <span>مدفوع بالكامل</span>
+            </div>
+            <div className="big-stat warning">
+              <strong>{students.filter(s => !s.paid).length}</strong>
+              <span>يحتاجون متابعة</span>
+            </div>
+          </div>
+        </div>
+        <div className="toolbar single">
+          <div className="filters">
+            <button className="selected">الكل</button>
+            <button>مدفوع</button>
+            <button>متبقي</button>
+          </div>
+          <span className="result-count">أغسطس ٢٠٢٦</span>
+        </div>
+        <div className="table-card">
+          <div className="table-head">
+            <span>الطالب</span>
+            <span>المجموعة</span>
+            <span>المطلوب</span>
+            <span>الحالة</span>
+            <span />
+          </div>
+          {students.map(s => (
+            <div className="table-row" key={s.id}>
+              <div className="student-name">
+                <span className="student-avatar">{s.name.slice(0, 1)}</span>
+                <b>{s.name}</b>
+              </div>
+              <span>{s.group}</span>
+              <span>{s.paid ? "180" : "150"} ج.م</span>
+              <span className={s.paid ? "paid" : "due"}>
+                {s.paid ? "مدفوع" : "متبقي"}
+              </span>
+              <button
+                className="more"
+                onClick={() => toast.success("تم تسجيل المتابعة")}
+              >
+                ...
+              </button>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  if (location === "/settings" || location.startsWith("/settings/"))
+    return (
+      <SettingsPage
+        profile={profile}
+        groups={groups}
+        students={students}
+        setGroups={setGroups}
+        setStudents={setStudents}
+      />
+    );
+  return (
+    <HomePage
+      profile={profile}
+      groups={groups}
+      students={students}
+      onAdd={() => setModal("group")}
+      modal={modal}
+      close={() => setModal(null)}
+      addGroup={addGroup}
+    />
+  );
 }
 
-function LiveTracker({ groups }: { groups: Group[] }) { const [now, setNow] = useState(() => new Date()); const notifiedRef = useRef(""); const { language } = useLanguage(); useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(timer); }, []); const todayName = now.toLocaleDateString("ar-EG", { weekday: "long" }) as typeof WEEK_DAYS[number]; const weekStart = new Date(now); weekStart.setHours(0, 0, 0, 0); const dayIndex = WEEK_DAYS.indexOf(todayName); weekStart.setDate(weekStart.getDate() - (dayIndex >= 0 ? dayIndex : 0)); const scheduledLessons = groups.flatMap(group => scheduleForGroup(group).map(item => ({ ...group, ...item }))).map(lesson => { const clock = parseClockTime(lesson.time); const hour = Number(clock.hour) % 12 + (clock.period === "م" ? 12 : 0); const date = new Date(weekStart); const lessonDayIndex = WEEK_DAYS.indexOf(lesson.day as typeof WEEK_DAYS[number]); date.setDate(date.getDate() + (lessonDayIndex >= 0 ? lessonDayIndex : 0)); date.setHours(hour, 0, 0, 0); if (date.getTime() < now.getTime() - 60 * 60 * 1000) date.setDate(date.getDate() + 7); return { lesson, date }; }).sort((a, b) => a.date.getTime() - b.date.getTime()); const current = scheduledLessons.find(item => now.getTime() >= item.date.getTime() && now.getTime() < item.date.getTime() + 60 * 60 * 1000); const next = scheduledLessons.find(item => item.date.getTime() >= now.getTime()); const active = current || next; const remaining = next ? Math.max(0, Math.ceil((next.date.getTime() - now.getTime()) / 60_000)) : 0; const reminderKey = next ? `${next.lesson.id}-${next.date.getTime()}` : ""; useEffect(() => { if (next && remaining === 5 && notifiedRef.current !== reminderKey) { notifiedRef.current = reminderKey; toast.info(language === "ar" ? `تبقى 5 دقائق على حصة ${next.lesson.name}` : `5 minutes remain before ${next.lesson.name}`); } }, [language, next, remaining, reminderKey]); return <div className="live-tracker panel"><div className="tracker-icon"><CheckCircle2 size={21}/></div><div className="tracker-copy"><span className="eyebrow">المؤشر المباشر</span><h3>{current ? "الحصة الحالية" : next ? "الحصة القادمة" : "اليوم الدراسي"}</h3><p>{active ? `${active.lesson.name} · ${localizedPlace(active.lesson.place, language)}` : "لا توجد حصة مجدولة"}</p></div><div className="tracker-time"><strong>{current ? "مستمرة" : next ? formatRemainingLessonTime(remaining, language) : "—"}</strong><small>{active ? `${localizedDay(active.lesson.day, language)} · ${formatClockTime(parseClockTime(active.lesson.time), language)}` : "العودة للجدول"}</small></div></div> }
-function HomePage({ profile, groups, students, onAdd, modal, close, addGroup }: any) {
+function LiveTracker({ groups }: { groups: Group[] }) {
+  const [now, setNow] = useState(() => new Date());
+  const notifiedRef = useRef("");
+  const { language } = useLanguage();
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const todayName = now.toLocaleDateString("ar-EG", {
+    weekday: "long",
+  }) as (typeof WEEK_DAYS)[number];
+  const weekStart = new Date(now);
+  weekStart.setHours(0, 0, 0, 0);
+  const dayIndex = WEEK_DAYS.indexOf(todayName);
+  weekStart.setDate(weekStart.getDate() - (dayIndex >= 0 ? dayIndex : 0));
+  const scheduledLessons = groups
+    .flatMap(group =>
+      scheduleForGroup(group).map(item => ({ ...group, ...item }))
+    )
+    .map(lesson => {
+      const clockMinutes = clockTimeToMinutes(parseClockTime(lesson.time));
+      const date = new Date(weekStart);
+      const lessonDayIndex = WEEK_DAYS.indexOf(
+        lesson.day as (typeof WEEK_DAYS)[number]
+      );
+      date.setDate(date.getDate() + (lessonDayIndex >= 0 ? lessonDayIndex : 0));
+      date.setHours(
+        Math.floor(clockMinutes / 60),
+        clockMinutes % 60,
+        0,
+        0
+      );
+      if (
+        date.getTime() <
+        now.getTime() - Number(lesson.durationMinutes || 60) * 60_000
+      )
+        date.setDate(date.getDate() + 7);
+      return { lesson, date };
+    })
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const current = scheduledLessons.find(
+    item =>
+      now.getTime() >= item.date.getTime() &&
+      now.getTime() <
+        item.date.getTime() + Number(item.lesson.durationMinutes || 60) * 60_000
+  );
+  const next = scheduledLessons.find(
+    item => item.date.getTime() >= now.getTime()
+  );
+  const active = current || next;
+  const remaining = next
+    ? Math.max(0, Math.ceil((next.date.getTime() - now.getTime()) / 60_000))
+    : 0;
+  const reminderKey = next ? `${next.lesson.id}-${next.date.getTime()}` : "";
+  useEffect(() => {
+    if (next && remaining === 5 && notifiedRef.current !== reminderKey) {
+      notifiedRef.current = reminderKey;
+      toast.info(
+        language === "ar"
+          ? `تبقى 5 دقائق على حصة ${next.lesson.name}`
+          : `5 minutes remain before ${next.lesson.name}`
+      );
+    }
+  }, [language, next, remaining, reminderKey]);
+  return (
+    <div className="live-tracker panel">
+      <div className="tracker-icon">
+        <CheckCircle2 size={21} />
+      </div>
+      <div className="tracker-copy">
+        <span className="eyebrow">المؤشر المباشر</span>
+        <h3>
+          {current ? "الحصة الحالية" : next ? "الحصة القادمة" : "اليوم الدراسي"}
+        </h3>
+        <p>
+          {active
+            ? `${active.lesson.name} · ${localizedPlace(active.lesson.place, language)}`
+            : "لا توجد حصة مجدولة"}
+        </p>
+      </div>
+      <div className="tracker-time">
+        <strong>
+          {current
+            ? "مستمرة"
+            : next
+              ? formatRemainingLessonTime(remaining, language)
+              : "—"}
+        </strong>
+        <small>
+          {active
+            ? `${localizedDay(active.lesson.day, language)} · ${formatClockTime(parseClockTime(active.lesson.time), language)}`
+            : "العودة للجدول"}
+        </small>
+      </div>
+    </div>
+  );
+}
+function HomePage({
+  profile,
+  groups,
+  students,
+  onAdd,
+  modal,
+  close,
+  addGroup,
+}: any) {
   const [workspace] = useWorkspace();
   const { language } = useLanguage();
   if (workspace === "school") return <SchoolWorkspacePanel />;
   const now = new Date();
   const todayName = now.toLocaleDateString("ar-EG", { weekday: "long" });
-  const todayNameDisplay = now.toLocaleDateString(language === "en" ? "en-GB" : "ar-EG", { weekday: "long" });
-  const todayDate = now.toLocaleDateString(language === "en" ? "en-GB" : "ar-EG", { day: "numeric", month: "long", year: "numeric" });
-  const todayGroups = groups.flatMap((g: Group) => scheduleForGroup(g).filter(item => item.day === todayName).map(item => ({ ...g, ...item })));
+  const todayNameDisplay = now.toLocaleDateString(
+    language === "en" ? "en-GB" : "ar-EG",
+    { weekday: "long" }
+  );
+  const todayDate = now.toLocaleDateString(
+    language === "en" ? "en-GB" : "ar-EG",
+    { day: "numeric", month: "long", year: "numeric" }
+  );
+  const todayGroups = groups.flatMap((g: Group) =>
+    scheduleForGroup(g)
+      .filter(item => item.day === todayName)
+      .map(item => ({ ...g, ...item }))
+  );
   const todayDetails = sortGroupsByTime<Group>(todayGroups);
   const nextGroup = getNextGroupForDay(todayGroups, todayName);
   const unpaidCount = students.filter((s: Student) => !s.paid).length;
   const [showTodayDetails, setShowTodayDetails] = useState(false);
-  return <>
-    <div className="hero"><div><span className="hero-label"><span className="pulse"/> {language === "en" ? "Your teaching day at a glance" : "يومك الدراسي في نظرة"}</span><h2>{language === "en" ? <>Keep your teaching day<br/><em>under control.</em></> : <>خلّي يومك الدراسي<br/><em>تحت السيطرة.</em></>}</h2><p>{language === "en" ? "Your groups, students, and schedules in one organized place." : "كل مجموعاتك، طلابك، ومواعيدك في مساحة واحدة مرتبة."}</p><div className="hero-actions"><button className="primary" onClick={onAdd}><Plus size={17}/> {language === "en" ? "Create group" : "أنشئ مجموعة جديدة"}</button><Link href="/assessments"><a className="secondary hero-exam-link"><ClipboardCheck size={16}/> {language === "en" ? "Create exam" : "إنشاء امتحان"}</a></Link></div></div><div className="hero-visual"><img src="/manus-storage/ostazi-grid_fd7d31ff.jpg"/><div className="orbital"><BookOpen size={42}/></div><span className="orbit-dot dot-one"/><span className="orbit-dot dot-two"/></div></div>
-    <LiveTracker groups={groups}/><div className="today-summary"><div className="today-heading"><span className="eyebrow">{language === "en" ? "Today" : "اليوم"}</span><strong>{todayNameDisplay}</strong><small>{todayDate}</small></div><button type="button" className="today-lessons" onClick={() => setShowTodayDetails(!showTodayDetails)} aria-expanded={showTodayDetails}><span>{language === "en" ? "Daily lessons" : "الحصص اليومية"}</span><b>{todayGroups.length}</b><small>{language === "en" ? `${todayGroups.length} scheduled` : todayGroups.length === 1 ? "حصة مجدولة" : "حصص مجدولة"}</small><ChevronLeft size={18} className={showTodayDetails ? "today-chevron-open" : ""}/></button></div>{showTodayDetails && <div className="today-details">{todayDetails.length ? todayDetails.map((g: Group) => <div className="today-detail-row" key={g.id}><span className="time">{language === "en" ? formatClockTime(parseClockTime(g.time), "en") : g.time}</span><div><b>{g.name}</b><small>{g.place} · {g.mode} · {g.students} {language === "en" ? "students" : "طالب"}</small></div><span className="status-dot"/></div>) : <div className="today-empty"><CalendarDays size={20}/><span>{language === "en" ? "No lessons scheduled today" : "لا توجد حصص مجدولة اليوم"}</span><small>{language === "en" ? "Add a group or edit its schedule." : "يمكنك إضافة مجموعة أو تعديل موعدها."}</small></div>}</div>}
-    <div className="home-widgets">
-      <div className="widget widget-primary"><div className="widget-heading"><span className="eyebrow">أقرب حصة</span><CalendarDays size={18}/></div>{nextGroup ? <><strong className="widget-title">{nextGroup.name}</strong><div className="widget-meta"><span>{nextGroup.day}</span><b>{nextGroup.time}</b></div><small>{nextGroup.place} · {nextGroup.students} طالب</small><Link href="/timetable"><a className="widget-link">عرض الجدول <ChevronLeft size={14}/></a></Link></> : <div className="widget-empty"><CalendarDays size={22}/><span>لا توجد حصص مجدولة</span><small>أضف مجموعة لعرض أقرب موعد.</small></div>}</div>
-      <div className="widget"><div className="widget-heading"><span className="eyebrow">ملخص سريع</span><BarChart3 size={18}/></div><div className="metric-row"><span><Users size={16}/> الطلاب</span><strong>{students.length}</strong></div><div className="metric-row"><span><LayoutGrid size={16}/> المجموعات</span><strong>{groups.length}</strong></div><div className="metric-row"><span><CircleDollarSign size={16}/> التحصيل</span><strong>{students.length ? Math.round(((students.length - unpaidCount) / students.length) * 100) : 0}%</strong></div><Link href="/stats"><a className="widget-link">كل الإحصائيات <ChevronLeft size={14}/></a></Link></div>
-      <div className="widget widget-alert"><div className="widget-heading"><span className="eyebrow">إشعارات سريعة</span><Bell size={18}/></div>{unpaidCount > 0 ? <div className="notice-item"><span className="notice-dot warning"/><div><b>{unpaidCount} طالب يحتاج متابعة</b><small>راجع حالات الدفع قبل الحصة القادمة.</small></div></div> : <div className="notice-item"><span className="notice-dot success"/><div><b>كل شيء منظم</b><small>لا توجد تنبيهات دفع عاجلة حاليًا.</small></div></div>}<div className="notice-item"><span className="notice-dot info"/><div><b>المزامنة مفعّلة</b><small>بياناتك محفوظة في حسابك ويمكن الوصول إليها من أجهزتك.</small></div></div><Link href="/students"><a className="widget-link">إدارة الطلاب <ChevronLeft size={14}/></a></Link></div>
-    </div>
-    <div className="stats-grid"><Stat label="الطلاب المتوقعين" value={students.length} note="طالب نشط" icon={Users}/><Stat label="حصص اليوم" value={todayGroups.length} note="اضغط لعرض التفاصيل" icon={CalendarDays} tone="gold" onClick={() => setShowTodayDetails(true)}/><Stat label="المجموعات" value={groups.length} note="مجموعة نشطة" icon={LayoutGrid} tone="green"/></div>
-    <div className="dashboard-grid"><div className="panel"><SectionTitle kicker="اليوم" title="الحصص المجدولة" action={<Link href="/timetable"><a className="link-arrow">عرض الجدول <ChevronLeft size={15}/></a></Link>}/>{todayGroups.map((g: Group) => <div className="schedule-row" key={g.id}><span className="time">{g.time}</span><div><b>{g.name}</b><small>{g.place} · {g.students} طالب</small></div><span className="status-dot"/></div>)}{!todayGroups.length && <div className="compact-empty"><CalendarDays size={22}/><span>لا توجد حصص مجدولة لليوم</span><small>يمكنك إضافة أو تعديل مواعيد المجموعات.</small></div>}</div><div className="panel quick-panel"><span className="eyebrow">اختصارات سريعة</span><h3>ماذا تريد أن تنجز؟</h3><Link href="/assessments"><a className="quick-link quiz-quick-link"><span><ClipboardCheck size={18}/></span>إنشاء امتحان أسبوعي<ChevronLeft size={16}/></a></Link><Link href="/students"><a className="quick-link"><span><Users size={18}/></span>إضافة طالب جديد<ChevronLeft size={16}/></a></Link><Link href="/stats"><a className="quick-link"><span><BarChart3 size={18}/></span>عرض الإحصائيات<ChevronLeft size={16}/></a></Link><Link href="/behavior"><a className="quick-link"><span><ShieldCheck size={18}/></span>متابعة السلوك<ChevronLeft size={16}/></a></Link></div></div>{modal === "group" && <FormModal type="group" close={close} onSubmit={addGroup}/>}</>;
+  return (
+    <>
+      <div className="hero">
+        <div>
+          <span className="hero-label">
+            <span className="pulse" />{" "}
+            {language === "en"
+              ? "Your teaching day at a glance"
+              : "يومك الدراسي في نظرة"}
+          </span>
+          <h2>
+            {language === "en" ? (
+              <>
+                Keep your teaching day
+                <br />
+                <em>under control.</em>
+              </>
+            ) : (
+              <>
+                خلّي يومك الدراسي
+                <br />
+                <em>تحت السيطرة.</em>
+              </>
+            )}
+          </h2>
+          <p>
+            {language === "en"
+              ? "Your groups, students, and schedules in one organized place."
+              : "كل مجموعاتك، طلابك، ومواعيدك في مساحة واحدة مرتبة."}
+          </p>
+          <div className="hero-actions">
+            <button className="primary" onClick={onAdd}>
+              <Plus size={17} />{" "}
+              {language === "en" ? "Create group" : "أنشئ مجموعة جديدة"}
+            </button>
+            <Link href="/assessments">
+              <a className="secondary hero-exam-link">
+                <ClipboardCheck size={16} />{" "}
+                {language === "en" ? "Create exam" : "إنشاء امتحان"}
+              </a>
+            </Link>
+          </div>
+        </div>
+        <div className="hero-visual">
+          <img src="/manus-storage/ostazi-grid_fd7d31ff.jpg" />
+          <div className="orbital">
+            <BookOpen size={42} />
+          </div>
+          <span className="orbit-dot dot-one" />
+          <span className="orbit-dot dot-two" />
+        </div>
+      </div>
+      <LiveTracker groups={groups} />
+      <div className="today-summary">
+        <div className="today-heading">
+          <span className="eyebrow">
+            {language === "en" ? "Today" : "اليوم"}
+          </span>
+          <strong>{todayNameDisplay}</strong>
+          <small>{todayDate}</small>
+        </div>
+        <button
+          type="button"
+          className="today-lessons"
+          onClick={() => setShowTodayDetails(!showTodayDetails)}
+          aria-expanded={showTodayDetails}
+        >
+          <span>{language === "en" ? "Daily lessons" : "الحصص اليومية"}</span>
+          <b>{todayGroups.length}</b>
+          <small>
+            {language === "en"
+              ? `${todayGroups.length} scheduled`
+              : todayGroups.length === 1
+                ? "حصة مجدولة"
+                : "حصص مجدولة"}
+          </small>
+          <ChevronLeft
+            size={18}
+            className={showTodayDetails ? "today-chevron-open" : ""}
+          />
+        </button>
+      </div>
+      {showTodayDetails && (
+        <div className="today-details">
+          {todayDetails.length ? (
+            todayDetails.map((g: Group) => (
+              <div className="today-detail-row" key={g.id}>
+                <span className="time">
+                  {language === "en"
+                    ? formatClockTime(parseClockTime(g.time), "en")
+                    : g.time}
+                </span>
+                <div>
+                  <b>{g.name}</b>
+                  <small>
+                    {g.place} · {g.mode} · {g.students}{" "}
+                    {language === "en" ? "students" : "طالب"}
+                  </small>
+                </div>
+                <span className="status-dot" />
+              </div>
+            ))
+          ) : (
+            <div className="today-empty">
+              <CalendarDays size={20} />
+              <span>
+                {language === "en"
+                  ? "No lessons scheduled today"
+                  : "لا توجد حصص مجدولة اليوم"}
+              </span>
+              <small>
+                {language === "en"
+                  ? "Add a group or edit its schedule."
+                  : "يمكنك إضافة مجموعة أو تعديل موعدها."}
+              </small>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="home-widgets">
+        <div className="widget widget-primary">
+          <div className="widget-heading">
+            <span className="eyebrow">أقرب حصة</span>
+            <CalendarDays size={18} />
+          </div>
+          {nextGroup ? (
+            <>
+              <strong className="widget-title">{nextGroup.name}</strong>
+              <div className="widget-meta">
+                <span>{nextGroup.day}</span>
+                <b>{nextGroup.time}</b>
+              </div>
+              <small>
+                {nextGroup.place} · {nextGroup.students} طالب
+              </small>
+              <Link href="/timetable">
+                <a className="widget-link">
+                  عرض الجدول <ChevronLeft size={14} />
+                </a>
+              </Link>
+            </>
+          ) : (
+            <div className="widget-empty">
+              <CalendarDays size={22} />
+              <span>لا توجد حصص مجدولة</span>
+              <small>أضف مجموعة لعرض أقرب موعد.</small>
+            </div>
+          )}
+        </div>
+        <div className="widget">
+          <div className="widget-heading">
+            <span className="eyebrow">ملخص سريع</span>
+            <BarChart3 size={18} />
+          </div>
+          <div className="metric-row">
+            <span>
+              <Users size={16} /> الطلاب
+            </span>
+            <strong>{students.length}</strong>
+          </div>
+          <div className="metric-row">
+            <span>
+              <LayoutGrid size={16} /> المجموعات
+            </span>
+            <strong>{groups.length}</strong>
+          </div>
+          <div className="metric-row">
+            <span>
+              <CircleDollarSign size={16} /> التحصيل
+            </span>
+            <strong>
+              {students.length
+                ? Math.round(
+                    ((students.length - unpaidCount) / students.length) * 100
+                  )
+                : 0}
+              %
+            </strong>
+          </div>
+          <Link href="/stats">
+            <a className="widget-link">
+              كل الإحصائيات <ChevronLeft size={14} />
+            </a>
+          </Link>
+        </div>
+        <div className="widget widget-alert">
+          <div className="widget-heading">
+            <span className="eyebrow">إشعارات سريعة</span>
+            <Bell size={18} />
+          </div>
+          {unpaidCount > 0 ? (
+            <div className="notice-item">
+              <span className="notice-dot warning" />
+              <div>
+                <b>{unpaidCount} طالب يحتاج متابعة</b>
+                <small>راجع حالات الدفع قبل الحصة القادمة.</small>
+              </div>
+            </div>
+          ) : (
+            <div className="notice-item">
+              <span className="notice-dot success" />
+              <div>
+                <b>كل شيء منظم</b>
+                <small>لا توجد تنبيهات دفع عاجلة حاليًا.</small>
+              </div>
+            </div>
+          )}
+          <div className="notice-item">
+            <span className="notice-dot info" />
+            <div>
+              <b>المزامنة مفعّلة</b>
+              <small>
+                بياناتك محفوظة في حسابك ويمكن الوصول إليها من أجهزتك.
+              </small>
+            </div>
+          </div>
+          <Link href="/students">
+            <a className="widget-link">
+              إدارة الطلاب <ChevronLeft size={14} />
+            </a>
+          </Link>
+        </div>
+      </div>
+      <div className="stats-grid">
+        <Stat
+          label="الطلاب المتوقعين"
+          value={students.length}
+          note="طالب نشط"
+          icon={Users}
+        />
+        <Stat
+          label="حصص اليوم"
+          value={todayGroups.length}
+          note="اضغط لعرض التفاصيل"
+          icon={CalendarDays}
+          tone="gold"
+          onClick={() => setShowTodayDetails(true)}
+        />
+        <Stat
+          label="المجموعات"
+          value={groups.length}
+          note="مجموعة نشطة"
+          icon={LayoutGrid}
+          tone="green"
+        />
+      </div>
+      <div className="dashboard-grid">
+        <div className="panel">
+          <SectionTitle
+            kicker="اليوم"
+            title="الحصص المجدولة"
+            action={
+              <Link href="/timetable">
+                <a className="link-arrow">
+                  عرض الجدول <ChevronLeft size={15} />
+                </a>
+              </Link>
+            }
+          />
+          {todayGroups.map((g: Group) => (
+            <div className="schedule-row" key={g.id}>
+              <span className="time">{g.time}</span>
+              <div>
+                <b>{g.name}</b>
+                <small>
+                  {g.place} · {g.students} طالب
+                </small>
+              </div>
+              <span className="status-dot" />
+            </div>
+          ))}
+          {!todayGroups.length && (
+            <div className="compact-empty">
+              <CalendarDays size={22} />
+              <span>لا توجد حصص مجدولة لليوم</span>
+              <small>يمكنك إضافة أو تعديل مواعيد المجموعات.</small>
+            </div>
+          )}
+        </div>
+        <div className="panel quick-panel">
+          <span className="eyebrow">اختصارات سريعة</span>
+          <h3>ماذا تريد أن تنجز؟</h3>
+          <Link href="/assessments">
+            <a className="quick-link quiz-quick-link">
+              <span>
+                <ClipboardCheck size={18} />
+              </span>
+              إنشاء امتحان أسبوعي
+              <ChevronLeft size={16} />
+            </a>
+          </Link>
+          <Link href="/students">
+            <a className="quick-link">
+              <span>
+                <Users size={18} />
+              </span>
+              إضافة طالب جديد
+              <ChevronLeft size={16} />
+            </a>
+          </Link>
+          <Link href="/stats">
+            <a className="quick-link">
+              <span>
+                <BarChart3 size={18} />
+              </span>
+              عرض الإحصائيات
+              <ChevronLeft size={16} />
+            </a>
+          </Link>
+          <Link href="/behavior">
+            <a className="quick-link">
+              <span>
+                <ShieldCheck size={18} />
+              </span>
+              متابعة السلوك
+              <ChevronLeft size={16} />
+            </a>
+          </Link>
+        </div>
+      </div>
+      {modal === "group" && (
+        <FormModal type="group" close={close} onSubmit={addGroup} />
+      )}
+    </>
+  );
 }
 
-function ClockPicker({ value, onChange }: { value: ClockTime; onChange: (value: ClockTime) => void }) { const hours = Array.from({ length: 12 }, (_, index) => String(index + 1)); return <div className="clock-picker"><select value={String(Number(value.hour) || 7)} onChange={e => onChange({ ...value, hour: e.target.value })}>{hours.map(hour => <option key={hour} value={hour}>{hour}</option>)}</select><span>:</span><select value="00" disabled><option value="00">00</option></select><select value={value.period} onChange={e => onChange({ ...value, period: e.target.value as "ص" | "م" })}><option value="ص">صباحًا</option><option value="م">مساءً</option></select></div> }
+function ClockPicker({
+  value,
+  onChange,
+}: {
+  value: ClockTime;
+  onChange: (value: ClockTime) => void;
+}) {
+  const hours = Array.from({ length: 12 }, (_, index) => String(index + 1));
+  const minutes = Array.from({ length: 12 }, (_, index) =>
+    String(index * 5).padStart(2, "0")
+  );
+  return (
+    <div className="clock-picker">
+      <select
+        value={String(Number(value.hour) || 7)}
+        onChange={e => onChange({ ...value, hour: e.target.value })}
+        aria-label="الساعة"
+      >
+        {hours.map(hour => (
+          <option key={hour} value={hour}>
+            {hour}
+          </option>
+        ))}
+      </select>
+      <span>:</span>
+      <select
+        value={value.minute || "00"}
+        onChange={e => onChange({ ...value, minute: e.target.value })}
+        aria-label="الدقيقة"
+      >
+        {minutes.map(minute => (
+          <option key={minute} value={minute}>
+            {minute}
+          </option>
+        ))}
+      </select>
+      <select
+        value={value.period}
+        onChange={e =>
+          onChange({ ...value, period: e.target.value as "ص" | "م" })
+        }
+        aria-label="صباحًا أو مساءً"
+      >
+        <option value="ص">صباحًا</option>
+        <option value="م">مساءً</option>
+      </select>
+    </div>
+  );
+}
 
 function FormModal({ type, close, onSubmit, groups = [], initial }: any) {
-  const existingSchedule = type === "group" && initial ? scheduleForGroup(initial) : [];
+  const existingSchedule =
+    type === "group" && initial ? scheduleForGroup(initial) : [];
   const [name, setName] = useState(initial?.name || "");
   const [group, setGroup] = useState(initial?.group || groups[0]?.name || "");
   const [place, setPlace] = useState(initial?.place || "سنتر");
   const [groupMode, setGroupMode] = useState(initial?.mode || "حضوري");
-    const [phone, setPhone] = useState(initial?.phone || "");
+  const [phone, setPhone] = useState(initial?.phone || "");
   const [guardianName, setGuardianName] = useState(initial?.guardianName || "");
-  const [guardianPhone, setGuardianPhone] = useState(initial?.guardianPhone || "");
+  const [guardianPhone, setGuardianPhone] = useState(
+    initial?.guardianPhone || ""
+  );
   const [age, setAge] = useState(initial?.age ? String(initial.age) : "");
   const [grade, setGrade] = useState(initial?.grade || "");
+  const [durationMinutes, setDurationMinutes] = useState(
+    initial?.durationMinutes === undefined || initial?.durationMinutes === null
+      ? ""
+      : String(initial.durationMinutes)
+  );
   const generatedStudentCode = useRef(generateStudentCode()).current;
-  const [studentCode, setStudentCode] = useState(type === "student" ? displayStudentCode(initial?.studentCode, initial?.id || Number(generatedStudentCode)) : "");
-  const [guardianNameEdited, setGuardianNameEdited] = useState(Boolean(initial?.guardianName));
-  const [studentCodeEdited, setStudentCodeEdited] = useState(Boolean(initial?.studentCode));
+  const [studentCode, setStudentCode] = useState(
+    type === "student"
+      ? displayStudentCode(
+          initial?.studentCode,
+          initial?.id || Number(generatedStudentCode)
+        )
+      : ""
+  );
+  const [guardianNameEdited, setGuardianNameEdited] = useState(
+    Boolean(initial?.guardianName)
+  );
+  const [studentCodeEdited, setStudentCodeEdited] = useState(
+    Boolean(initial?.studentCode)
+  );
   const [paid, setPaid] = useState(Boolean(initial?.paid));
-  const [selectedDays, setSelectedDays] = useState<string[]>(existingSchedule.length ? existingSchedule.map(item => item.day) : [initial?.day || "الخميس"]);
-  const initialTimes = Object.fromEntries(existingSchedule.map(item => [item.day, parseClockTime(item.time)]));
-  const [sharedClock, setSharedClock] = useState<ClockTime>(parseClockTime(existingSchedule[0]?.time || initial?.time || "07:00 م"));
-  const [customClocks, setCustomClocks] = useState<Record<string, ClockTime>>(initialTimes);
-  const [useCustomTimes, setUseCustomTimes] = useState(existingSchedule.length > 1 && new Set(existingSchedule.map(item => item.time)).size > 1);
-  const [fee, setFee] = useState(String(initial?.fee || 150));
-  const [collectionPeriod, setCollectionPeriod] = useState<"monthly" | "term" | "per_lesson">(initial?.collectionPeriod || "monthly");
-  const [paidAmount, setPaidAmount] = useState(String(initial?.paidAmount || 0));
-  const toggleDay = (day: string) => setSelectedDays(days => days.includes(day) ? days.filter(item => item !== day) : [...days, day]);
-  const buildSchedule = () => selectedDays.map(day => ({ day, time: formatClockTime(useCustomTimes ? (customClocks[day] || sharedClock) : sharedClock) }));
-  const updateStudentName = (value: string) => { setName(value); if (type !== "student") return; if (!guardianNameEdited) setGuardianName(value.trim().split(/\s+/).slice(1).join(" ")); if (!studentCodeEdited) setStudentCode(generatedStudentCode); };
+  const [selectedDays, setSelectedDays] = useState<string[]>(
+    existingSchedule.length
+      ? existingSchedule.map(item => item.day)
+      : [initial?.day || "الخميس"]
+  );
+  const initialTimes = Object.fromEntries(
+    existingSchedule.map(item => [item.day, parseClockTime(item.time)])
+  );
+  const [sharedClock, setSharedClock] = useState<ClockTime>(
+    parseClockTime(existingSchedule[0]?.time || initial?.time || "07:00 م")
+  );
+  const [customClocks, setCustomClocks] =
+    useState<Record<string, ClockTime>>(initialTimes);
+  const [useCustomTimes, setUseCustomTimes] = useState(
+    existingSchedule.length > 1 &&
+      new Set(existingSchedule.map(item => item.time)).size > 1
+  );
+  const [fee, setFee] = useState(
+    initial?.fee === undefined || initial?.fee === null
+      ? ""
+      : String(initial.fee)
+  );
+  const [collectionPeriod, setCollectionPeriod] = useState<
+    "monthly" | "term" | "per_lesson"
+  >(initial?.collectionPeriod || "monthly");
+  const [paidAmount, setPaidAmount] = useState(
+    initial?.paidAmount === undefined || initial?.paidAmount === null
+      ? ""
+      : String(initial.paidAmount)
+  );
+  const toggleDay = (day: string) =>
+    setSelectedDays(days =>
+      days.includes(day) ? days.filter(item => item !== day) : [...days, day]
+    );
+  const buildSchedule = () =>
+    selectedDays.map(day => ({
+      day,
+      time: formatClockTime(
+        useCustomTimes ? customClocks[day] || sharedClock : sharedClock
+      ),
+    }));
+  const updateStudentName = (value: string) => {
+    setName(value);
+    if (type !== "student") return;
+    if (!guardianNameEdited)
+      setGuardianName(value.trim().split(/\s+/).slice(1).join(" "));
+    if (!studentCodeEdited) setStudentCode(generatedStudentCode);
+  };
   const selectedGroup = groups.find((item: Group) => item.name === group);
   const groupFee = Number(selectedGroup?.fee || 0);
   const remaining = Math.max(0, groupFee - (Number(paidAmount) || 0));
-  return <div className="modal-backdrop"><div className="modal schedule-modal"><button className="modal-close" onClick={close}><X size={18}/></button><div className="modal-kicker">{initial ? "تعديل البيانات" : "إضافة جديد"}</div><h2>{type === "group" ? "مجموعة دراسية" : "طالب جديد"}</h2><label>{type === "group" ? "اسم المجموعة" : "اسم الطالب"}<input value={name} onChange={e => updateStudentName(e.target.value)} placeholder={type === "group" ? "مثال: الصف الأول الثانوي" : "مثال: أحمد محمد"}/></label>{type === "student" ? <><label>المجموعة<select value={group} onChange={e => setGroup(e.target.value)}>{groups.map((g: Group) => <option key={g.id}>{g.name}</option>)}</select></label><div className="student-profile-fields"><label>العمر<input value={age} onChange={e => setAge(e.target.value.replace(/\D/g, "").slice(0, 3))} inputMode="numeric" placeholder="15"/></label><label>الصف الدراسي<input value={grade} onChange={e => setGrade(e.target.value)} placeholder="مثال: الثالثة الإعدادي"/></label></div><label>رقم هاتف الطالب<input value={phone} onChange={e => setPhone(e.target.value)} placeholder="01xxxxxxxxx"/></label><label>اسم ولي الأمر<input value={guardianName} onChange={e => { setGuardianNameEdited(true); setGuardianName(e.target.value); }} placeholder="يُقترح تلقائيًا من باقي اسم الطالب"/></label><label>رقم هاتف ولي الأمر<input value={guardianPhone} onChange={e => setGuardianPhone(e.target.value)} placeholder="01xxxxxxxxx"/></label><label>كود الطالب (4 أرقام)<input value={studentCode} inputMode="numeric" maxLength={4} onChange={e => { setStudentCodeEdited(true); setStudentCode(normalizeStudentCode(e.target.value)); }} placeholder="0000"/></label><label>المبلغ المدفوع الآن<input value={paidAmount} onChange={e => setPaidAmount(e.target.value)} inputMode="decimal" placeholder="0"/></label><div className="student-payment-preview"><span>{selectedGroup?.collectionPeriod === "term" ? "رسوم الترم" : selectedGroup?.collectionPeriod === "per_lesson" ? "رسوم الحصة" : "رسوم الشهر"}: <b>{groupFee} ج.م</b></span><strong className={remaining > 0 ? "due" : "paid"}>{remaining > 0 ? `المتبقي: ${remaining} ج.م` : "مكتمل السداد"}</strong></div><label className="checkbox-row"><input type="checkbox" checked={paid} onChange={e => setPaid(e.target.checked)}/> تأكيد حالة الدفع يدويًا</label></> : <><label>نوع المجموعة<select value={place} onChange={e => setPlace(e.target.value)}><option>مدرسة</option><option>سنتر</option><option>أونلاين</option></select></label><label>الوضع<select value={groupMode} onChange={e => setGroupMode(e.target.value)}><option>حضوري</option><option>عن بُعد</option></select></label><div className="schedule-picker"><div className="schedule-picker-heading"><span>أيام الحصص</span><small>اختر يومًا أو أكثر</small></div><div className="weekday-grid">{WEEK_DAYS.map(day => <button type="button" key={day} className={selectedDays.includes(day) ? "selected" : ""} onClick={() => toggleDay(day)}>{day}</button>)}</div>{selectedDays.length > 0 && <><div className="schedule-mode"><label className="radio-row"><input type="radio" checked={!useCustomTimes} onChange={() => setUseCustomTimes(false)}/> نفس الساعة لكل الأيام</label><label className="radio-row"><input type="radio" checked={useCustomTimes} onChange={() => setUseCustomTimes(true)}/> ساعة مختلفة لكل يوم</label></div>{!useCustomTimes ? <label>الساعة الموحدة<ClockPicker value={sharedClock} onChange={setSharedClock}/></label> : <div className="custom-time-list">{selectedDays.map(day => <label key={day}>{day}<ClockPicker value={customClocks[day] || sharedClock} onChange={value => setCustomClocks(times => ({ ...times, [day]: value }))}/></label>)}</div>}</>}</div><label>دورية التحصيل<select value={collectionPeriod} onChange={e => setCollectionPeriod(e.target.value as "monthly" | "term" | "per_lesson")}><option value="monthly">بالشهر</option><option value="term">بالترم</option><option value="per_lesson">بالحصة</option></select></label><label>{collectionPeriod === "term" ? "رسوم الترم" : collectionPeriod === "per_lesson" ? "رسوم الحصة" : "الرسوم الشهرية"}<input value={fee} onChange={e => setFee(e.target.value)} inputMode="decimal"/></label></>}{<button className="primary wide" onClick={() => { if (!name) return toast.error("اكتب الاسم أولاً"); if (type === "student" && studentCode.length !== 4) return toast.error("كود الطالب يجب أن يتكوّن من 4 أرقام"); if (type === "group") { const schedule = buildSchedule(); if (!schedule.length) return toast.error("اختر يومًا واحدًا على الأقل"); const first = schedule[0]; onSubmit({ name, place, mode: groupMode, students: 0, day: first.day, time: first.time, schedule, scheduleJson: serializeSchedule(schedule), fee: Number(fee) || 0, collectionPeriod }); } else onSubmit({ name, group, phone, guardianName, guardianPhone, studentCode, age: age ? Number(age) : null, grade: grade.trim() || null, paid, paidAmount: Number(paidAmount) || 0 }); close(); toast.success(initial ? "تم تعديل البيانات" : "تمت الإضافة بنجاح"); }}>حفظ البيانات</button>}</div></div>;
+  return (
+    <div className="modal-backdrop">
+      <div className="modal schedule-modal">
+        <button className="modal-close" onClick={close}>
+          <X size={18} />
+        </button>
+        <div className="modal-kicker">
+          {initial ? "تعديل البيانات" : "إضافة جديد"}
+        </div>
+        <h2>{type === "group" ? "مجموعة دراسية" : "طالب جديد"}</h2>
+        <label>
+          {type === "group" ? "اسم المجموعة" : "اسم الطالب"}
+          <input
+            value={name}
+            onChange={e => updateStudentName(e.target.value)}
+            placeholder={
+              type === "group" ? "مثال: الصف الأول الثانوي" : "مثال: أحمد محمد"
+            }
+          />
+        </label>
+        {type === "student" ? (
+          <>
+            <label>
+              المجموعة
+              <select value={group} onChange={e => setGroup(e.target.value)}>
+                {groups.map((g: Group) => (
+                  <option key={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </label>
+            {initial && (
+              <div className="student-profile-fields">
+                <label>
+                  العمر
+                  <input
+                    value={age}
+                    onChange={e =>
+                      setAge(e.target.value.replace(/\D/g, "").slice(0, 3))
+                    }
+                    inputMode="numeric"
+                    placeholder="15"
+                  />
+                </label>
+                <label>
+                  الصف الدراسي
+                  <input
+                    value={grade}
+                    onChange={e => setGrade(e.target.value)}
+                    placeholder="مثال: الثالثة الإعدادي"
+                  />
+                </label>
+              </div>
+            )}
+            <label>
+              رقم هاتف الطالب
+              <input
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="01xxxxxxxxx"
+              />
+            </label>
+            <label>
+              اسم ولي الأمر
+              <input
+                value={guardianName}
+                onChange={e => {
+                  setGuardianNameEdited(true);
+                  setGuardianName(e.target.value);
+                }}
+                placeholder="يُقترح تلقائيًا من باقي اسم الطالب"
+              />
+            </label>
+            <label>
+              رقم هاتف ولي الأمر
+              <input
+                value={guardianPhone}
+                onChange={e => setGuardianPhone(e.target.value)}
+                placeholder="01xxxxxxxxx"
+              />
+            </label>
+            <label>
+              كود الطالب (4 أرقام)
+              <input
+                value={studentCode}
+                inputMode="numeric"
+                maxLength={4}
+                onChange={e => {
+                  setStudentCodeEdited(true);
+                  setStudentCode(normalizeStudentCode(e.target.value));
+                }}
+                placeholder="0000"
+              />
+            </label>
+            <label>
+              المبلغ المدفوع الآن
+              <input
+                value={paidAmount}
+                onChange={e => setPaidAmount(e.target.value)}
+                inputMode="decimal"
+                placeholder="مثال: 150"
+              />
+            </label>
+            <div className="student-payment-preview">
+              <span>
+                {selectedGroup?.collectionPeriod === "term"
+                  ? "رسوم الترم"
+                  : selectedGroup?.collectionPeriod === "per_lesson"
+                    ? "رسوم الحصة"
+                    : "رسوم الشهر"}
+                : <b>{groupFee} ج.م</b>
+              </span>
+              <strong className={remaining > 0 ? "due" : "paid"}>
+                {remaining > 0 ? `المتبقي: ${remaining} ج.م` : "مكتمل السداد"}
+              </strong>
+            </div>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={paid}
+                onChange={e => setPaid(e.target.checked)}
+              />{" "}
+              تأكيد حالة الدفع يدويًا
+            </label>
+          </>
+        ) : (
+          <>
+            <label>
+              نوع المجموعة
+              <select value={place} onChange={e => setPlace(e.target.value)}>
+                <option>مدرسة</option>
+                <option>سنتر</option>
+                <option>أونلاين</option>
+              </select>
+            </label>
+            <label>
+              الوضع
+              <select
+                value={groupMode}
+                onChange={e => setGroupMode(e.target.value)}
+              >
+                <option>حضوري</option>
+                <option>عن بُعد</option>
+              </select>
+            </label>
+            <label>
+              الصف الدراسي للمجموعة
+              <input
+                value={grade}
+                onChange={e => setGrade(e.target.value)}
+                placeholder="مثال: الصف الثالث الثانوي"
+              />
+            </label>
+            <label>
+              مدة الحصة بالدقائق
+              <input
+                value={durationMinutes}
+                onChange={e =>
+                  setDurationMinutes(e.target.value.replace(/\D/g, "").slice(0, 3))
+                }
+                inputMode="numeric"
+                placeholder="مثال: 60"
+              />
+            </label>
+            <div className="schedule-picker">
+              <div className="schedule-picker-heading">
+                <span>أيام الحصص</span>
+                <small>اختر يومًا أو أكثر</small>
+              </div>
+              <div className="weekday-grid">
+                {WEEK_DAYS.map(day => (
+                  <button
+                    type="button"
+                    key={day}
+                    className={selectedDays.includes(day) ? "selected" : ""}
+                    onClick={() => toggleDay(day)}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+              {selectedDays.length > 0 && (
+                <>
+                  <div className="schedule-mode">
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        checked={!useCustomTimes}
+                        onChange={() => setUseCustomTimes(false)}
+                      />{" "}
+                      نفس الساعة لكل الأيام
+                    </label>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        checked={useCustomTimes}
+                        onChange={() => setUseCustomTimes(true)}
+                      />{" "}
+                      ساعة مختلفة لكل يوم
+                    </label>
+                  </div>
+                  {!useCustomTimes ? (
+                    <label>
+                      الساعة الموحدة
+                      <ClockPicker
+                        value={sharedClock}
+                        onChange={setSharedClock}
+                      />
+                    </label>
+                  ) : (
+                    <div className="custom-time-list">
+                      {selectedDays.map(day => (
+                        <label key={day}>
+                          {day}
+                          <ClockPicker
+                            value={customClocks[day] || sharedClock}
+                            onChange={value =>
+                              setCustomClocks(times => ({
+                                ...times,
+                                [day]: value,
+                              }))
+                            }
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <label>
+              دورية التحصيل
+              <select
+                value={collectionPeriod}
+                onChange={e =>
+                  setCollectionPeriod(
+                    e.target.value as "monthly" | "term" | "per_lesson"
+                  )
+                }
+              >
+                <option value="monthly">بالشهر</option>
+                <option value="term">بالترم</option>
+                <option value="per_lesson">بالحصة</option>
+              </select>
+            </label>
+            <label>
+              {collectionPeriod === "term"
+                ? "رسوم الترم"
+                : collectionPeriod === "per_lesson"
+                  ? "رسوم الحصة"
+                  : "الرسوم الشهرية"}
+              <input
+                value={fee}
+                onChange={e => setFee(e.target.value)}
+                inputMode="decimal"
+              />
+            </label>
+          </>
+        )}
+        {
+          <button
+            className="primary wide"
+            onClick={() => {
+              if (!name) return toast.error("اكتب الاسم أولاً");
+              if (type === "student" && studentCode.length !== 4)
+                return toast.error("كود الطالب يجب أن يتكوّن من 4 أرقام");
+              if (type === "group") {
+                const schedule = buildSchedule();
+                if (!schedule.length)
+                  return toast.error("اختر يومًا واحدًا على الأقل");
+                const first = schedule[0];
+                onSubmit({
+                  name,
+                  grade: grade.trim() || null,
+                  place,
+                  mode: groupMode,
+                  students: 0,
+                  day: first.day,
+                  time: first.time,
+                  durationMinutes: Math.max(1, Number(durationMinutes) || 60),
+                  schedule,
+                  scheduleJson: serializeSchedule(schedule),
+                  fee: Number(fee) || 0,
+                  collectionPeriod,
+                });
+              } else
+                onSubmit({
+                  name,
+                  group,
+                  phone,
+                  guardianName,
+                  guardianPhone,
+                  studentCode,
+                  age: initial && age ? Number(age) : null,
+                  grade: initial ? grade.trim() || null : selectedGroup?.grade || selectedGroup?.name || null,
+                  paid,
+                  paidAmount: Number(paidAmount) || 0,
+                });
+              close();
+              toast.success(
+                initial ? "تم تعديل البيانات" : "تمت الإضافة بنجاح"
+              );
+            }}
+          >
+            حفظ البيانات
+          </button>
+        }
+      </div>
+    </div>
+  );
 }
 
-function GroupCollections({ group, students }: { group: Group; students: Student[] }) {
+function GroupCollections({
+  group,
+  students,
+}: {
+  group: Group;
+  students: Student[];
+}) {
   const utils = trpc.useUtils();
-  const collectSubscription = trpc.app.finance.collectSubscription.useMutation({ onSuccess: () => { utils.app.bootstrap.invalidate(); utils.app.finance.list.invalidate(); } });
+  const collectSubscription = trpc.app.finance.collectSubscription.useMutation({
+    onSuccess: () => {
+      utils.app.bootstrap.invalidate();
+      utils.app.finance.list.invalidate();
+    },
+  });
   const groupStudents = studentsForGroup(students, group.name);
   const recordPayment = async (student: Student) => {
-    const remaining = Math.max(0, Number(group.fee) - Number(student.paidAmount || 0));
-    const raw = window.prompt(`سجّل دفعة الطالب ${student.name} (المتبقي ${remaining} ج.م). اكتب 0 لتطبيق رصيد مكافأة معتمد بالكامل.`, String(remaining));
+    const remaining = Math.max(
+      0,
+      Number(group.fee) - Number(student.paidAmount || 0)
+    );
+    const raw = window.prompt(
+      `سجّل دفعة الطالب ${student.name} (المتبقي ${remaining} ج.م). اكتب 0 لتطبيق رصيد مكافأة معتمد بالكامل.`,
+      String(remaining)
+    );
     if (raw === null) return;
     const amount = Number(raw);
-    if (!Number.isFinite(amount) || amount < 0) return toast.error("اكتب مبلغ دفعة صحيحًا");
+    if (!Number.isFinite(amount) || amount < 0)
+      return toast.error("اكتب مبلغ دفعة صحيحًا");
     try {
-      const receipt = await collectSubscription.mutateAsync({ studentId: student.id, groupId: group.id, cashAmount: String(amount) });
-      toast.success(`تم تسجيل دفعة ${receipt.cashAmount} ج.م لـ ${student.name}${receipt.appliedCredit ? ` وتطبيق خصم نقاط ${receipt.appliedCredit} ج.م` : ""}`);
-    } catch (error: any) { toast.error(error?.message === "INVALID_PAYMENT_AMOUNT" ? "قيمة الدفعة غير صالحة أو تتجاوز المتبقي" : "تعذر تسجيل الدفعة، حاول مرة أخرى"); }
+      const receipt = await collectSubscription.mutateAsync({
+        studentId: student.id,
+        groupId: group.id,
+        cashAmount: String(amount),
+      });
+      toast.success(
+        `تم تسجيل دفعة ${receipt.cashAmount} ج.م لـ ${student.name}${receipt.appliedCredit ? ` وتطبيق خصم نقاط ${receipt.appliedCredit} ج.م` : ""}`
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.message === "INVALID_PAYMENT_AMOUNT"
+          ? "قيمة الدفعة غير صالحة أو تتجاوز المتبقي"
+          : "تعذر تسجيل الدفعة، حاول مرة أخرى"
+      );
+    }
   };
-  return <section className="group-collections"><div className="group-collections-head"><div><span className="eyebrow">التحصيل</span><b>{group.collectionPeriod === "term" ? "رسوم الترم" : "رسوم شهرية"}: {Number(group.fee).toLocaleString()} ج.م</b></div><span>{groupStudents.length} طالب</span></div>{groupStudents.length ? groupStudents.map(student => { const remaining = Math.max(0, Number(group.fee) - Number(student.paidAmount || 0)); const phone = (student.guardianPhone || student.phone || "").replace(/\D/g, ""); const message = encodeURIComponent(formatOutstandingWhatsAppMessage({ studentName: student.name, groupName: group.name, remainingAmount: remaining, collectionPeriod: group.collectionPeriod })); return <div className="group-collection-row" key={student.id}><div><b>{student.name}</b><small>دفع {Number(student.paidAmount || 0).toLocaleString()} ج.م · {remaining ? `متبقي ${remaining.toLocaleString()} ج.م` : "مكتمل السداد"}</small></div><div>{remaining > 0 && <button className="secondary" onClick={() => recordPayment(student)}>تسجيل دفعة</button>}{remaining > 0 && phone && <button className="secondary whatsapp-action" onClick={() => window.open(`https://wa.me/${phone}?text=${message}`, "_blank")}>WhatsApp</button>}</div></div>; }) : <div className="empty-inline">أضف طلابًا لبدء متابعة التحصيل.</div>}</section>;
+  return (
+    <section className="group-collections">
+      <div className="group-collections-head">
+        <div>
+          <span className="eyebrow">التحصيل</span>
+          <b>
+            {group.collectionPeriod === "term" ? "رسوم الترم" : "رسوم شهرية"}:{" "}
+            {Number(group.fee).toLocaleString()} ج.م
+          </b>
+        </div>
+        <span>{groupStudents.length} طالب</span>
+      </div>
+      {groupStudents.length ? (
+        groupStudents.map(student => {
+          const remaining = Math.max(
+            0,
+            Number(group.fee) - Number(student.paidAmount || 0)
+          );
+          const phone = (student.guardianPhone || student.phone || "").replace(
+            /\D/g,
+            ""
+          );
+          const message = encodeURIComponent(
+            formatOutstandingWhatsAppMessage({
+              studentName: student.name,
+              groupName: group.name,
+              remainingAmount: remaining,
+              collectionPeriod: group.collectionPeriod,
+            })
+          );
+          return (
+            <div className="group-collection-row" key={student.id}>
+              <div>
+                <b>{student.name}</b>
+                <small>
+                  دفع {Number(student.paidAmount || 0).toLocaleString()} ج.م ·{" "}
+                  {remaining
+                    ? `متبقي ${remaining.toLocaleString()} ج.م`
+                    : "مكتمل السداد"}
+                </small>
+              </div>
+              <div>
+                {remaining > 0 && (
+                  <button
+                    className="secondary"
+                    onClick={() => recordPayment(student)}
+                  >
+                    تسجيل دفعة
+                  </button>
+                )}
+                {remaining > 0 && phone && (
+                  <button
+                    className="secondary whatsapp-action"
+                    onClick={() =>
+                      window.open(
+                        `https://wa.me/${phone}?text=${message}`,
+                        "_blank"
+                      )
+                    }
+                  >
+                    WhatsApp
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="empty-inline">أضف طلابًا لبدء متابعة التحصيل.</div>
+      )}
+    </section>
+  );
 }
 
-function toPushKey(value: string) { const padded = `${value}${"=".repeat((4 - value.length % 4) % 4)}`.replace(/-/g, "+").replace(/_/g, "/"); const bytes = atob(padded); return Uint8Array.from(bytes, char => char.charCodeAt(0)); }
+function toPushKey(value: string) {
+  const padded = `${value}${"=".repeat((4 - (value.length % 4)) % 4)}`
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+  const bytes = atob(padded);
+  return Uint8Array.from(bytes, char => char.charCodeAt(0));
+}
 function PushEnableButton() {
   const key = trpc.app.push.publicKey.useQuery(undefined, { retry: false });
   const subscribe = trpc.app.push.subscribe.useMutation();
   const test = trpc.app.push.test.useMutation();
   const [working, setWorking] = useState(false);
-  const [permission, setPermission] = useState<NotificationPermission>(() => "Notification" in window ? Notification.permission : "default");
-  const [deliveryStatus, setDeliveryStatus] = useState<{ delivered: number; failed: number; subscriptions: number } | null>(null);
-  const isIos = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isStandalone = typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
-  const saveSubscription = async (registration: ServiceWorkerRegistration, refresh = false) => {
+  const [permission, setPermission] = useState<NotificationPermission>(() =>
+    "Notification" in window ? Notification.permission : "default"
+  );
+  const [deliveryStatus, setDeliveryStatus] = useState<{
+    delivered: number;
+    failed: number;
+    subscriptions: number;
+  } | null>(null);
+  const isIos =
+    typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia?.("(display-mode: standalone)").matches ||
+      Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+  const saveSubscription = async (
+    registration: ServiceWorkerRegistration,
+    refresh = false
+  ) => {
     let subscription = await registration.pushManager.getSubscription();
-    if (refresh && subscription) { await subscription.unsubscribe(); subscription = null; }
-    subscription ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toPushKey(key.data!.publicKey) });
+    if (refresh && subscription) {
+      await subscription.unsubscribe();
+      subscription = null;
+    }
+    subscription ||= await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: toPushKey(key.data!.publicKey),
+    });
     const json = subscription.toJSON();
-    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error("INVALID_SUBSCRIPTION");
-    await subscribe.mutateAsync({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth, contentEncoding: "aes128gcm" });
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth)
+      throw new Error("INVALID_SUBSCRIPTION");
+    await subscribe.mutateAsync({
+      endpoint: json.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+      contentEncoding: "aes128gcm",
+    });
   };
   const enable = async () => {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return toast.error("هذا المتصفح لا يدعم إشعارات Push");
-    if (Notification.permission === "denied") return toast.error("الإشعارات مرفوضة من المتصفح. فعّلها من إعدادات الموقع ثم أعد المحاولة.");
-    if (!key.data?.publicKey) return toast.error("مفاتيح الإشعارات غير جاهزة حاليًا");
+    if (!("serviceWorker" in navigator) || !("PushManager" in window))
+      return toast.error("هذا المتصفح لا يدعم إشعارات Push");
+    if (Notification.permission === "denied")
+      return toast.error(
+        "الإشعارات مرفوضة من المتصفح. فعّلها من إعدادات الموقع ثم أعد المحاولة."
+      );
+    if (!key.data?.publicKey)
+      return toast.error("مفاتيح الإشعارات غير جاهزة حاليًا");
     setWorking(true);
     try {
       const nextPermission = await Notification.requestPermission();
       setPermission(nextPermission);
-      if (nextPermission !== "granted") return toast.error("لم يتم السماح بالإشعارات");
-      const registration = await navigator.serviceWorker.getRegistration("/") || await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      if (nextPermission !== "granted")
+        return toast.error("لم يتم السماح بالإشعارات");
+      const registration =
+        (await navigator.serviceWorker.getRegistration("/")) ||
+        (await navigator.serviceWorker.register("/sw.js", { scope: "/" }));
       await navigator.serviceWorker.ready;
       await saveSubscription(registration);
       let result = await test.mutateAsync();
-      if (!result.delivered) { await saveSubscription(registration, true); result = await test.mutateAsync(); }
+      if (!result.delivered) {
+        await saveSubscription(registration, true);
+        result = await test.mutateAsync();
+      }
       setDeliveryStatus(result);
-      if (result.delivered) toast.success("تم إرسال اختبار Push إلى الجهاز. تحقّق من ظهوره على الهاتف قبل الاعتماد على التذكيرات الخلفية.");
-      else toast.error("لم يصل اختبار Push إلى الجهاز. تحقّق من إذن إشعارات iPhone وتثبيت التطبيق على الشاشة الرئيسية ثم أعد التفعيل.");
-    } catch { toast.error("تعذر تفعيل الإشعارات على هذا الجهاز. تأكد من السماح بالإشعارات وتثبيت التطبيق إن كان iPhone."); } finally { setWorking(false); }
+      if (result.delivered)
+        toast.success(
+          "تم إرسال اختبار Push إلى الجهاز. تحقّق من ظهوره على الهاتف قبل الاعتماد على التذكيرات الخلفية."
+        );
+      else
+        toast.error(
+          "لم يصل اختبار Push إلى الجهاز. تحقّق من إذن إشعارات iPhone وتثبيت التطبيق على الشاشة الرئيسية ثم أعد التفعيل."
+        );
+    } catch {
+      toast.error(
+        "تعذر تفعيل الإشعارات على هذا الجهاز. تأكد من السماح بالإشعارات وتثبيت التطبيق إن كان iPhone."
+      );
+    } finally {
+      setWorking(false);
+    }
   };
   const pushReady = Boolean(key.data?.publicKey);
   const { t, language } = useLanguage();
-  return <><SectionTitle kicker={t("notifications")} title={t("pushTitle")}/><p>{t("pushHint")}</p><div className="push-permission-state">{t("permission")}: <b>{permission === "granted" ? t("enabled") : permission === "denied" ? t("blocked") : t("waiting")}</b></div>{deliveryStatus && <div className="integration-note">{language === "ar" ? `نتيجة اختبار الخادم: قُبل ${deliveryStatus.delivered} من ${deliveryStatus.subscriptions} اشتراك${deliveryStatus.failed ? `، وفشل ${deliveryStatus.failed}` : ""}. قبول الخادم لا يضمن الظهور إذا كانت إشعارات النظام محجوبة.` : `Server test: accepted ${deliveryStatus.delivered} of ${deliveryStatus.subscriptions} subscription(s)${deliveryStatus.failed ? `; ${deliveryStatus.failed}` : ""}. Acceptance does not guarantee display if system notifications are blocked.`}</div>}{isIos && !isStandalone && <div className="integration-note">لاختبار تنبيه عند إغلاق التطبيق على iPhone: افتح قائمة المشاركة في Safari ثم اختر «إضافة إلى الشاشة الرئيسية»، وافتح النسخة المثبتة وفعّل الإشعارات منها.</div>}{key.isError && <div className="integration-note">{t("pushNeedsSetup")}</div>}<button className="primary" disabled={working || key.isLoading || key.isError || permission === "denied"} onClick={enable}><Bell size={16}/>{working ? (permission === "granted" ? t("updatePush") : t("enablePush")) : !pushReady ? t("pushUnavailable") : permission === "granted" ? t("updatePush") : t("enablePush")}</button></>;
+  return (
+    <>
+      <SectionTitle kicker={t("notifications")} title={t("pushTitle")} />
+      <p>{t("pushHint")}</p>
+      <div className="push-permission-state">
+        {t("permission")}:{" "}
+        <b>
+          {permission === "granted"
+            ? t("enabled")
+            : permission === "denied"
+              ? t("blocked")
+              : t("waiting")}
+        </b>
+      </div>
+      {deliveryStatus && (
+        <div className="integration-note">
+          {language === "ar"
+            ? `نتيجة اختبار الخادم: قُبل ${deliveryStatus.delivered} من ${deliveryStatus.subscriptions} اشتراك${deliveryStatus.failed ? `، وفشل ${deliveryStatus.failed}` : ""}. قبول الخادم لا يضمن الظهور إذا كانت إشعارات النظام محجوبة.`
+            : `Server test: accepted ${deliveryStatus.delivered} of ${deliveryStatus.subscriptions} subscription(s)${deliveryStatus.failed ? `; ${deliveryStatus.failed}` : ""}. Acceptance does not guarantee display if system notifications are blocked.`}
+        </div>
+      )}
+      {isIos && !isStandalone && (
+        <div className="integration-note">
+          لاختبار تنبيه عند إغلاق التطبيق على iPhone: افتح قائمة المشاركة في
+          Safari ثم اختر «إضافة إلى الشاشة الرئيسية»، وافتح النسخة المثبتة وفعّل
+          الإشعارات منها.
+        </div>
+      )}
+      {key.isError && (
+        <div className="integration-note">{t("pushNeedsSetup")}</div>
+      )}
+      <button
+        className="primary"
+        disabled={
+          working || key.isLoading || key.isError || permission === "denied"
+        }
+        onClick={enable}
+      >
+        <Bell size={16} />
+        {working
+          ? permission === "granted"
+            ? t("updatePush")
+            : t("enablePush")
+          : !pushReady
+            ? t("pushUnavailable")
+            : permission === "granted"
+              ? t("updatePush")
+              : t("enablePush")}
+      </button>
+    </>
+  );
 }
 
-function SettingsPage({ profile, groups, students, setGroups, setStudents }: any) {
+function SettingsPage({
+  profile,
+  groups,
+  students,
+  setGroups,
+  setStudents,
+}: any) {
   const saveProfileRemote = trpc.app.profile.save.useMutation();
   const [workspace] = useWorkspace();
   const { language, setLanguage, t, isRtl } = useLanguage();
   const [location, setLocation] = useLocation();
   const activeTab = location.match(/^\/settings\/([^/]+)$/)?.[1] || null;
-  const [message, setMessage] = useState(() => localStorage.getItem("ostazi-message") || "مرحبًا {اسم الطالب}، نذكّرك بموعد حصتك القادمة مع أستاذ {اسم المعلم} يوم {التاريخ}.");
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem("ostazi-mode") || "ليلي");
-  const [payment, setPayment] = useState(() => JSON.parse(localStorage.getItem("ostazi-payment") || '{"bank":"","wallet":"","note":""}'));
-  const [contact, setContact] = useState(() => JSON.parse(localStorage.getItem("ostazi-contact") || '{"phone":"","email":"","whatsapp":""}'));
-  useEffect(() => { if (!profile) return; if (profile.messageTemplate) setMessage(profile.messageTemplate); if (profile.displayMode) setViewMode(profile.displayMode); setPayment({ bank: profile.paymentBank || "", wallet: profile.paymentWallet || "", note: profile.paymentNote || "" }); setContact({ phone: profile.contactPhone || "", email: profile.contactEmail || "", whatsapp: profile.contactWhatsapp || "" }); }, [profile]);
-  const saveMessage = () => { localStorage.setItem("ostazi-message", message); saveProfileRemote.mutate({ name: profile?.name || "المعلم", phone: profile?.phone || "", subject: profile?.subject || "أخرى", messageTemplate: message, displayMode: getDisplayMode(profile) }, { onSuccess: () => toast.success("تم حفظ قالب الرسالة ومزامنته"), onError: () => toast.error("تعذر مزامنة قالب الرسالة") }); };
-  const exportExcel = () => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(students), "الطلاب"); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(groups), "المجموعات"); XLSX.writeFile(wb, "ostazi-data.xlsx"); toast.success("تم تصدير ملف Excel"); };
-  const importExcel = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { const wb = XLSX.read(e.target?.result, { type: "array" }); const studentSheet = wb.Sheets["الطلاب"] || wb.Sheets[wb.SheetNames[0]]; const groupSheet = wb.Sheets["المجموعات"]; const importedStudents = XLSX.utils.sheet_to_json(studentSheet) as Student[]; const importedGroups = groupSheet ? XLSX.utils.sheet_to_json(groupSheet) as Group[] : []; if (importedStudents.length) setStudents(importedStudents.map((x, i) => ({ ...x, id: x.id || Date.now() + i }))); if (importedGroups.length) setGroups(importedGroups.map((x, i) => ({ ...x, id: x.id || Date.now() + i }))); toast.success("تم استيراد بيانات Excel"); }; reader.readAsArrayBuffer(file); };
-  const savePayment = () => { localStorage.setItem("ostazi-payment", JSON.stringify(payment)); saveProfileRemote.mutate({ name: profile?.name || "المعلم", phone: profile?.phone || "", subject: profile?.subject || "أخرى", paymentBank: payment.bank, paymentWallet: payment.wallet, paymentNote: payment.note, displayMode: getDisplayMode(profile) }, { onSuccess: () => toast.success("تم حفظ بيانات الدفع ومزامنتها"), onError: () => toast.error("تعذر مزامنة بيانات الدفع") }); };
-  const saveContact = () => { localStorage.setItem("ostazi-contact", JSON.stringify(contact)); saveProfileRemote.mutate({ name: profile?.name || "المعلم", phone: profile?.phone || "", subject: profile?.subject || "أخرى", contactPhone: contact.phone, contactEmail: contact.email, contactWhatsapp: contact.whatsapp, displayMode: getDisplayMode(profile) }, { onSuccess: () => toast.success("تم حفظ بيانات التواصل ومزامنتها"), onError: () => toast.error("تعذر مزامنة بيانات التواصل") }); };
-  const tabs = [["language", t("language"), Globe2], ["reminders", language === "ar" ? "ذكّرني" : "Remind me", CalendarDays], ["rewards", language === "ar" ? "النقاط والمكافآت" : "Points & rewards", CircleDollarSign], ["learning", language === "ar" ? "النقاشات والواجبات" : "Community & assignments", MessageSquareText], ["video", language === "ar" ? "الدروس والجلسات" : "Lessons & sessions", Video], ["rooms", language === "ar" ? "القاعات والمقاعد" : "Rooms & seats", LayoutGrid], ["store", language === "ar" ? "متجر الملازم والمحفظة" : "Store & wallet", WalletCards], ["materials", language === "ar" ? "المواد التعليمية" : "Learning materials", BookOpen], ["plans", t("plans"), CreditCard], ["messages", t("messages"), MessageSquareText], ["data", t("data"), FileSpreadsheet], ["payment", t("payment"), WalletCards], ["contact", t("contact"), MessageSquareText], ["security", t("security"), ShieldCheck], ["devices", language === "ar" ? "أجهزة الطلاب" : "Student devices", MonitorCog], ["changes", t("changes"), ClipboardCheck], ["team", t("team"), Users], ["notifications", t("notifications"), Bell], ["mode", t("theme"), MonitorCog]] as const;
-  const visibleTabs = workspace === "center" ? tabs : tabs.filter(([id]) => !["rewards", "rooms", "store", "team"].includes(id));
-  const renderPanel = (id: string) => {
-    if (workspace !== "center" && ["rewards", "rooms", "store", "team"].includes(id)) return <Empty icon={LayoutGrid} title="هذه الأداة خاصة بالسنتر" text="لن نحمّل بيانات السنتر أثناء عملك في المدرسة أو الأونلاين. انتقل إلى السنتر لاستخدام هذه الأداة."/>;
-    if (id === "language") return <><SectionTitle kicker={t("language")} title={t("languageTitle")}/><p>{t("languageText")}</p><div className="mode-options language-options"><button className={language === "ar" ? "selected" : ""} onClick={() => { setLanguage("ar"); toast.success(t("languageSaved")); }}><Globe2 size={18}/>{t("arabic")}</button><button className={language === "en" ? "selected" : ""} onClick={() => { setLanguage("en"); toast.success("App language updated"); }}><Globe2 size={18}/>{t("english")}</button></div></>;
-    if (id === "reminders") return <PersonalRemindersPanel/>;
-    if (id === "rewards") return <TeacherRewardsPanel students={students}/>;
-    if (id === "learning") return <TeacherLearningHub groups={groups} onBack={() => setLocation("/settings")}/>;
-    if (id === "video") return <TeacherVideoHub groups={groups} onBack={() => setLocation("/settings")}/>;
-    if (id === "materials") return <MaterialsLibrary groups={groups}/>;
-    if (id === "plans") return <><div className="plan-banner"><div><span className="eyebrow">اشتراكك الحالي</span><h2>الخطة التجريبية <span>نشطة</span></h2><p>متبقي 14 يومًا · تنتهي في ٢٧ أغسطس ٢٠٢٦</p></div><ShieldCheck size={48}/></div><SectionTitle kicker="خطط أستاذي" title="اختر الباقة المناسبة"/><div className="plans"><div className="plan-card"><span className="plan-tag">الأكثر طلبًا</span><h3>الذهبية</h3><strong>70 <small>جنيه / 6 شهور</small></strong><p>كل الأدوات الأساسية لإدارة يومك الدراسي.</p><button className="secondary wide" onClick={() => toast.success("سيتم فتح واتساب لإتمام الطلب")}>شراء الباقة</button></div><div className="plan-card featured"><span className="plan-tag">أفضل قيمة</span><h3>الماسية</h3><strong>120 <small>جنيه / سنة دراسية</small></strong><p>كل المميزات مفتوحة مع دعم فني مستمر.</p><button className="primary wide" onClick={() => toast.success("سيتم فتح واتساب لإتمام الطلب")}>شراء الباقة</button></div></div></>;
-    if (id === "messages") return <><SectionTitle kicker={t("fastMessaging")} title={t("templateTitle")}/><p>{t("templateHint")}</p><textarea value={message} onChange={e => setMessage(e.target.value)}/><div className="variables"><button onClick={() => setMessage(message + " {اسم الطالب}")}>+ اسم الطالب</button><button onClick={() => setMessage(message + " {المجموعة}")}>+ المجموعة</button><button onClick={() => setMessage(message + " {المبلغ}")}>+ المبلغ</button><button onClick={() => setMessage(message + " {التاريخ}")}>+ التاريخ</button><button onClick={() => setMessage(message + " {اسم المعلم}")}>+ اسم المعلم</button></div><div className="message-template-preview"><span>{t("preview")}</span><p>{renderMessageTemplate(message, { studentName: "سارة محمد", groupName: "المجموعة الأولى", amount: "75 ج.م", date: new Date().toLocaleDateString(language === "en" ? "en-GB" : "ar-EG"), teacherName: profile?.name || "المعلم" })}</p></div><button className="primary" onClick={saveMessage}>{t("saveTemplate")}</button></>;
-    if (id === "data") return <><SectionTitle kicker="إدارة البيانات" title="Excel والنسخ الاحتياطي"/><p>صدّر الطلاب والمجموعات في ملف XLSX أو استورد ملفًا معدًا مسبقًا.</p><div className="data-actions"><button className="primary" onClick={exportExcel}><Download size={17}/> تصدير إلى Excel</button><label className="secondary file-label"><Upload size={17}/> استيراد من Excel<input type="file" accept=".xlsx,.xls" onChange={importExcel}/></label></div><div className="data-note"><FileSpreadsheet size={20}/><span>يفضل أن يحتوي الملف على ورقتين باسم «الطلاب» و«المجموعات».</span></div></>;
-    if (id === "payment") return <div className="settings-single-form"><SectionTitle kicker="حساب التحصيل" title="بيانات الدفع"/><label>اسم البنك أو وسيلة التحصيل<input value={payment.bank} onChange={e => setPayment({ ...payment, bank: e.target.value })} placeholder="مثال: فودافون كاش"/></label><label>رقم المحفظة / الحساب<input value={payment.wallet} onChange={e => setPayment({ ...payment, wallet: e.target.value })} placeholder="01xxxxxxxxx"/></label><label>ملاحظات الدفع<textarea value={payment.note} onChange={e => setPayment({ ...payment, note: e.target.value })} placeholder="تعليمات الدفع للطلاب"/></label><button className="primary" onClick={savePayment}>حفظ بيانات الدفع</button></div>;
-    if (id === "contact") return <div className="settings-single-form"><SectionTitle kicker="قنواتك" title="بيانات التواصل"/><label>رقم الهاتف<input value={contact.phone} onChange={e => setContact({ ...contact, phone: e.target.value })} placeholder="01xxxxxxxxx"/></label><label>البريد الإلكتروني<input value={contact.email} onChange={e => setContact({ ...contact, email: e.target.value })} placeholder="name@example.com"/></label><label>رابط WhatsApp<input value={contact.whatsapp} onChange={e => setContact({ ...contact, whatsapp: e.target.value })} placeholder="https://wa.me/..."/></label><button className="primary" onClick={saveContact}>حفظ بيانات التواصل</button></div>;
-    if (id === "security") return <TeacherAccountSecurityPanel/>;
-    if (id === "devices") return <TeacherDeviceBindingsPanel/>;
-    if (id === "rooms") return <TeacherRoomsPanel onBack={() => setLocation("/settings")}/>;
-    if (id === "store") return <TeacherStorePanel onBack={() => setLocation("/settings")}/>;
-    if (id === "changes") return <ChangeLogPanel/>;
-    if (id === "team") return <CenterAdminPanel/>;
-    if (id === "notifications") return <PushEnableButton/>;
-    return <><SectionTitle kicker="تفضيلات العرض" title="الوضع"/><p>اختر كيف تريد أن يظهر التطبيق على جهازك.</p><div className="mode-options">{["ليلي", "عادي", "أوتوماتيك"].map(mode => <button className={viewMode === mode ? "selected" : ""} key={mode} onClick={() => { setViewMode(mode); localStorage.setItem("ostazi-mode", mode); const isLight = mode === "عادي" || (mode === "أوتوماتيك" && window.matchMedia("(prefers-color-scheme: light)").matches); document.documentElement.classList.toggle("light", isLight); saveProfileRemote.mutate({ name: profile?.name || "المعلم", phone: profile?.phone || "", subject: profile?.subject || "أخرى", messageTemplate: message, paymentBank: payment.bank, paymentWallet: payment.wallet, paymentNote: payment.note, contactPhone: contact.phone, contactEmail: contact.email, contactWhatsapp: contact.whatsapp, displayMode: mode as "ليلي" | "عادي" | "أوتوماتيك" }, { onSuccess: () => toast.success("تم حفظ الوضع ومزامنته"), onError: () => toast.error("تعذر مزامنة الوضع") }); }}><MonitorCog size={18}/>{mode}</button>)}</div></>;
+  const [message, setMessage] = useState(
+    () =>
+      localStorage.getItem("ostazi-message") ||
+      "مرحبًا {اسم الطالب}، نذكّرك بموعد حصتك القادمة مع أستاذ {اسم المعلم} يوم {التاريخ}."
+  );
+  const [viewMode, setViewMode] = useState(
+    () => localStorage.getItem("ostazi-mode") || "ليلي"
+  );
+  const [payment, setPayment] = useState(() =>
+    JSON.parse(
+      localStorage.getItem("ostazi-payment") ||
+        '{"bank":"","wallet":"","note":""}'
+    )
+  );
+  const [contact, setContact] = useState(() =>
+    JSON.parse(
+      localStorage.getItem("ostazi-contact") ||
+        '{"phone":"","email":"","whatsapp":""}'
+    )
+  );
+  useEffect(() => {
+    if (!profile) return;
+    if (profile.messageTemplate) setMessage(profile.messageTemplate);
+    if (profile.displayMode) setViewMode(profile.displayMode);
+    setPayment({
+      bank: profile.paymentBank || "",
+      wallet: profile.paymentWallet || "",
+      note: profile.paymentNote || "",
+    });
+    setContact({
+      phone: profile.contactPhone || "",
+      email: profile.contactEmail || "",
+      whatsapp: profile.contactWhatsapp || "",
+    });
+  }, [profile]);
+  const saveMessage = () => {
+    localStorage.setItem("ostazi-message", message);
+    saveProfileRemote.mutate(
+      {
+        name: profile?.name || "المعلم",
+        phone: profile?.phone || "",
+        subject: profile?.subject || "أخرى",
+        messageTemplate: message,
+        displayMode: getDisplayMode(profile),
+      },
+      {
+        onSuccess: () => toast.success("تم حفظ قالب الرسالة ومزامنته"),
+        onError: () => toast.error("تعذر مزامنة قالب الرسالة"),
+      }
+    );
   };
-  if (activeTab && tabs.some(([id]) => id === activeTab)) return <div className="settings-page settings-detail-page"><button type="button" className="page-back-button" onClick={() => setLocation("/settings")}>{isRtl ? <ChevronRight size={18}/> : <ChevronLeft size={18}/>} {language === "ar" ? "العودة إلى الإعدادات" : "Back to settings"}</button><section className="settings-detail-content panel">{renderPanel(activeTab)}</section></div>;
-  return <div className="settings-page"><SectionTitle kicker={t("controlCenter")} title={t("appSettings")}/><div className="settings-accordion-list">{visibleTabs.map(([id, label, Icon]) => <section className="settings-accordion-card" key={id}><button type="button" className="settings-accordion-trigger" onClick={() => setLocation(`/settings/${id}`)}><span><Icon size={22}/>{label}</span>{isRtl ? <ChevronLeft size={18}/> : <ChevronRight size={18}/>}</button></section>)}</div></div>;
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(students),
+      "الطلاب"
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(groups),
+      "المجموعات"
+    );
+    XLSX.writeFile(wb, "ostazi-data.xlsx");
+    toast.success("تم تصدير ملف Excel");
+  };
+  const importExcel = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(e.target?.result, { type: "array" });
+      const studentSheet = wb.Sheets["الطلاب"] || wb.Sheets[wb.SheetNames[0]];
+      const groupSheet = wb.Sheets["المجموعات"];
+      const importedStudents = XLSX.utils.sheet_to_json(
+        studentSheet
+      ) as Student[];
+      const importedGroups = groupSheet
+        ? (XLSX.utils.sheet_to_json(groupSheet) as Group[])
+        : [];
+      if (importedStudents.length)
+        setStudents(
+          importedStudents.map((x, i) => ({ ...x, id: x.id || Date.now() + i }))
+        );
+      if (importedGroups.length)
+        setGroups(
+          importedGroups.map((x, i) => ({ ...x, id: x.id || Date.now() + i }))
+        );
+      toast.success("تم استيراد بيانات Excel");
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  const savePayment = () => {
+    localStorage.setItem("ostazi-payment", JSON.stringify(payment));
+    saveProfileRemote.mutate(
+      {
+        name: profile?.name || "المعلم",
+        phone: profile?.phone || "",
+        subject: profile?.subject || "أخرى",
+        paymentBank: payment.bank,
+        paymentWallet: payment.wallet,
+        paymentNote: payment.note,
+        displayMode: getDisplayMode(profile),
+      },
+      {
+        onSuccess: () => toast.success("تم حفظ بيانات الدفع ومزامنتها"),
+        onError: () => toast.error("تعذر مزامنة بيانات الدفع"),
+      }
+    );
+  };
+  const saveContact = () => {
+    localStorage.setItem("ostazi-contact", JSON.stringify(contact));
+    saveProfileRemote.mutate(
+      {
+        name: profile?.name || "المعلم",
+        phone: profile?.phone || "",
+        subject: profile?.subject || "أخرى",
+        contactPhone: contact.phone,
+        contactEmail: contact.email,
+        contactWhatsapp: contact.whatsapp,
+        displayMode: getDisplayMode(profile),
+      },
+      {
+        onSuccess: () => toast.success("تم حفظ بيانات التواصل ومزامنتها"),
+        onError: () => toast.error("تعذر مزامنة بيانات التواصل"),
+      }
+    );
+  };
+  const tabs = [
+    ["language", t("language"), Globe2],
+    ["reminders", language === "ar" ? "ذكّرني" : "Remind me", CalendarDays],
+    [
+      "rewards",
+      language === "ar" ? "النقاط والمكافآت" : "Points & rewards",
+      CircleDollarSign,
+    ],
+    [
+      "learning",
+      language === "ar" ? "النقاشات والواجبات" : "Community & assignments",
+      MessageSquareText,
+    ],
+    [
+      "video",
+      language === "ar" ? "الدروس والجلسات" : "Lessons & sessions",
+      Video,
+    ],
+    [
+      "rooms",
+      language === "ar" ? "القاعات والمقاعد" : "Rooms & seats",
+      LayoutGrid,
+    ],
+    [
+      "store",
+      language === "ar" ? "متجر الملازم والمحفظة" : "Store & wallet",
+      WalletCards,
+    ],
+    [
+      "materials",
+      language === "ar" ? "المواد التعليمية" : "Learning materials",
+      BookOpen,
+    ],
+    ["plans", t("plans"), CreditCard],
+    ["messages", t("messages"), MessageSquareText],
+    ["data", t("data"), FileSpreadsheet],
+    ["payment", t("payment"), WalletCards],
+    ["contact", t("contact"), MessageSquareText],
+    ["security", t("security"), ShieldCheck],
+    [
+      "devices",
+      language === "ar" ? "أجهزة الطلاب" : "Student devices",
+      MonitorCog,
+    ],
+    ["changes", t("changes"), ClipboardCheck],
+    ["team", t("team"), Users],
+    ["notifications", t("notifications"), Bell],
+    ["mode", t("theme"), MonitorCog],
+  ] as const;
+  const visibleTabs =
+    workspace === "center"
+      ? tabs
+      : tabs.filter(
+          ([id]) => !["rewards", "rooms", "store", "team"].includes(id)
+        );
+  const renderPanel = (id: string) => {
+    if (
+      workspace !== "center" &&
+      ["rewards", "rooms", "store", "team"].includes(id)
+    )
+      return (
+        <Empty
+          icon={LayoutGrid}
+          title="هذه الأداة خاصة بالسنتر"
+          text="لن نحمّل بيانات السنتر أثناء عملك في المدرسة أو الأونلاين. انتقل إلى السنتر لاستخدام هذه الأداة."
+        />
+      );
+    if (id === "language")
+      return (
+        <>
+          <SectionTitle kicker={t("language")} title={t("languageTitle")} />
+          <p>{t("languageText")}</p>
+          <div className="mode-options language-options">
+            <button
+              className={language === "ar" ? "selected" : ""}
+              onClick={() => {
+                setLanguage("ar");
+                toast.success(t("languageSaved"));
+              }}
+            >
+              <Globe2 size={18} />
+              {t("arabic")}
+            </button>
+            <button
+              className={language === "en" ? "selected" : ""}
+              onClick={() => {
+                setLanguage("en");
+                toast.success("App language updated");
+              }}
+            >
+              <Globe2 size={18} />
+              {t("english")}
+            </button>
+          </div>
+        </>
+      );
+    if (id === "reminders") return <PersonalRemindersPanel />;
+    if (id === "rewards") return <TeacherRewardsPanel students={students} />;
+    if (id === "learning")
+      return (
+        <TeacherLearningHub
+          groups={groups}
+          onBack={() => setLocation("/settings")}
+        />
+      );
+    if (id === "video")
+      return (
+        <TeacherVideoHub
+          groups={groups}
+          onBack={() => setLocation("/settings")}
+        />
+      );
+    if (id === "materials") return <MaterialsLibrary groups={groups} />;
+    if (id === "plans")
+      return (
+        <>
+          <div className="plan-banner">
+            <div>
+              <span className="eyebrow">اشتراكك الحالي</span>
+              <h2>
+                الخطة التجريبية <span>نشطة</span>
+              </h2>
+              <p>متبقي 14 يومًا · تنتهي في ٢٧ أغسطس ٢٠٢٦</p>
+            </div>
+            <ShieldCheck size={48} />
+          </div>
+          <SectionTitle kicker="خطط أستاذي" title="اختر الباقة المناسبة" />
+          <div className="plans">
+            <div className="plan-card">
+              <span className="plan-tag">الأكثر طلبًا</span>
+              <h3>الذهبية</h3>
+              <strong>
+                70 <small>جنيه / 6 شهور</small>
+              </strong>
+              <p>كل الأدوات الأساسية لإدارة يومك الدراسي.</p>
+              <button
+                className="secondary wide"
+                onClick={() => toast.success("سيتم فتح واتساب لإتمام الطلب")}
+              >
+                شراء الباقة
+              </button>
+            </div>
+            <div className="plan-card featured">
+              <span className="plan-tag">أفضل قيمة</span>
+              <h3>الماسية</h3>
+              <strong>
+                120 <small>جنيه / سنة دراسية</small>
+              </strong>
+              <p>كل المميزات مفتوحة مع دعم فني مستمر.</p>
+              <button
+                className="primary wide"
+                onClick={() => toast.success("سيتم فتح واتساب لإتمام الطلب")}
+              >
+                شراء الباقة
+              </button>
+            </div>
+          </div>
+        </>
+      );
+    if (id === "messages")
+      return (
+        <>
+          <SectionTitle
+            kicker={t("fastMessaging")}
+            title={t("templateTitle")}
+          />
+          <p>{t("templateHint")}</p>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+          />
+          <div className="variables">
+            <button onClick={() => setMessage(message + " {اسم الطالب}")}>
+              + اسم الطالب
+            </button>
+            <button onClick={() => setMessage(message + " {المجموعة}")}>
+              + المجموعة
+            </button>
+            <button onClick={() => setMessage(message + " {المبلغ}")}>
+              + المبلغ
+            </button>
+            <button onClick={() => setMessage(message + " {التاريخ}")}>
+              + التاريخ
+            </button>
+            <button onClick={() => setMessage(message + " {اسم المعلم}")}>
+              + اسم المعلم
+            </button>
+          </div>
+          <div className="message-template-preview">
+            <span>{t("preview")}</span>
+            <p>
+              {renderMessageTemplate(message, {
+                studentName: "سارة محمد",
+                groupName: "المجموعة الأولى",
+                amount: "75 ج.م",
+                date: new Date().toLocaleDateString(
+                  language === "en" ? "en-GB" : "ar-EG"
+                ),
+                teacherName: profile?.name || "المعلم",
+              })}
+            </p>
+          </div>
+          <button className="primary" onClick={saveMessage}>
+            {t("saveTemplate")}
+          </button>
+        </>
+      );
+    if (id === "data")
+      return (
+        <>
+          <SectionTitle
+            kicker="إدارة البيانات"
+            title="Excel والنسخ الاحتياطي"
+          />
+          <p>
+            صدّر الطلاب والمجموعات في ملف XLSX أو استورد ملفًا معدًا مسبقًا.
+          </p>
+          <div className="data-actions">
+            <button className="primary" onClick={exportExcel}>
+              <Download size={17} /> تصدير إلى Excel
+            </button>
+            <label className="secondary file-label">
+              <Upload size={17} /> استيراد من Excel
+              <input type="file" accept=".xlsx,.xls" onChange={importExcel} />
+            </label>
+          </div>
+          <div className="data-note">
+            <FileSpreadsheet size={20} />
+            <span>
+              يفضل أن يحتوي الملف على ورقتين باسم «الطلاب» و«المجموعات».
+            </span>
+          </div>
+        </>
+      );
+    if (id === "payment")
+      return (
+        <div className="settings-single-form">
+          <SectionTitle kicker="حساب التحصيل" title="بيانات الدفع" />
+          <label>
+            اسم البنك أو وسيلة التحصيل
+            <input
+              value={payment.bank}
+              onChange={e => setPayment({ ...payment, bank: e.target.value })}
+              placeholder="مثال: فودافون كاش"
+            />
+          </label>
+          <label>
+            رقم المحفظة / الحساب
+            <input
+              value={payment.wallet}
+              onChange={e => setPayment({ ...payment, wallet: e.target.value })}
+              placeholder="01xxxxxxxxx"
+            />
+          </label>
+          <label>
+            ملاحظات الدفع
+            <textarea
+              value={payment.note}
+              onChange={e => setPayment({ ...payment, note: e.target.value })}
+              placeholder="تعليمات الدفع للطلاب"
+            />
+          </label>
+          <button className="primary" onClick={savePayment}>
+            حفظ بيانات الدفع
+          </button>
+        </div>
+      );
+    if (id === "contact")
+      return (
+        <div className="settings-single-form">
+          <SectionTitle kicker="قنواتك" title="بيانات التواصل" />
+          <label>
+            رقم الهاتف
+            <input
+              value={contact.phone}
+              onChange={e => setContact({ ...contact, phone: e.target.value })}
+              placeholder="01xxxxxxxxx"
+            />
+          </label>
+          <label>
+            البريد الإلكتروني
+            <input
+              value={contact.email}
+              onChange={e => setContact({ ...contact, email: e.target.value })}
+              placeholder="name@example.com"
+            />
+          </label>
+          <label>
+            رابط WhatsApp
+            <input
+              value={contact.whatsapp}
+              onChange={e =>
+                setContact({ ...contact, whatsapp: e.target.value })
+              }
+              placeholder="https://wa.me/..."
+            />
+          </label>
+          <button className="primary" onClick={saveContact}>
+            حفظ بيانات التواصل
+          </button>
+        </div>
+      );
+    if (id === "security") return <TeacherAccountSecurityPanel />;
+    if (id === "devices") return <TeacherDeviceBindingsPanel />;
+    if (id === "rooms")
+      return <TeacherRoomsPanel onBack={() => setLocation("/settings")} />;
+    if (id === "store")
+      return <TeacherStorePanel onBack={() => setLocation("/settings")} />;
+    if (id === "changes") return <ChangeLogPanel />;
+    if (id === "team") return <CenterAdminPanel />;
+    if (id === "notifications") return <PushEnableButton />;
+    return (
+      <>
+        <SectionTitle kicker="تفضيلات العرض" title="الوضع" />
+        <p>اختر كيف تريد أن يظهر التطبيق على جهازك.</p>
+        <div className="mode-options">
+          {["ليلي", "عادي", "أوتوماتيك"].map(mode => (
+            <button
+              className={viewMode === mode ? "selected" : ""}
+              key={mode}
+              onClick={() => {
+                setViewMode(mode);
+                localStorage.setItem("ostazi-mode", mode);
+                const isLight =
+                  mode === "عادي" ||
+                  (mode === "أوتوماتيك" &&
+                    window.matchMedia("(prefers-color-scheme: light)").matches);
+                document.documentElement.classList.toggle("light", isLight);
+                saveProfileRemote.mutate(
+                  {
+                    name: profile?.name || "المعلم",
+                    phone: profile?.phone || "",
+                    subject: profile?.subject || "أخرى",
+                    messageTemplate: message,
+                    paymentBank: payment.bank,
+                    paymentWallet: payment.wallet,
+                    paymentNote: payment.note,
+                    contactPhone: contact.phone,
+                    contactEmail: contact.email,
+                    contactWhatsapp: contact.whatsapp,
+                    displayMode: mode as "ليلي" | "عادي" | "أوتوماتيك",
+                  },
+                  {
+                    onSuccess: () => toast.success("تم حفظ الوضع ومزامنته"),
+                    onError: () => toast.error("تعذر مزامنة الوضع"),
+                  }
+                );
+              }}
+            >
+              <MonitorCog size={18} />
+              {mode}
+            </button>
+          ))}
+        </div>
+      </>
+    );
+  };
+  if (activeTab && tabs.some(([id]) => id === activeTab))
+    return (
+      <div className="settings-page settings-detail-page">
+        <button
+          type="button"
+          className="page-back-button"
+          onClick={() => setLocation("/settings")}
+        >
+          {isRtl ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}{" "}
+          {language === "ar" ? "العودة إلى الإعدادات" : "Back to settings"}
+        </button>
+        <section className="settings-detail-content panel">
+          {renderPanel(activeTab)}
+        </section>
+      </div>
+    );
+  return (
+    <div className="settings-page">
+      <SectionTitle kicker={t("controlCenter")} title={t("appSettings")} />
+      <div className="settings-accordion-list">
+        {visibleTabs.map(([id, label, Icon]) => (
+          <section className="settings-accordion-card" key={id}>
+            <button
+              type="button"
+              className="settings-accordion-trigger"
+              onClick={() => setLocation(`/settings/${id}`)}
+            >
+              <span>
+                <Icon size={22} />
+                {label}
+              </span>
+              {isRtl ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+            </button>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
 }
-function GuestDemo() { const [location] = useLocation(); const [rows, setRows] = useState<any[]>(demoFinanceRows); const [attendanceResult, setAttendanceResult] = useState<Student | null>(null); const demoProfile = { name: "نسخة تجريبية", subject: "إدارة تعليمية" }; const checkin = (student: Student) => { setAttendanceResult(student); toast.success(`عرض تجريبي: تم تسجيل حضور ${student.name}`); }; const settle = (id: number) => setRows(current => current.map(row => row.id === id ? { ...row, paidAt: new Date() } : row)); return <><Shell profile={demoProfile} setProfile={() => undefined}><div className="demo-banner"><b>وضع عرض تجريبي</b><span>البيانات المعروضة نموذجية ولا يتم حفظ أي تعديل. سجّل الدخول لاستخدام بياناتك الحقيقية.</span><button className="secondary" onClick={() => startLogin()}>تسجيل الدخول</button></div>{location === "/finance" ? <FinancePanel rows={rows} students={initialStudents} groups={initialGroups} onCreate={input => setRows(current => [{ ...input, id: Date.now(), createdAt: new Date() }, ...current])} onSettle={settle}/> : <><SectionTitle kicker="وضع عرض" title="الحضور السريع" action={<span className="live-pill"><i/> بيانات تجريبية</span>}/><QuickAttendance students={initialStudents} onCheckin={checkin}/>{attendanceResult && <div className={`attendance-result panel ${attendanceResult.paid ? "is-paid" : "is-due"}`}><div className="result-icon">{attendanceResult.paid ? <CheckCircle2 size={24}/> : <AlertTriangle size={24}/>}</div><div><span className="eyebrow">نتيجة تجريبية</span><h3>{attendanceResult.name}</h3><p>{attendanceResult.group} · {attendanceResult.paid ? "الحساب مسدد" : "توجد مبالغ مستحقة"}</p></div>{!attendanceResult.paid && <div className="result-actions"><button className="primary" onClick={() => toast.success("عرض تجريبي: تم تحصيل المبلغ")}>تحصيل المبلغ</button></div>}</div>}</>}</Shell><Toaster position="top-center" richColors/></> }
+function GuestDemo() {
+  const [location] = useLocation();
+  const [rows, setRows] = useState<any[]>(demoFinanceRows);
+  const [attendanceResult, setAttendanceResult] = useState<Student | null>(
+    null
+  );
+  const demoProfile = { name: "نسخة تجريبية", subject: "إدارة تعليمية" };
+  const checkin = (student: Student) => {
+    setAttendanceResult(student);
+    toast.success(`عرض تجريبي: تم تسجيل حضور ${student.name}`);
+  };
+  const settle = (id: number) =>
+    setRows(current =>
+      current.map(row => (row.id === id ? { ...row, paidAt: new Date() } : row))
+    );
+  return (
+    <>
+      <Shell profile={demoProfile} setProfile={() => undefined}>
+        <div className="demo-banner">
+          <b>وضع عرض تجريبي</b>
+          <span>
+            البيانات المعروضة نموذجية ولا يتم حفظ أي تعديل. سجّل الدخول لاستخدام
+            بياناتك الحقيقية.
+          </span>
+          <button className="secondary" onClick={() => startLogin()}>
+            تسجيل الدخول
+          </button>
+        </div>
+        {location === "/finance" ? (
+          <FinancePanel
+            rows={rows}
+            students={initialStudents}
+            groups={initialGroups}
+            onCreate={input =>
+              setRows(current => [
+                { ...input, id: Date.now(), createdAt: new Date() },
+                ...current,
+              ])
+            }
+            onSettle={settle}
+          />
+        ) : (
+          <>
+            <SectionTitle
+              kicker="وضع عرض"
+              title="الحضور السريع"
+              action={
+                <span className="live-pill">
+                  <i /> بيانات تجريبية
+                </span>
+              }
+            />
+            <QuickAttendance students={initialStudents} onCheckin={checkin} />
+            {attendanceResult && (
+              <div
+                className={`attendance-result panel ${attendanceResult.paid ? "is-paid" : "is-due"}`}
+              >
+                <div className="result-icon">
+                  {attendanceResult.paid ? (
+                    <CheckCircle2 size={24} />
+                  ) : (
+                    <AlertTriangle size={24} />
+                  )}
+                </div>
+                <div>
+                  <span className="eyebrow">نتيجة تجريبية</span>
+                  <h3>{attendanceResult.name}</h3>
+                  <p>
+                    {attendanceResult.group} ·{" "}
+                    {attendanceResult.paid
+                      ? "الحساب مسدد"
+                      : "توجد مبالغ مستحقة"}
+                  </p>
+                </div>
+                {!attendanceResult.paid && (
+                  <div className="result-actions">
+                    <button
+                      className="primary"
+                      onClick={() =>
+                        toast.success("عرض تجريبي: تم تحصيل المبلغ")
+                      }
+                    >
+                      تحصيل المبلغ
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </Shell>
+      <Toaster position="top-center" richColors />
+    </>
+  );
+}
 
-function App() { const auth = useAuth(); const [location] = useLocation(); useEffect(() => { const isEditable = (target: EventTarget | null) => { const element = target as HTMLElement | null; return !!element?.closest("input, textarea, select, [contenteditable='true']"); }; const blockCopy = (event: ClipboardEvent) => { if (!isEditable(event.target)) event.preventDefault(); }; const blockContext = (event: MouseEvent) => { if (!isEditable(event.target)) event.preventDefault(); }; const blockSelection = (event: Event) => { if (!isEditable(event.target)) event.preventDefault(); }; const blockZoomGesture = (event: Event) => event.preventDefault(); const blockZoomWheel = (event: WheelEvent) => { if (event.ctrlKey) event.preventDefault(); }; const blockZoomKey = (event: KeyboardEvent) => { if ((event.ctrlKey || event.metaKey) && ["+", "-", "=", "0"].includes(event.key)) event.preventDefault(); }; document.addEventListener("copy", blockCopy); document.addEventListener("cut", blockCopy); document.addEventListener("contextmenu", blockContext); document.addEventListener("selectstart", blockSelection); document.addEventListener("gesturestart", blockZoomGesture, { passive: false }); document.addEventListener("gesturechange", blockZoomGesture, { passive: false }); document.addEventListener("wheel", blockZoomWheel, { passive: false }); document.addEventListener("keydown", blockZoomKey); return () => { document.removeEventListener("copy", blockCopy); document.removeEventListener("cut", blockCopy); document.removeEventListener("contextmenu", blockContext); document.removeEventListener("selectstart", blockSelection); document.removeEventListener("gesturestart", blockZoomGesture); document.removeEventListener("gesturechange", blockZoomGesture); document.removeEventListener("wheel", blockZoomWheel); document.removeEventListener("keydown", blockZoomKey); }; }, []); const [profile, setProfile] = useStore<any>("profile", null); const remoteProfile = trpc.app.profile.get.useQuery(undefined, { enabled: auth.isAuthenticated, retry: false }); useEffect(() => { if (remoteProfile.data) setProfile(remoteProfile.data); }, [remoteProfile.data]); if (auth.loading) return <div className="auth-screen"><div className="brand-mark">أ</div><h2>أستاذي</h2><p>جاري تجهيز مساحة عملك...</p></div>; if (!auth.isAuthenticated && (location === "/attendance" || location === "/finance")) return <GuestDemo/>; if (!auth.isAuthenticated) return <div className="auth-screen"><div className="brand-mark">أ</div><h2>أستاذي</h2><p>سجّل الدخول لمزامنة بياناتك بين أجهزتك، أو افتح العرض التجريبي للحضور والمالية.</p><div className="auth-demo-links"><Link href="/attendance"><a className="secondary">عرض الحضور</a></Link><Link href="/finance"><a className="secondary">عرض المالية</a></Link></div><button className="primary" onClick={() => startLogin()}>تسجيل الدخول</button></div>; return <><Shell profile={profile} setProfile={setProfile}><Switch><Route path="/"><Page profile={profile}/></Route><Route path="/profile"><Page profile={profile}/></Route><Route path="/settings/:tab"><Page profile={profile}/></Route><Route path="/:rest*"><Page profile={profile}/></Route></Switch></Shell><Toaster position="top-center" richColors/></> }
+function App() {
+  const auth = useAuth();
+  const [location] = useLocation();
+  useEffect(() => {
+    const isEditable = (target: EventTarget | null) => {
+      const element = target as HTMLElement | null;
+      return !!element?.closest(
+        "input, textarea, select, [contenteditable='true']"
+      );
+    };
+    const blockCopy = (event: ClipboardEvent) => {
+      if (!isEditable(event.target)) event.preventDefault();
+    };
+    const blockContext = (event: MouseEvent) => {
+      if (!isEditable(event.target)) event.preventDefault();
+    };
+    const blockSelection = (event: Event) => {
+      if (!isEditable(event.target)) event.preventDefault();
+    };
+    const blockZoomGesture = (event: Event) => event.preventDefault();
+    const blockZoomWheel = (event: WheelEvent) => {
+      if (event.ctrlKey) event.preventDefault();
+    };
+    const blockZoomKey = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        ["+", "-", "=", "0"].includes(event.key)
+      )
+        event.preventDefault();
+    };
+    document.addEventListener("copy", blockCopy);
+    document.addEventListener("cut", blockCopy);
+    document.addEventListener("contextmenu", blockContext);
+    document.addEventListener("selectstart", blockSelection);
+    document.addEventListener("gesturestart", blockZoomGesture, {
+      passive: false,
+    });
+    document.addEventListener("gesturechange", blockZoomGesture, {
+      passive: false,
+    });
+    document.addEventListener("wheel", blockZoomWheel, { passive: false });
+    document.addEventListener("keydown", blockZoomKey);
+    return () => {
+      document.removeEventListener("copy", blockCopy);
+      document.removeEventListener("cut", blockCopy);
+      document.removeEventListener("contextmenu", blockContext);
+      document.removeEventListener("selectstart", blockSelection);
+      document.removeEventListener("gesturestart", blockZoomGesture);
+      document.removeEventListener("gesturechange", blockZoomGesture);
+      document.removeEventListener("wheel", blockZoomWheel);
+      document.removeEventListener("keydown", blockZoomKey);
+    };
+  }, []);
+  const [profile, setProfile] = useStore<any>("profile", null);
+  const remoteProfile = trpc.app.profile.get.useQuery(undefined, {
+    enabled: auth.isAuthenticated,
+    retry: false,
+  });
+  useEffect(() => {
+    if (remoteProfile.data) setProfile(remoteProfile.data);
+  }, [remoteProfile.data]);
+  if (auth.loading)
+    return (
+      <div className="auth-screen">
+        <div className="brand-mark">أ</div>
+        <h2>أستاذي</h2>
+        <p>جاري تجهيز مساحة عملك...</p>
+      </div>
+    );
+  if (
+    !auth.isAuthenticated &&
+    (location === "/attendance" || location === "/finance")
+  )
+    return <GuestDemo />;
+  if (!auth.isAuthenticated)
+    return (
+      <div className="auth-screen">
+        <div className="brand-mark">أ</div>
+        <h2>أستاذي</h2>
+        <p>
+          سجّل الدخول لمزامنة بياناتك بين أجهزتك، أو افتح العرض التجريبي للحضور
+          والمالية.
+        </p>
+        <div className="auth-demo-links">
+          <Link href="/attendance">
+            <a className="secondary">عرض الحضور</a>
+          </Link>
+          <Link href="/finance">
+            <a className="secondary">عرض المالية</a>
+          </Link>
+        </div>
+        <button className="primary" onClick={() => startLogin()}>
+          تسجيل الدخول
+        </button>
+      </div>
+    );
+  return (
+    <>
+      <Shell profile={profile} setProfile={setProfile}>
+        <Switch>
+          <Route path="/">
+            <Page profile={profile} />
+          </Route>
+          <Route path="/profile">
+            <Page profile={profile} />
+          </Route>
+          <Route path="/settings/:tab">
+            <Page profile={profile} />
+          </Route>
+          <Route path="/:rest*">
+            <Page profile={profile} />
+          </Route>
+        </Switch>
+      </Shell>
+      <Toaster position="top-center" richColors />
+    </>
+  );
+}
 export default App;

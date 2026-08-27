@@ -23,7 +23,7 @@ describe("تمرير سياق التشغيل إلى إجراءات المعلم"
   });
 
   it("يحجب أدوات السنتر المخصصة خارج السنتر حتى عند محاولة فتح رابط إعداد مباشر", () => {
-    expect(app).toContain("const visibleTabs = workspace === \"center\" ? tabs");
+    expect(app).toContain('workspace === "center"');
     expect(app).toContain("[\"rewards\", \"rooms\", \"store\", \"team\"]");
     expect(app).toContain("هذه الأداة خاصة بالسنتر");
   });

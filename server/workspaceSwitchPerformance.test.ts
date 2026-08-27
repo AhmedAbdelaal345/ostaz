@@ -11,7 +11,8 @@ describe("أداء تبديل سياق التشغيل", () => {
   });
 
   it("يحمّل السياقات الأخرى مسبقًا ويحفظ السياق المطلوب صراحةً", () => {
-    expect(app).toContain("utils.app.bootstrap.prefetch({ workspace: next }");
+    expect(app).toContain("utils.app.bootstrap.prefetch(");
+    expect(app).toContain("workspace: next");
     expect(app).toContain("staleTime: WORKSPACE_CACHE_MS");
     expect(main).toContain('Object.prototype.hasOwnProperty.call(payload, "workspace")');
   });

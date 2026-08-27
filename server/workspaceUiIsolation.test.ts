@@ -6,9 +6,10 @@ const leaderboard = readFileSync(new URL("../client/src/components/PerformanceLe
 
 describe("تحميل واجهة السياق النشط", () => {
   it("يربط bootstrap بالسياق النشط ولا يعيد مراقبة DOM", () => {
-    expect(app).toContain('trpc.app.bootstrap.useQuery({ workspace }');
+    expect(app).toContain("trpc.app.bootstrap.useQuery(");
+    expect(app).toContain("{ workspace },");
     expect(app).not.toContain("MutationObserver");
-    expect(app).toContain(".groups-toolbar .filter-row>.filters:first-child{display:none!important}");
+    expect(app).toContain("setGroups(groupRows)");
   });
 
   it("لا يحمل الحضور أو المالية أو التقييمات من صفحة المجموعات", () => {

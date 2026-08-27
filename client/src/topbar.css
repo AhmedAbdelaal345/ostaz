@@ -146,3 +146,149 @@
     display: none;
   }
 }
+
+.app-recovery-screen {
+  align-items: center;
+  background: #05080c;
+  color: #edf5fb;
+  display: flex;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.app-recovery-card {
+  background: #101822;
+  border: 1px solid rgba(53, 184, 255, .24);
+  border-radius: 22px;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .38);
+  display: grid;
+  gap: 11px;
+  max-width: 430px;
+  padding: 26px;
+  text-align: center;
+}
+
+.app-recovery-icon {
+  align-items: center;
+  background: rgba(255, 124, 135, .12);
+  border-radius: 14px;
+  color: #ff9da5;
+  display: inline-flex;
+  height: 50px;
+  justify-content: center;
+  justify-self: center;
+  width: 50px;
+}
+
+.app-recovery-kicker {
+  color: #35b8ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.app-recovery-card h2 {
+  font-size: 22px;
+  margin: 0;
+}
+
+.app-recovery-card p {
+  color: #9cafbf;
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0;
+}
+
+.app-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  justify-content: center;
+  margin-top: 5px;
+}
+
+.entity-management-actions {
+  margin: 0 0 16px;
+}
+
+.entity-danger-card,
+.group-management-card {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(87, 30, 37, .27), rgba(20, 28, 38, .92));
+  border: 1px solid rgba(240, 139, 139, .24);
+  border-radius: 18px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 17px 18px;
+}
+
+.group-management-card {
+  background: linear-gradient(135deg, rgba(18, 70, 106, .3), rgba(20, 28, 38, .92));
+  border-color: rgba(53, 184, 255, .24);
+}
+
+.entity-danger-card span,
+.group-management-card span {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.entity-danger-card h2,
+.group-management-card h2 {
+  align-items: center;
+  display: flex;
+  font-size: 17px;
+  gap: 7px;
+  margin: 5px 0;
+}
+
+.entity-danger-card p,
+.group-management-card p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 520px;
+}
+
+.group-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.group-management-actions button,
+.entity-danger-card button {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 680px) {
+  .entity-danger-card,
+  .group-management-card {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .group-management-actions {
+    justify-content: stretch;
+  }
+
+  .group-management-actions button,
+  .entity-danger-card button {
+    flex: 1;
+    width: 100%;
+  }
+}
+
+.schedule-modal .student-profile-fields {
+  display: none;
+}

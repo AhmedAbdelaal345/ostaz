@@ -6,9 +6,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export function TeacherStorePanel({ onBack }: { onBack: () => void }) {
   const { language, isRtl } = useLanguage(); const utils = trpc.useUtils();
-  const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [price, setPrice] = useState(""); const [stockQuantity, setStockQuantity] = useState("0"); const [fulfillment, setFulfillment] = useState<"pickup" | "delivery" | "both">("pickup"); const [topupAmount, setTopupAmount] = useState(""); const [shownCode, setShownCode] = useState<string | null>(null);
+  const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [price, setPrice] = useState(""); const [stockQuantity, setStockQuantity] = useState(""); const [fulfillment, setFulfillment] = useState<"pickup" | "delivery" | "both">("pickup"); const [topupAmount, setTopupAmount] = useState(""); const [shownCode, setShownCode] = useState<string | null>(null);
   const products = trpc.app.store.products.useQuery(); const orders = trpc.app.store.orders.useQuery();
-  const createProduct = trpc.app.store.createProduct.useMutation({ onSuccess: () => { setTitle(""); setDescription(""); setPrice(""); setStockQuantity("0"); products.refetch(); toast.success(language === "ar" ? "تمت إضافة المنتج." : "Product added."); }, onError: error => toast.error(error.message) });
+  const createProduct = trpc.app.store.createProduct.useMutation({ onSuccess: () => { setTitle(""); setDescription(""); setPrice(""); setStockQuantity(""); products.refetch(); toast.success(language === "ar" ? "تمت إضافة المنتج." : "Product added."); }, onError: error => toast.error(error.message) });
   const updateProduct = trpc.app.store.updateProduct.useMutation({ onSuccess: () => products.refetch(), onError: error => toast.error(error.message) });
   const updateOrder = trpc.app.store.updateOrderStatus.useMutation({ onSuccess: () => orders.refetch(), onError: error => toast.error(error.message) });
   const generateCode = trpc.app.store.generateTopupCode.useMutation({ onSuccess: data => { setShownCode(data.code); toast.success(language === "ar" ? "أظهر الكود مرة واحدة؛ انسخه أو اطبعه الآن." : "The code is shown once; copy or print it now."); }, onError: error => toast.error(error.message) });

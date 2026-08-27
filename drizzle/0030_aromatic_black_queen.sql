@@ -1,0 +1,1 @@
+ALTER TABLE `study_groups` ADD `durationMinutes` int DEFAULT 60 NOT NULL;

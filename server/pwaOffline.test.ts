@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 describe("PWA offline worker", () => {
   it("keeps an app-shell fallback and handles Push notification events", () => {
     const worker = readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8");
+    expect(worker.match(/^const CACHE =/gm)).toHaveLength(1);
+    expect(worker).toContain('const CACHE = "el-mister-v14"');
     expect(worker).toContain('caches.match("/")');
     expect(worker).toContain('self.addEventListener("push"');
     expect(worker).toContain("requireInteraction: true");
