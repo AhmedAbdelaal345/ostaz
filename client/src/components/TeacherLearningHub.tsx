@@ -37,9 +37,12 @@ export function TeacherLearningHub({ groups, onBack }: { groups: Group[]; onBack
     onError: error => toast.error(error.message),
   });
   const announce = trpc.app.community.announce.useMutation({
-    onSuccess: () => {
+    onSuccess: (result) => {
       setAnnouncementTitle(""); setAnnouncementBody(""); invalidate();
-      toast.success(language === "ar" ? "تم نشر التنبيه داخل المجموعة" : "Announcement published to the group");
+      if (!result.push) return toast.success(language === "ar" ? "تم نشر التنبيه داخل المجموعة" : "Announcement published to the group");
+      if ("unavailable" in result.push && result.push.unavailable) return toast.success(language === "ar" ? "تم نشر التنبيه داخل المجموعة، لكن خدمة Push غير متاحة الآن." : "The announcement was published, but push is unavailable right now.");
+      if (!result.push.subscriptions) return toast.success(language === "ar" ? "تم نشر التنبيه داخل المجموعة. لا توجد أجهزة طلاب مشتركة في Push حاليًا." : "The announcement was published. No student devices are subscribed to push yet.");
+      toast.success(language === "ar" ? `تم نشر التنبيه وقبل مزود Push الإرسال إلى ${result.push.delivered} من ${result.push.subscriptions} أجهزة. لا يؤكد ذلك ظهور الإشعار على الجهاز.` : `The announcement was published and the push provider accepted ${result.push.delivered} of ${result.push.subscriptions} devices. This does not confirm device display.`);
     },
     onError: error => toast.error(error.message),
   });

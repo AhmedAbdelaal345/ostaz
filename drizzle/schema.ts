@@ -203,13 +203,17 @@ export const financialTransactions = mysqlTable("financial_transactions", {
 export const pushSubscriptions = mysqlTable("push_subscriptions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  accountType: mysqlEnum("accountType", ["teacher", "student"]).default("teacher").notNull(),
+  studentId: int("studentId"),
   endpoint: text("endpoint").notNull(),
   p256dh: varchar("p256dh", { length: 255 }).notNull(),
   auth: varchar("auth", { length: 255 }).notNull(),
   contentEncoding: varchar("contentEncoding", { length: 32 }).default("aes128gcm").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, table => ({
+  userStudentIdx: index("push_subscriptions_user_student_idx").on(table.userId, table.studentId),
+}));
 
 export const lessonReminders = mysqlTable("lesson_reminders", {
   id: int("id").autoincrement().primaryKey(),

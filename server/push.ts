@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { listPushSubscriptions, deletePushSubscription } from "./db";
+import { listPushSubscriptions, listStudentPushSubscriptions, deletePushSubscription } from "./db";
 import { ENV } from "./_core/env";
 
 export function isPushConfigured() {
@@ -11,10 +11,11 @@ export function getPushPublicKey() {
   return ENV.vapidPublicKey;
 }
 
-export async function sendPushToUser(userId: number, payload: { title: string; body: string; url?: string; tag?: string; lang?: "ar" | "en" }) {
+type PushPayload = { title: string; body: string; url?: string; tag?: string; lang?: "ar" | "en" };
+
+async function sendPushToSubscriptions(userId: number, subscriptions: Array<{ endpoint: string; p256dh: string; auth: string; contentEncoding: string }>, payload: PushPayload) {
   if (!isPushConfigured()) throw new Error("PUSH_NOT_CONFIGURED");
   webpush.setVapidDetails(ENV.vapidSubject, ENV.vapidPublicKey, ENV.vapidPrivateKey);
-  const subscriptions = await listPushSubscriptions(userId);
   let delivered = 0; let failed = 0;
   for (const subscription of subscriptions) {
     try {
@@ -28,3 +29,6 @@ export async function sendPushToUser(userId: number, payload: { title: string; b
   }
   return { delivered, failed, subscriptions: subscriptions.length };
 }
+
+export async function sendPushToUser(userId: number, payload: PushPayload) { return sendPushToSubscriptions(userId, await listPushSubscriptions(userId), payload); }
+export async function sendPushToGroupStudents(userId: number, groupId: number, payload: PushPayload) { return sendPushToSubscriptions(userId, await listStudentPushSubscriptions(userId, groupId), payload); }
