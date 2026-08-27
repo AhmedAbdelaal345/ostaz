@@ -1,12 +1,26 @@
 {
   "name": "El Mister | المستر",
   "short_name": "El Mister",
-  "description": "إدارة المجموعات والطلاب والجدول والسجل المالي للمعلم.",
+  "description": "منصة المستر لإدارة التعليم والمجموعات والطلاب.",
   "start_url": "/",
   "display": "standalone",
   "dir": "rtl",
   "lang": "ar",
   "theme_color": "#000000",
   "background_color": "#000000",
-  "icons": [{"src":"/manus-storage/el-mister-logo_65d8a1da.jpg","sizes":"1024x1024","type":"image/jpeg","purpose":"any maskable"}]
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/manus-storage/el-mister-icon-192_c406f989.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/manus-storage/el-mister-icon-512_951cf40b.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }

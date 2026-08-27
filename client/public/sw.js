@@ -1,6 +1,7 @@
 const CACHE = "el-mister-shell-v8";
-const BRAND_ICON = "/manus-storage/el-mister-logo_65d8a1da.jpg";
-const APP_SHELL = ["/", "/manifest.json"];
+const CACHE = "el-mister-v11";
+const BRAND_ICON = "/manus-storage/el-mister-icon-192_c406f989.png";
+const APP_SHELL = ["/", "/manifest.json", BRAND_ICON];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)).catch(() => undefined));

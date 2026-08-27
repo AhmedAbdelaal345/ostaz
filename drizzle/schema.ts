@@ -36,6 +36,7 @@ export const teacherProfiles = mysqlTable("teacher_profiles", {
 export const studyGroups = mysqlTable("study_groups", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  workspace: mysqlEnum("workspace", ["school", "center", "online"]).default("center").notNull(),
   name: varchar("name", { length: 180 }).notNull(),
   place: varchar("place", { length: 40 }).notNull(),
   mode: varchar("mode", { length: 40 }).notNull(),
@@ -52,6 +53,7 @@ export const studyGroups = mysqlTable("study_groups", {
 export const students = mysqlTable("students", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  workspace: mysqlEnum("workspace", ["school", "center", "online"]).default("center").notNull(),
   groupId: int("groupId"),
   name: varchar("name", { length: 160 }).notNull(),
   phone: varchar("phone", { length: 32 }),
@@ -162,6 +164,7 @@ export const centerMembers = mysqlTable("center_members", {
 export const attendance = mysqlTable("attendance", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  workspace: mysqlEnum("workspace", ["school", "center", "online"]).default("center").notNull(),
   studentId: int("studentId").notNull(),
   groupId: int("groupId"),
   lessonDate: timestamp("lessonDate").notNull(),
@@ -173,6 +176,7 @@ export const attendance = mysqlTable("attendance", {
 export const financialTransactions = mysqlTable("financial_transactions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  workspace: mysqlEnum("workspace", ["school", "center", "online"]).default("center").notNull(),
   studentId: int("studentId"),
   groupId: int("groupId"),
   kind: mysqlEnum("kind", ["subscription", "expense"]).notNull(),
@@ -443,6 +447,7 @@ export const walletTopupCodes = mysqlTable("wallet_topup_codes", {
 export const assessments = mysqlTable("assessments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  workspace: mysqlEnum("workspace", ["school", "center", "online"]).default("center").notNull(),
   studentId: int("studentId").notNull(),
   groupId: int("groupId"),
   title: varchar("title", { length: 180 }).notNull(),
@@ -456,6 +461,7 @@ export const assessments = mysqlTable("assessments", {
 export const behaviorRecords = mysqlTable("behavior_records", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  workspace: mysqlEnum("workspace", ["school", "center", "online"]).default("center").notNull(),
   studentId: int("studentId").notNull(),
   groupId: int("groupId"),
   category: mysqlEnum("category", ["positive", "warning", "note"]).default("note").notNull(),
