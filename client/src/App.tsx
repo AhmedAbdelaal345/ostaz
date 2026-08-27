@@ -2213,31 +2213,7 @@ function Page({ profile }: { profile: any }) {
       new CustomEvent("ostazi-workspace-failed", { detail: { workspace } })
     );
   }, [boot.isError, workspace]);
-  if (auth.isAuthenticated && loadedWorkspace !== workspace)
-    return (
-      <section className="workspace-loading" aria-live="polite">
-        <span className="workspace-loading-mark">أ</span>
-        <div>
-          <b>
-            {language === "ar" ? "جارٍ تجهيز المساحة" : "Preparing workspace"}
-          </b>
-          <p>
-            {boot.isError
-              ? language === "ar"
-                ? "تعذر تحميل البيانات. حاول مرة أخرى."
-                : "Data could not load. Please retry."
-              : language === "ar"
-                ? "لن تظهر بيانات سياق آخر أثناء التبديل."
-                : "Data from another workspace will not be shown."}
-          </p>
-          {boot.isError && (
-            <button type="button" className="secondary" onClick={() => boot.refetch()}>
-              {language === "ar" ? "إعادة المحاولة" : "Retry"}
-            </button>
-          )}
-        </div>
-      </section>
-    );
+  const isWorkspaceLoading = auth.isAuthenticated && loadedWorkspace !== workspace;
   const today = new Date().toLocaleDateString("ar-EG", { weekday: "long" });
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const filteredGroups = groups
@@ -3336,6 +3312,31 @@ function Page({ profile }: { profile: any }) {
           ))}
         </div>
       </>
+    );
+  if (isWorkspaceLoading)
+    return (
+      <section className="workspace-loading" aria-live="polite">
+        <span className="workspace-loading-mark">أ</span>
+        <div>
+          <b>
+            {language === "ar" ? "جارٍ تجهيز المساحة" : "Preparing workspace"}
+          </b>
+          <p>
+            {boot.isError
+              ? language === "ar"
+                ? "تعذر تحميل البيانات. حاول مرة أخرى."
+                : "Data could not load. Please retry."
+              : language === "ar"
+                ? "لن تظهر بيانات سياق آخر أثناء التبديل."
+                : "Data from another workspace will not be shown."}
+          </p>
+          {boot.isError && (
+            <button type="button" className="secondary" onClick={() => boot.refetch()}>
+              {language === "ar" ? "إعادة المحاولة" : "Retry"}
+            </button>
+          )}
+        </div>
+      </section>
     );
   if (location === "/settings" || location.startsWith("/settings/"))
     return (

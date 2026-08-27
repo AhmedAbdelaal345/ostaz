@@ -24,4 +24,12 @@ describe("أداء تبديل سياق التشغيل", () => {
     expect(app).toContain('loadedWorkspace !== workspace');
     expect(app).toContain('className="workspace-loading"');
   });
+
+  it("لا يعيد من صفحة السياق قبل اكتمال Hooks حتى لا يتعطل React عند اكتمال التحميل", () => {
+    const loadingState = app.indexOf("const isWorkspaceLoading");
+    const lastPageEffect = app.indexOf("window.addEventListener(\"ostazi-group-sort-change\"");
+    const loadingReturn = app.indexOf("if (isWorkspaceLoading)");
+    expect(loadingState).toBeGreaterThan(lastPageEffect);
+    expect(loadingReturn).toBeGreaterThan(lastPageEffect);
+  });
 });
