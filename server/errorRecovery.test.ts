@@ -10,4 +10,10 @@ describe("استرداد أخطاء الواجهة", () => {
     expect(boundary).toContain('window.location.assign("/")');
     expect(boundary).toContain("[App recovery]");
   });
+
+  it("يحمي معالجات الواجهة من أهداف DOM غير القابلة لاستدعاء closest", () => {
+    const app = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
+    expect(app).toContain("if (!(target instanceof Element)) return false;");
+    expect(app).toContain('target.closest(\n        "input, textarea, select, [contenteditable=\'true\']"');
+  });
 });

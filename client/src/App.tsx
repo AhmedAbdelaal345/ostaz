@@ -126,6 +126,7 @@ import { TeacherStorePanel } from "./components/TeacherStorePanel";
 import { GroupQuickAttendance } from "./pages/EntityProfile";
 import "./topbar.css";
 import "./whatsapp-navigation-chrome.css";
+import "./contextual-topbar.css";
 
 const nav = [
   ["/", "home", Home],
@@ -133,6 +134,57 @@ const nav = [
   ["/groups", "groups", LayoutGrid],
   ["/finance", "finance", WalletCards],
   ["/settings", "settings", Settings],
+] as const;
+
+const MESSAGE_TEMPLATE_PRESETS = [
+  {
+    id: "lesson-reminder",
+    title: "تذكير بموعد الحصة",
+    description: "للطلاب قبل الحصة القادمة.",
+    body: "مرحبًا {اسم الطالب}، نذكّرك بموعد حصتك في مجموعة {المجموعة} مع أستاذ {اسم المعلم} بتاريخ {التاريخ}.",
+  },
+  {
+    id: "attendance-present",
+    title: "تأكيد الحضور",
+    description: "إشعار حضور للطالب أو ولي الأمر.",
+    body: "مرحبًا، تم تسجيل حضور الطالب {اسم الطالب} في مجموعة {المجموعة} بتاريخ {التاريخ}. شكرًا لالتزامه.",
+  },
+  {
+    id: "attendance-absent",
+    title: "تنبيه غياب",
+    description: "رسالة هادئة عند غياب الطالب.",
+    body: "مرحبًا، نحيطكم علمًا بتسجيل غياب الطالب {اسم الطالب} عن حصة مجموعة {المجموعة} بتاريخ {التاريخ}. يرجى التواصل عند وجود عذر.",
+  },
+  {
+    id: "payment-reminder",
+    title: "تذكير بالمستحقات",
+    description: "للمبلغ المتبقي فقط.",
+    body: "مرحبًا، يوجد مبلغ متبقٍ قدره {المبلغ} للطالب {اسم الطالب} في مجموعة {المجموعة}. يرجى السداد في أقرب وقت. شكرًا لكم.",
+  },
+  {
+    id: "subscription-confirmation",
+    title: "تأكيد الاشتراك",
+    description: "بعد تسجيل الطالب بالمجموعة.",
+    body: "مرحبًا {اسم الطالب}، تم الاشتراك في مجموعة {المجموعة} مع أستاذ {اسم المعلم} بتاريخ {التاريخ}. المدفوع أو المتبقي: {المبلغ}.",
+  },
+  {
+    id: "weekly-report",
+    title: "تقرير أسبوعي",
+    description: "مقدمة للتقرير التعليمي الأسبوعي.",
+    body: "مرحبًا، هذا التقرير الأسبوعي للطالب {اسم الطالب} في مجموعة {المجموعة}. تم إعداده بتاريخ {التاريخ} بواسطة أستاذ {اسم المعلم}.",
+  },
+  {
+    id: "monthly-report",
+    title: "تقرير شهري",
+    description: "مقدمة لملخص الأداء الشهري.",
+    body: "مرحبًا، هذا ملخص الشهر للطالب {اسم الطالب} في مجموعة {المجموعة}. يرجى مراجعة الحضور والتقييمات والمستحقات حتى {التاريخ}.",
+  },
+  {
+    id: "exam-reminder",
+    title: "تذكير بالاختبار",
+    description: "موعد اختبار أو تقييم جديد.",
+    body: "مرحبًا {اسم الطالب}، يوجد اختبار أو تقييم جديد لمجموعة {المجموعة} بتاريخ {التاريخ}. نتمنى لك التوفيق.",
+  },
 ] as const;
 
 type AppLinkProps = {
@@ -543,6 +595,20 @@ function Shell({
             : t("home");
   const workspaceLabel =
     workspaces.find(item => item.id === workspace)?.label || t("center");
+  const settingsSection = location.match(/^\/settings\/([^/]+)$/)?.[1];
+  const contextualTopbar = (() => {
+    const isArabic = language === "ar";
+    if (location === "/groups") return { id: "groups", kicker: isArabic ? "إدارة الطلاب" : "Student management", note: isArabic ? "المجموعات، الكروت، والحضور السريع" : "Groups, cards, and quick attendance" };
+    if (location === "/attendance") return { id: "attendance", kicker: isArabic ? "جلسة اليوم" : "Today’s session", note: isArabic ? "تسجيل الحضور والمتأخرات" : "Attendance and outstanding dues" };
+    if (location === "/finance") return { id: "finance", kicker: isArabic ? "التحصيل والمتابعة" : "Collections & follow-up", note: isArabic ? "الاشتراكات والمصروفات والخزينة" : "Subscriptions, expenses, and treasury" };
+    if (location === "/assessments") return { id: "assessments", kicker: isArabic ? "التقييم والمتابعة" : "Assessment & follow-up", note: isArabic ? "الاختبارات والدرجات" : "Quizzes and scores" };
+    if (location === "/reports") return { id: "reports", kicker: isArabic ? "ملخص الأداء" : "Performance summary", note: isArabic ? "تقارير مستقلة للسياق الحالي" : "Reports for the active workspace" };
+    if (location.startsWith("/settings")) {
+      const messages = settingsSection === "messages";
+      return { id: messages ? "settings-messages" : "settings", kicker: messages ? (isArabic ? "التواصل" : "Communication") : (isArabic ? "إدارة التطبيق" : "App management"), note: messages ? (isArabic ? "اختر وعدّل نموذج رسالة جاهز" : "Choose and edit a ready message template") : (isArabic ? "إعدادات تخص حسابك فقط" : "Settings for your account only") };
+    }
+    return { id: "home", kicker: workspaceLabel, note: isArabic ? "نظرة سريعة على يومك الدراسي" : "A quick view of your teaching day" };
+  })();
   return (
     <>
       <style>{`.groups-toolbar .filter-row>.filters:first-child{display:none!important}@media(max-width:620px){.top-actions{gap:6px}.top-actions .topbar-group-sort{display:inline-flex!important;align-items:center;padding:7px 8px;font-size:10px;white-space:nowrap}.top-actions .topbar-group-sort select{max-width:80px;padding:0;border:0;background:transparent;color:var(--blue);font:inherit}.top-actions .report-entry{display:none}}`}</style>
@@ -605,13 +671,14 @@ function Shell({
         </aside>
         <main className="main">
           <header
-            className={`topbar ${isHomePage ? "topbar-home" : "topbar-section"}`}
+            className={`topbar ${isHomePage ? "topbar-home" : "topbar-section"} topbar-context-${contextualTopbar.id}`}
           >
             <div className="topbar-heading">
               <span className="topbar-kicker">
-                {isHomePage ? t("personalWorkspace") : workspaceLabel}
+                {contextualTopbar.kicker}
               </span>
               <h1>{translatedTitle}</h1>
+              <span className="topbar-context-note">{contextualTopbar.note}</span>
             </div>
             <div className="topbar-controls">
               <WorkspaceSwitcher />
@@ -4873,6 +4940,28 @@ function SettingsPage({
             title={t("templateTitle")}
           />
           <p>{t("templateHint")}</p>
+          <section className="message-template-library" aria-label="نماذج رسائل WhatsApp الجاهزة">
+            <div className="message-template-library-head">
+              <div>
+                <span>نماذج جاهزة</span>
+                <b>اختر نموذجًا ثم عدّل النص قبل الحفظ</b>
+              </div>
+              <MessageSquareText size={19} />
+            </div>
+            <div className="message-template-preset-grid">
+              {MESSAGE_TEMPLATE_PRESETS.map(template => (
+                <button
+                  type="button"
+                  key={template.id}
+                  className={message === template.body ? "selected" : ""}
+                  onClick={() => setMessage(template.body)}
+                >
+                  <b>{template.title}</b>
+                  <span>{template.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
           <textarea
             value={message}
             onChange={e => setMessage(e.target.value)}
