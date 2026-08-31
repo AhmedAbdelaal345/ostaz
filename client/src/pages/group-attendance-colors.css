@@ -6,3 +6,16 @@
 .student-daily-card.attendance-absent .student-daily-avatar{background:rgba(255,119,136,.2);color:#ffc2ca}
 @media (prefers-reduced-motion:no-preference){.student-daily-card.attendance-present,.student-daily-card.attendance-late,.student-daily-card.attendance-absent{animation:attendance-mark .22s cubic-bezier(.23,1,.32,1)}}
 @keyframes attendance-mark{from{transform:scale(.985)}to{transform:scale(1)}}
+
+.student-daily-rating-grid button.rating-recitation-weak.selected,.student-daily-rating-grid button.rating-homework-weak.selected{background:#b84d5d;color:#fff;border-color:#e78391}
+.student-daily-rating-grid button.rating-recitation-good.selected,.student-daily-rating-grid button.rating-homework-good.selected{background:#2869a9;color:#fff;border-color:#64a9ee}
+.student-daily-rating-grid button.rating-recitation-very_good.selected,.student-daily-rating-grid button.rating-homework-very_good.selected{background:#9a6b18;color:#fff;border-color:#f0bd50}
+.student-daily-rating-grid button.rating-recitation-excellent.selected,.student-daily-rating-grid button.rating-homework-excellent.selected{background:#23865d;color:#fff;border-color:#63dda5}
+.student-daily-rating-grid button.rating-recitation-idle,.student-daily-rating-grid button.rating-homework-idle{transition:background .18s ease,border-color .18s ease,color .18s ease}
+.group-daily-stats{margin:12px 0 16px;padding:14px 16px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.025)}
+.group-daily-stats-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.group-daily-stats-title div{display:grid;gap:3px}.group-daily-stats-title b{font-size:17px}.group-daily-stats-title small{color:var(--muted);white-space:nowrap}
+.group-daily-stats-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.group-daily-stats-grid span{display:grid;gap:3px;padding:10px 8px;border-radius:12px;background:rgba(255,255,255,.045);text-align:center}.group-daily-stats-grid b{font-size:20px}.group-daily-stats-grid small{font-size:11px;color:var(--muted)}
+.group-daily-stats-grid .stat-present b{color:#63dda5}.group-daily-stats-grid .stat-late b{color:#f0bd50}.group-daily-stats-grid .stat-absent b{color:#ff8192}.group-daily-stats-grid .stat-followup b{color:#72b7ff}
+@media(max-width:620px){.group-daily-stats{padding:12px}.group-daily-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.group-daily-stats-grid span:nth-child(4),.group-daily-stats-grid span:nth-child(5){grid-column:span 1}.group-daily-stats-title b{font-size:15px}}

@@ -2159,6 +2159,38 @@ function AssessmentPanel({
     </>
   );
 }
+function GroupDailyStats({ detail }: { detail: any }) {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayAttendance = (detail.attendance || []).filter(
+    (row: any) => new Date(row.lessonDate).toISOString().slice(0, 10) === todayKey
+  );
+  const todayFollowUps = (detail.followUps || []).filter(
+    (row: any) => new Date(row.followupDate).toISOString().slice(0, 10) === todayKey
+  );
+  const count = (status: string) =>
+    todayAttendance.filter((row: any) => row.status === status).length;
+  const recitationCount = todayFollowUps.filter((row: any) => row.recitation).length;
+  const homeworkCount = todayFollowUps.filter((row: any) => row.homework).length;
+  return (
+    <section className="group-daily-stats" aria-label={`إحصائيات اليوم لمجموعة ${detail.group.name}`}>
+      <div className="group-daily-stats-title">
+        <div>
+          <span className="eyebrow">ملخص اليوم</span>
+          <b>{detail.group.name}</b>
+        </div>
+        <small>{new Date().toLocaleDateString("ar-EG")}</small>
+      </div>
+      <div className="group-daily-stats-grid">
+        <span className="stat-present"><b>{count("present")}</b><small>حاضر</small></span>
+        <span className="stat-late"><b>{count("late")}</b><small>متأخر</small></span>
+        <span className="stat-absent"><b>{count("absent")}</b><small>غائب</small></span>
+        <span className="stat-followup"><b>{recitationCount}</b><small>تسميع مسجل</small></span>
+        <span className="stat-followup"><b>{homeworkCount}</b><small>واجب مسجل</small></span>
+      </div>
+    </section>
+  );
+}
+
 function GroupInlineStudentCards({ groupId }: { groupId: number }) {
   const auth = useAuth();
   const [workspace] = useWorkspace();
@@ -2188,7 +2220,12 @@ function GroupInlineStudentCards({ groupId }: { groupId: number }) {
       </div>
     );
 
-  return <GroupQuickAttendance detail={groupDetail.data} />;
+  return (
+    <>
+      <GroupDailyStats detail={groupDetail.data} />
+      <GroupQuickAttendance detail={groupDetail.data} />
+    </>
+  );
 }
 
 function Page({ profile }: { profile: any }) {

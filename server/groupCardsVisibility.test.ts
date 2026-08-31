@@ -32,4 +32,12 @@ describe("ظهور كروت طلاب المجموعة", () => {
     expect(profileSource).toContain('openStudentWhatsApp(student, "guardianReport")');
     expect(appSource).toContain("<GroupQuickAttendance detail={groupDetail.data} />");
   });
+
+  it("يعرض إحصائيات اليوم ويثبت لون زر التسميع والواجب بعد الاختيار", () => {
+    expect(appSource).toContain("function GroupDailyStats");
+    expect(appSource).toContain("إحصائيات اليوم لمجموعة");
+    expect(profileSource).toContain("followUpOverrides");
+    expect(profileSource).toContain("rating-${field}-${value}");
+    expect(profileSource).toContain("followUpOverrides");
+  });
 });

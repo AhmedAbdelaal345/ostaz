@@ -36,6 +36,13 @@ import {
   formatWeeklyWhatsAppReport,
 } from "../../../shared/whatsapp";
 
+const localDayKey = (value: Date | string) => {
+  const current = new Date(value);
+  const year = current.getFullYear();
+  const month = String(current.getMonth() + 1).padStart(2, "0");
+  const day = String(current.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 const date = (value: Date | string | null | undefined) =>
   value
     ? new Date(value).toLocaleDateString(
@@ -878,6 +885,7 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
   const [workspace] = useWorkspace();
   const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<number, "present" | "late" | "absent">>({});
+  const [followUpOverrides, setFollowUpOverrides] = useState<Record<number, { recitation?: string | null; homework?: string | null }>>({});
   const mark = trpc.app.attendance.mark.useMutation({
     onSuccess: () => {
       utils.app.groups.detail.invalidate({ id: detail.group.id, workspace });
@@ -890,7 +898,7 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
     value.setHours(0, 0, 0, 0);
     return value;
   }, []);
-  const todayKey = today.toISOString().slice(0, 10);
+  const todayKey = localDayKey(today);
   const saveFollowUp = trpc.app.dailyFollowUps.save.useMutation({
     onSuccess: () => {
       utils.app.groups.detail.invalidate({ id: detail.group.id, workspace });
@@ -920,7 +928,7 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
       status: detail.attendance.find(
         (row: any) =>
           row.studentId === student.id &&
-          new Date(row.lessonDate).toISOString().slice(0, 10) === todayKey
+          localDayKey(row.lessonDate) === todayKey
       )?.status,
     }))
     .sort(
@@ -932,15 +940,30 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
     existing: any,
     field: "recitation" | "homework",
     value: (typeof ratings)[number][0]
-  ) =>
-    saveFollowUp.mutate({
-      workspace,
-      studentId: student.id,
-      groupId: detail.group.id,
-      followupDate: today,
-      recitation: field === "recitation" ? value : existing?.recitation ?? null,
-      homework: field === "homework" ? value : existing?.homework ?? null,
-    });
+  ) => {
+    const previous = existing?.[field] ?? null;
+    setFollowUpOverrides(current => ({
+      ...current,
+      [student.id]: { ...current[student.id], [field]: value },
+    }));
+    saveFollowUp.mutate(
+      {
+        workspace,
+        studentId: student.id,
+        groupId: detail.group.id,
+        followupDate: today,
+        recitation: field === "recitation" ? value : existing?.recitation ?? null,
+        homework: field === "homework" ? value : existing?.homework ?? null,
+      },
+      {
+        onError: () =>
+          setFollowUpOverrides(current => ({
+            ...current,
+            [student.id]: { ...current[student.id], [field]: previous },
+          })),
+      }
+    );
+  };
   const reportFor = (student: any) => {
     const sevenDaysAgo = Date.now() - 7 * 86_400_000;
     const attendance = detail.attendance.filter((row: any) => row.studentId === student.id && new Date(row.lessonDate).getTime() >= sevenDaysAgo);
@@ -1003,9 +1026,10 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
             const followUp = detail.followUps?.find(
               (row: any) =>
                 row.studentId === student.id &&
-                new Date(row.followupDate).toISOString().slice(0, 10) === todayKey
+                localDayKey(row.followupDate) === todayKey
             );
             const isExpanded = expandedStudentId === student.id;
+            const effectiveFollowUp = { ...followUp, ...followUpOverrides[student.id] };
             return (
               <article key={student.id} className={`student-daily-card attendance-${effectiveStatus || "unmarked"} ${effectiveStatus === "late" ? "late" : ""} ${isExpanded ? "expanded" : ""}`}>
                 <div className="student-daily-card-top">
@@ -1054,9 +1078,9 @@ export function GroupQuickAttendance({ detail }: { detail: any }) {
                     <div className="student-daily-rating-grid">
                       {(["recitation", "homework"] as const).map(field => (
                         <fieldset key={field}>
-                          <legend>{field === "recitation" ? "التسميع" : "الواجب"} <small>{ratingName(followUp?.[field])}</small></legend>
+                          <legend>{field === "recitation" ? "التسميع" : "الواجب"} <small>{ratingName(effectiveFollowUp?.[field])}</small></legend>
                           <div>
-                            {ratings.map(([value, label]) => <button key={value} type="button" className={followUp?.[field] === value ? "selected" : ""} disabled={saveFollowUp.isPending} onClick={() => saveRating(student, followUp, field, value)} title={ratingName(value)}>{label}</button>)}
+                            {ratings.map(([value, label]) => <button key={value} type="button" className={effectiveFollowUp?.[field] === value ? `selected rating-${field}-${value}` : `rating-${field}-idle`} aria-pressed={effectiveFollowUp?.[field] === value} disabled={saveFollowUp.isPending} onClick={() => saveRating(student, effectiveFollowUp, field, value)} title={ratingName(value)}>{label}</button>)}
                           </div>
                         </fieldset>
                       ))}
