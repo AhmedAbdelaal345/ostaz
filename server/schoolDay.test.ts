@@ -18,4 +18,10 @@ describe("اليوم المدرسي", () => {
     const period = buildSchoolTimeline(settings, sunday).find(row => row.kind === "period");
     expect(period && (period.end.getTime() - period.start.getTime()) / 60_000).toBe(80);
   });
+  it("يفسر وقت الفسحة في المنطقة الزمنية المحلية المحفوظة", () => {
+    const zonedSettings = { ...settings, timeZone: "Africa/Cairo", breakStart: "11:00" };
+    const timeline = buildSchoolTimeline(zonedSettings, new Date("2026-01-04T08:30:00.000Z"));
+    const breakItem = timeline.find(row => row.kind === "break");
+    expect(breakItem?.start.toISOString()).toBe("2026-01-04T09:00:00.000Z");
+  });
 });

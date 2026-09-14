@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { CalendarClock, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -32,38 +32,13 @@ export function PersonalRemindersPanel() {
   const [note, setNote] = useState("");
   const [remindAt, setRemindAt] = useState(() => toLocalInput(new Date(Date.now() + 3_600_000)));
   const [recurrence, setRecurrence] = useState<"once" | "daily" | "weekly">("once");
-  const [clock, setClock] = useState(() => Date.now());
-  const locallyNotified = useRef(new Set<number>());
   const notificationPermission = typeof Notification === "undefined" ? "unsupported" : Notification.permission;
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setClock(Date.now()), 15_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    const timers: number[] = [];
-    for (const reminder of reminders.data || []) {
-      const delay = new Date(reminder.remindAt).getTime() - Date.now();
-      if (reminder.completed || delay <= 0 || delay > 86_400_000 || locallyNotified.current.has(reminder.id)) continue;
-      timers.push(window.setTimeout(() => {
-        if (locallyNotified.current.has(reminder.id) || Notification.permission !== "granted") return;
-        locallyNotified.current.add(reminder.id);
-        new Notification(language === "ar" ? "ذكّرني" : "Reminder", {
-          body: reminder.note ? `${reminder.title} — ${reminder.note}` : reminder.title,
-          tag: `personal-reminder-${reminder.id}`,
-        });
-      }, delay));
-    }
-    return () => timers.forEach(window.clearTimeout);
-  }, [language, reminders.data]);
 
   const recurrenceLabel = (value: string) => language === "ar"
     ? value === "daily" ? "يومي" : value === "weekly" ? "أسبوعي" : "مرة واحدة"
     : value === "daily" ? "Daily" : value === "weekly" ? "Weekly" : "Once";
   const formatTime = (value: Date | string) => new Date(value).toLocaleString(language === "ar" ? "ar-EG" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
-  const minutesRemaining = getReminderDelayMinutes(parseLocalReminderDateTime(remindAt), new Date(clock));
+  const minutesRemaining = getReminderDelayMinutes(parseLocalReminderDateTime(remindAt), new Date());
   const timingHint = minutesRemaining === null
     ? null
     : minutesRemaining < 0

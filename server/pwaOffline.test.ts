@@ -25,7 +25,10 @@ describe("PWA offline worker", () => {
     expect(offlineRuntime).toContain("result.sent");
     expect(offlineRuntime).toContain("if (navigator.onLine && offlineQueueSize()) void sync()");
     const reminders = readFileSync(resolve(process.cwd(), "client/src/components/PersonalRemindersPanel.tsx"), "utf8");
-    expect(reminders).toContain("new Notification");
-    expect(reminders).toContain("personal-reminder-${reminder.id}");
+    expect(reminders).not.toContain("setTimeout");
+    expect(reminders).not.toContain("setInterval");
+    const scheduled = readFileSync(resolve(process.cwd(), "server/scheduledPersonalReminders.ts"), "utf8");
+    expect(scheduled).toContain("sendPushToUser");
+    expect(scheduled).toContain("claimPersonalReminderDelivery");
   });
 });
