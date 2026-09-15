@@ -1,0 +1,2 @@
+
+.school-reminder-actions{display:flex;align-items:center;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;margin-inline-start:auto}.school-reminder-actions .secondary{min-height:2.25rem;padding:.45rem .75rem}@media (max-width:640px){.school-reminder-actions{width:100%;margin-inline-start:0}.school-reminder-actions button{flex:1 1 8rem}}
