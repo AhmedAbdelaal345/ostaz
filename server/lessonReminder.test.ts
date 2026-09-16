@@ -17,4 +17,10 @@ describe("تذكير نهاية الحصة والفسحة", () => {
     expect(result?.body).toContain("20 دقيقة");
     expect(getLessonEndingReminder(settings, new Date("2026-08-23T08:48:01"))).toBeNull();
   });
+
+  it("يحوّل وقت الفسحة حسب المنطقة الزمنية المحفوظة", () => {
+    const zonedSettings = { ...settings, timeZone: "Africa/Cairo", breakStart: "11:00", breakAfterLesson: 2 };
+    const localBreakStart = new Date("2026-08-23T08:00:30.000Z");
+    expect(getLessonEndingReminder(zonedSettings, localBreakStart)?.key).toContain("break-start");
+  });
 });
