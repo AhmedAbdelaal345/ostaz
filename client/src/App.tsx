@@ -2975,6 +2975,7 @@ function Page({ profile }: { profile: any }) {
                 );
                 updateGroupRemote.mutate({
                   id: editItem.id,
+                  workspace,
                   data: {
                     name: value.name,
                     grade: value.grade || null,
@@ -2991,6 +2992,12 @@ function Page({ profile }: { profile: any }) {
                       serializeSchedule(scheduleForGroup(value)),
                     fee: value.fee,
                     collectionPeriod: value.collectionPeriod,
+                  },
+                }, {
+                  onSuccess: () => void boot.refetch(),
+                  onError: () => {
+                    void boot.refetch();
+                    toast.error("تعذر حفظ تعديل المجموعة سحابيًا");
                   },
                 });
                 toast.success("تم تعديل المجموعة");

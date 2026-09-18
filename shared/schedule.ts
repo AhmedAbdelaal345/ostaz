@@ -15,7 +15,13 @@ export function parseSchedule(value: string | null | undefined, fallbackDay: str
 }
 
 export function scheduleForGroup(group: { schedule?: ScheduleEntry[]; scheduleJson?: string | null; day: string; time: string }): ScheduleEntry[] {
-  return group.schedule?.length ? group.schedule : parseSchedule(group.scheduleJson, group.day, group.time);
+  // `scheduleJson` is the persisted source of truth. A local optimistic row
+  // can still carry an older `schedule` array after an edit, so preferring the
+  // array here makes cards/widgets show stale times until a full reload.
+  if (group.scheduleJson !== null && group.scheduleJson !== undefined) {
+    return parseSchedule(group.scheduleJson, group.day, group.time);
+  }
+  return group.schedule?.length ? group.schedule : parseSchedule(null, group.day, group.time);
 }
 
 export function serializeSchedule(entries: ScheduleEntry[]) {

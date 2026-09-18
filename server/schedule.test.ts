@@ -23,4 +23,13 @@ describe("group schedules", () => {
     expect(parseSchedule(null, "الأحد", "08:00 م")).toEqual([{ day: "الأحد", time: "08:00 م" }]);
     expect(scheduleForGroup({ day: "الثلاثاء", time: "07:00 م", scheduleJson: null })).toEqual([{ day: "الثلاثاء", time: "07:00 م" }]);
   });
+
+  it("prefers the newly persisted scheduleJson over a stale local schedule array", () => {
+    expect(scheduleForGroup({
+      day: "الثلاثاء",
+      time: "07:00 م",
+      schedule: [{ day: "الثلاثاء", time: "07:00 م" }],
+      scheduleJson: serializeSchedule([{ day: "الثلاثاء", time: "08:30 م" }]),
+    })).toEqual([{ day: "الثلاثاء", time: "08:30 م" }]);
+  });
 });
