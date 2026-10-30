@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import type { SslOptions } from "mysql2";
 import { InsertStudent, InsertStudyGroup, InsertTeacherProfile, InsertUser, accountSessions, assignments, assignmentSubmissions, assessments, attendance, automationSchedules, behaviorRecords, centerMembers, centerRooms, centers, changeLogs, financialTransactions, groupAnnouncements, groupDiscussionMessages, groupNotes, learningMaterials, lessonReminders, parentAccounts, parentStudentLinks, personalReminders, pushSubscriptions, quizAttempts, quizFocusEvents, rewardRedemptions, seatReservations, storeOrderItems, storeOrders, storeProducts, studentAccounts, studentDailyFollowUps, studentDeviceBindings, studentPointLedger, studentSubscriptionCredits, students, studyGroups, teacherAccounts, teacherProfiles, users, videoLessons, walletLedger, walletTopupCodes, weeklyQuizzes, yearWorkScores, yearWorkTerms } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { getNextReminderDate, shouldDeliverPersonalReminder } from "../shared/personalReminder";
@@ -10,7 +11,40 @@ import { canStudentAccessGroup } from "../shared/learningAccess";
 import type { Workspace } from "../shared/workspace";
 
 let _db: ReturnType<typeof drizzle> | null = null;
-export async function getDb() { if (!_db && process.env.DATABASE_URL) { try { _db = drizzle(process.env.DATABASE_URL); } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; } } return _db; }
+function parseSslOptions(value: string): SslOptions {
+  const parsed: unknown = JSON.parse(value.replace(/\\"/g, '"'));
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed) ||
+    !("rejectUnauthorized" in parsed) ||
+    typeof parsed.rejectUnauthorized !== "boolean" ||
+    Object.keys(parsed).some((key) => key !== "rejectUnauthorized")
+  ) {
+    throw new Error("DATABASE_URL ssl parameter must contain a boolean rejectUnauthorized option");
+  }
+  return { rejectUnauthorized: parsed.rejectUnauthorized };
+}
+
+export async function getDb() {
+  if (!_db && process.env.DATABASE_URL) {
+    try {
+      const databaseUrl = new URL(process.env.DATABASE_URL);
+      const sslParameter = databaseUrl.searchParams.get("ssl");
+      if (sslParameter?.trimStart().startsWith("{")) {
+        const ssl = parseSslOptions(sslParameter);
+        databaseUrl.searchParams.delete("ssl");
+        _db = drizzle({ connection: { uri: databaseUrl.toString(), ssl } });
+      } else {
+        _db = drizzle(process.env.DATABASE_URL);
+      }
+    } catch (error) {
+      console.warn("[Database] Failed to connect:", error);
+      _db = null;
+    }
+  }
+  return _db;
+}
 
 export async function upsertUser(user: InsertUser): Promise<void> { if (!user.openId) throw new Error("User openId is required for upsert"); const db = await getDb(); if (!db) return; const values: InsertUser = { openId: user.openId }; const updateSet: Record<string, unknown> = {}; for (const field of ["name", "email", "loginMethod"] as const) { if (user[field] !== undefined) { values[field] = user[field] ?? null; updateSet[field] = user[field] ?? null; } } values.lastSignedIn = user.lastSignedIn ?? new Date(); updateSet.lastSignedIn = values.lastSignedIn; if (user.role) { values.role = user.role; updateSet.role = user.role; } else if (user.openId === ENV.ownerOpenId) { values.role = "admin"; updateSet.role = "admin"; } await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet }); }
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
