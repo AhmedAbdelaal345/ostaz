@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { runScheduledLessonReminders } from "../scheduledLessonReminders";
 import { runScheduledPersonalReminders } from "../scheduledPersonalReminders";
+import { ensureReminderHeartbeatJobs } from "../reminderHeartbeat";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -64,6 +65,9 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    void ensureReminderHeartbeatJobs().catch(error => {
+      console.error("[ReminderScheduler] failed to reconcile Heartbeat jobs", error instanceof Error ? error.message : error);
+    });
   });
 }
 

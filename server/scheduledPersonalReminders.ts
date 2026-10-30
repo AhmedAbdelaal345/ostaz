@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { claimPersonalReminderDelivery, getAutomationScheduleByTaskUid, listDuePersonalReminders } from "./db";
+import { claimPersonalReminderDelivery, getAutomationScheduleByTaskUid, listDuePersonalReminders, releasePersonalReminderDelivery } from "./db";
 import { isPushConfigured, sendPushToUser } from "./push";
 import { sdk } from "./_core/sdk";
 import { shouldConfirmPushDelivery } from "../shared/pushDelivery";
@@ -12,20 +12,29 @@ export async function runScheduledPersonalReminders(req: Request, res: Response)
     if (!schedule || schedule.kind !== "personal-reminders" || !schedule.enabled) return res.json({ ok: true, skipped: "orphan" });
     if (!isPushConfigured()) return res.json({ ok: true, skipped: "push-not-configured" });
     const due = await listDuePersonalReminders();
-    let claimed = 0; let delivered = 0;
+    let claimed = 0; let delivered = 0; let retried = 0;
     for (const reminder of due) {
+      const claimedAt = new Date(Math.floor(Date.now() / 1000) * 1000);
+      const claimedReminder = await claimPersonalReminderDelivery(reminder.id, claimedAt);
+      if (!claimedReminder) continue;
+      claimed += 1;
       try {
-        const outcome = await sendPushToUser(reminder.userId, { title: "ذكّرني", body: reminder.note ? `${reminder.title} — ${reminder.note}` : reminder.title, url: "/settings/reminders", tag: `personal-reminder-${reminder.id}`, lang: "ar" });
-        if (!shouldConfirmPushDelivery(outcome)) continue;
-        const claimedReminder = await claimPersonalReminderDelivery(reminder.id);
-        if (!claimedReminder) continue;
-        claimed += 1;
+        const outcome = await sendPushToUser(claimedReminder.userId, { title: "ذكّرني", body: claimedReminder.note ? `${claimedReminder.title} — ${claimedReminder.note}` : claimedReminder.title, url: "/settings/reminders", tag: `personal-reminder-${claimedReminder.id}`, lang: "ar" });
+        if (!shouldConfirmPushDelivery(outcome)) {
+          if (await releasePersonalReminderDelivery(claimedReminder, claimedAt)) retried += 1;
+          continue;
+        }
         delivered += outcome.delivered;
       } catch (error) {
-        console.warn("[PersonalReminder] skipped reminder", reminder.id, error instanceof Error ? error.message : error);
+        try {
+          if (await releasePersonalReminderDelivery(claimedReminder, claimedAt)) retried += 1;
+        } catch (releaseError) {
+          console.warn("[PersonalReminder] failed to release reminder", claimedReminder.id, releaseError instanceof Error ? releaseError.message : releaseError);
+        }
+        console.warn("[PersonalReminder] delivery failed", claimedReminder.id, error instanceof Error ? error.message : error);
       }
     }
-    return res.json({ ok: true, scanned: due.length, claimed, delivered, timestamp: new Date().toISOString() });
+    return res.json({ ok: true, scanned: due.length, claimed, delivered, retried, timestamp: new Date().toISOString() });
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
     return res.status(500).json({ error: err.message, stack: err.stack, context: { url: req.originalUrl }, timestamp: new Date().toISOString() });

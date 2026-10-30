@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { getNextReminderDate, shouldDeliverPersonalReminder } from "../shared/personalReminder";
 
@@ -23,5 +24,23 @@ describe("personal reminder recurrence", () => {
     const view = readFileSync(new URL("../client/src/components/PersonalRemindersPanel.tsx", import.meta.url), "utf8");
     expect(view).toContain("parseLocalReminderDateTime(remindAt)");
     expect(view).not.toContain("const date = new Date(remindAt)");
+  });
+
+  it("claims recurring deliveries atomically and releases failed sends for retry", () => {
+    const database = readFileSync(resolve(process.cwd(), "server/db.ts"), "utf8");
+    const scheduled = readFileSync(resolve(process.cwd(), "server/scheduledPersonalReminders.ts"), "utf8");
+    expect(database).toContain("previousDeliveryCondition");
+    expect(database).toContain("affectedRows");
+    expect(scheduled).toContain("releasePersonalReminderDelivery");
+    expect(scheduled.indexOf("const claimedReminder = await claimPersonalReminderDelivery"))
+      .toBeLessThan(scheduled.indexOf("const outcome = await sendPushToUser"));
+  });
+
+  it("reconciles the existing Heartbeat callbacks on a one-minute schedule", () => {
+    const scheduler = readFileSync(resolve(process.cwd(), "server/reminderHeartbeat.ts"), "utf8");
+    expect(scheduler).toContain('kind: "personal-reminders"');
+    expect(scheduler).toContain('kind: "lesson-reminders"');
+    expect(scheduler).toContain('cron: "0 * * * * *"');
+    expect(scheduler).toContain("ensureReminderHeartbeatJobs");
   });
 });

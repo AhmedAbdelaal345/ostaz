@@ -2963,17 +2963,7 @@ function Page({ profile }: { profile: any }) {
             }}
             onSubmit={(value: Group) => {
               if (editItem) {
-                setGroups(
-                  renameGroupWithStudentCount(
-                    groups.map(item =>
-                      item.id === editItem.id ? { ...item, ...value } : item
-                    ),
-                    students,
-                    editItem.id,
-                    value.name
-                  ) as Group[]
-                );
-                updateGroupRemote.mutate({
+                return updateGroupRemote.mutateAsync({
                   id: editItem.id,
                   workspace,
                   data: {
@@ -2993,15 +2983,17 @@ function Page({ profile }: { profile: any }) {
                     fee: value.fee,
                     collectionPeriod: value.collectionPeriod,
                   },
-                }, {
-                  onSuccess: () => void boot.refetch(),
-                  onError: () => {
-                    void boot.refetch();
-                    toast.error("تعذر حفظ تعديل المجموعة سحابيًا");
-                  },
+                }).then(async () => {
+                  setGroups(current => renameGroupWithStudentCount(
+                    current.map(item =>
+                      item.id === editItem.id ? { ...item, ...value } : item
+                    ),
+                    students,
+                    editItem.id,
+                    value.name
+                  ) as Group[]);
+                  setEditItem(null);
                 });
-                toast.success("تم تعديل المجموعة");
-                setEditItem(null);
               } else addGroup(value);
             }}
           />
@@ -4015,6 +4007,7 @@ function ClockPicker({
 }
 
 function FormModal({ type, close, onSubmit, groups = [], initial }: any) {
+  const [saving, setSaving] = useState(false);
   const existingSchedule =
     type === "group" && initial ? scheduleForGroup(initial) : [];
   const [name, setName] = useState(initial?.name || "");
@@ -4358,54 +4351,61 @@ function FormModal({ type, close, onSubmit, groups = [], initial }: any) {
             </label>
           </>
         )}
-        {
-          <button
-            className="primary wide"
-            onClick={() => {
-              if (!name) return toast.error("اكتب الاسم أولاً");
-              if (type === "student" && studentCode.length !== 4)
-                return toast.error("كود الطالب يجب أن يتكوّن من 4 أرقام");
-              if (type === "group") {
-                const schedule = buildSchedule();
-                if (!schedule.length)
-                  return toast.error("اختر يومًا واحدًا على الأقل");
-                const first = schedule[0];
-                onSubmit({
-                  name,
-                  grade: grade.trim() || null,
-                  place,
-                  mode: groupMode,
-                  students: 0,
-                  day: first.day,
-                  time: first.time,
-                  durationMinutes: Math.max(1, Number(durationMinutes) || 60),
-                  schedule,
-                  scheduleJson: serializeSchedule(schedule),
-                  fee: Number(fee) || 0,
-                  collectionPeriod,
-                });
-              } else
-                onSubmit({
-                  name,
-                  group,
-                  phone,
-                  guardianName,
-                  guardianPhone,
-                  studentCode,
-                  age: initial && age ? Number(age) : null,
-                  grade: initial ? grade.trim() || null : selectedGroup?.grade || selectedGroup?.name || null,
-                  paid,
-                  paidAmount: Number(paidAmount) || 0,
-                });
+        <button
+          className="primary wide"
+          disabled={saving}
+          onClick={async () => {
+            if (!name.trim()) return toast.error("اكتب الاسم أولاً");
+            if (type === "student" && studentCode.length !== 4)
+              return toast.error("كود الطالب يجب أن يتكوّن من 4 أرقام");
+            let value: any;
+            if (type === "group") {
+              const schedule = buildSchedule();
+              if (!schedule.length)
+                return toast.error("اختر يومًا واحدًا على الأقل");
+              const first = schedule[0];
+              value = {
+                name: name.trim(),
+                grade: grade.trim() || null,
+                place,
+                mode: groupMode,
+                students: 0,
+                day: first.day,
+                time: first.time,
+                durationMinutes: Math.max(1, Number(durationMinutes) || 60),
+                schedule,
+                scheduleJson: serializeSchedule(schedule),
+                fee: Number(fee) || 0,
+                collectionPeriod,
+              };
+            } else {
+              value = {
+                name: name.trim(),
+                group,
+                phone,
+                guardianName,
+                guardianPhone,
+                studentCode,
+                age: initial && age ? Number(age) : null,
+                grade: initial ? grade.trim() || null : selectedGroup?.grade || selectedGroup?.name || null,
+                paid,
+                paidAmount: Number(paidAmount) || 0,
+              };
+            }
+            setSaving(true);
+            try {
+              await onSubmit(value);
               close();
-              toast.success(
-                initial ? "تم تعديل البيانات" : "تمت الإضافة بنجاح"
-              );
-            }}
-          >
-            حفظ البيانات
-          </button>
-        }
+              toast.success(initial ? "تم تعديل البيانات" : "تمت الإضافة بنجاح");
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "تعذر حفظ التعديلات");
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          {saving ? "جارٍ الحفظ..." : "حفظ البيانات"}
+        </button>
       </div>
     </div>
   );

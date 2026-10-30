@@ -21,4 +21,11 @@ describe("إدارة المجموعة والطالب", () => {
     expect(app).toContain("هل تريد حذف الطالب");
     expect(app).toContain("aria-label=\"الدقيقة\"");
   });
+
+  it("waits for the saved group schedule mutation before showing success", () => {
+    const app = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
+    expect(app).toContain("return updateGroupRemote.mutateAsync({");
+    expect(app).toContain("await onSubmit(value);");
+    expect(app).toContain("catch (error) {");
+  });
 });
