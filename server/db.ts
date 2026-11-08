@@ -36,7 +36,9 @@ export async function getDb() {
         databaseUrl.searchParams.delete("ssl");
         _db = drizzle({ connection: { uri: databaseUrl.toString(), ssl } });
       } else {
-        _db = drizzle(process.env.DATABASE_URL);
+        const isRemote = databaseUrl.hostname !== "localhost" && databaseUrl.hostname !== "127.0.0.1";
+        const ssl = isRemote ? { rejectUnauthorized: true } : undefined;
+        _db = drizzle({ connection: { uri: databaseUrl.toString(), ssl } });
       }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
