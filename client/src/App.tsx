@@ -17,6 +17,7 @@ import { getNextGroupForDay, sortGroupsByTime } from "../../shared/dashboard";
 import {
   WEEK_DAYS,
   countScheduledLessons,
+  normalizeArabicDayName,
   scheduleForGroup,
   serializeSchedule,
   type ScheduleEntry,
@@ -694,10 +695,10 @@ function Shell({
                   className="icon-button"
                   aria-label={t("notifications")}
                   onClick={() =>
-                    toast.success(
+                    toast.info(
                       language === "ar"
-                        ? "لا توجد تنبيهات جديدة"
-                        : "No new notifications"
+                        ? "لا توجد إشعارات جديدة حالياً"
+                        : "No new notifications at this time"
                     )
                   }
                 >
@@ -2465,9 +2466,7 @@ function Page({ profile }: { profile: any }) {
   useEffect(() => {
     const checkLateStudents = () => {
       const now = new Date();
-      const todayName = now.toLocaleDateString("ar-EG", {
-        weekday: "long",
-      }) as (typeof WEEK_DAYS)[number];
+      const todayName = normalizeArabicDayName(now.toLocaleDateString("ar-EG", { weekday: "long" })) as (typeof WEEK_DAYS)[number];
       const currentLesson = groups
         .flatMap(group =>
           scheduleForGroup(group).map(schedule => ({ group, schedule }))
@@ -3509,9 +3508,7 @@ function LiveTracker({ groups }: { groups: Group[] }) {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
   }, []);
-  const todayName = now.toLocaleDateString("ar-EG", {
-    weekday: "long",
-  }) as (typeof WEEK_DAYS)[number];
+  const todayName = normalizeArabicDayName(now.toLocaleDateString("ar-EG", { weekday: "long" })) as (typeof WEEK_DAYS)[number];
   const weekStart = new Date(now);
   weekStart.setHours(0, 0, 0, 0);
   const dayIndex = WEEK_DAYS.indexOf(todayName);
@@ -3556,7 +3553,7 @@ function LiveTracker({ groups }: { groups: Group[] }) {
     : 0;
   const reminderKey = next ? `${next.lesson.id}-${next.date.getTime()}` : "";
   useEffect(() => {
-    if (next && remaining === 5 && notifiedRef.current !== reminderKey) {
+    if (next && remaining <= 5 && remaining > 0 && notifiedRef.current !== reminderKey) {
       notifiedRef.current = reminderKey;
       toast.info(
         language === "ar"
@@ -3611,7 +3608,7 @@ function HomePage({
   const { language } = useLanguage();
   if (workspace === "school") return <SchoolWorkspacePanel />;
   const now = new Date();
-  const todayName = now.toLocaleDateString("ar-EG", { weekday: "long" });
+  const todayName = normalizeArabicDayName(now.toLocaleDateString("ar-EG", { weekday: "long" }));
   const todayNameDisplay = now.toLocaleDateString(
     language === "en" ? "en-GB" : "ar-EG",
     { weekday: "long" }
@@ -3664,12 +3661,10 @@ function HomePage({
               <Plus size={17} />{" "}
               {language === "en" ? "Create group" : "أنشئ مجموعة جديدة"}
             </button>
-            <Link href="/assessments">
-              <a className="secondary hero-exam-link">
+            <Link href="/assessments" className="secondary hero-exam-link">
                 <ClipboardCheck size={16} />{" "}
                 {language === "en" ? "Create exam" : "إنشاء امتحان"}
-              </a>
-            </Link>
+              </Link>
           </div>
         </div>
         <div className="hero-visual">
@@ -3764,11 +3759,9 @@ function HomePage({
               <small>
                 {nextGroup.place} · {nextGroup.students} طالب
               </small>
-              <Link href="/timetable">
-                <a className="widget-link">
+              <Link href="/timetable" className="widget-link">
                   عرض الجدول <ChevronLeft size={14} />
-                </a>
-              </Link>
+                </Link>
             </>
           ) : (
             <div className="widget-empty">
@@ -3808,11 +3801,9 @@ function HomePage({
               %
             </strong>
           </div>
-          <Link href="/stats">
-            <a className="widget-link">
+          <Link href="/stats" className="widget-link">
               كل الإحصائيات <ChevronLeft size={14} />
-            </a>
-          </Link>
+            </Link>
         </div>
         <div className="widget widget-alert">
           <div className="widget-heading">
@@ -3845,11 +3836,9 @@ function HomePage({
               </small>
             </div>
           </div>
-          <Link href="/students">
-            <a className="widget-link">
+          <Link href="/students" className="widget-link">
               إدارة الطلاب <ChevronLeft size={14} />
-            </a>
-          </Link>
+            </Link>
         </div>
       </div>
       <div className="stats-grid">
@@ -3881,11 +3870,9 @@ function HomePage({
             kicker="اليوم"
             title="الحصص المجدولة"
             action={
-              <Link href="/timetable">
-                <a className="link-arrow">
+              <Link href="/timetable" className="link-arrow">
                   عرض الجدول <ChevronLeft size={15} />
-                </a>
-              </Link>
+                </Link>
             }
           />
           {todayGroups.map((g: Group) => (
@@ -3911,42 +3898,34 @@ function HomePage({
         <div className="panel quick-panel">
           <span className="eyebrow">اختصارات سريعة</span>
           <h3>ماذا تريد أن تنجز؟</h3>
-          <Link href="/assessments">
-            <a className="quick-link quiz-quick-link">
+          <Link href="/assessments" className="quick-link quiz-quick-link">
               <span>
                 <ClipboardCheck size={18} />
               </span>
               إنشاء امتحان أسبوعي
               <ChevronLeft size={16} />
-            </a>
-          </Link>
-          <Link href="/students">
-            <a className="quick-link">
+            </Link>
+          <Link href="/students" className="quick-link">
               <span>
                 <Users size={18} />
               </span>
               إضافة طالب جديد
               <ChevronLeft size={16} />
-            </a>
-          </Link>
-          <Link href="/stats">
-            <a className="quick-link">
+            </Link>
+          <Link href="/stats" className="quick-link">
               <span>
                 <BarChart3 size={18} />
               </span>
               عرض الإحصائيات
               <ChevronLeft size={16} />
-            </a>
-          </Link>
-          <Link href="/behavior">
-            <a className="quick-link">
+            </Link>
+          <Link href="/behavior" className="quick-link">
               <span>
                 <ShieldCheck size={18} />
               </span>
               متابعة السلوك
               <ChevronLeft size={16} />
-            </a>
-          </Link>
+            </Link>
         </div>
       </div>
       {modal === "group" && (
@@ -5334,6 +5313,7 @@ function GuestDemo() {
 function App() {
   const auth = useAuth();
   const [location] = useLocation();
+    // Accessibility compliance: allow copy, zoom, and standard navigation controls
   useEffect(() => {
     const isEditable = (target: EventTarget | null) => {
       if (!(target instanceof Element)) return false;
@@ -5343,48 +5323,7 @@ function App() {
         "input, textarea, select, [contenteditable='true']"
       );
     };
-    const blockCopy = (event: ClipboardEvent) => {
-      if (!isEditable(event.target)) event.preventDefault();
-    };
-    const blockContext = (event: MouseEvent) => {
-      if (!isEditable(event.target)) event.preventDefault();
-    };
-    const blockSelection = (event: Event) => {
-      if (!isEditable(event.target)) event.preventDefault();
-    };
-    const blockZoomGesture = (event: Event) => event.preventDefault();
-    const blockZoomWheel = (event: WheelEvent) => {
-      if (event.ctrlKey) event.preventDefault();
-    };
-    const blockZoomKey = (event: KeyboardEvent) => {
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        ["+", "-", "=", "0"].includes(event.key)
-      )
-        event.preventDefault();
-    };
-    document.addEventListener("copy", blockCopy);
-    document.addEventListener("cut", blockCopy);
-    document.addEventListener("contextmenu", blockContext);
-    document.addEventListener("selectstart", blockSelection);
-    document.addEventListener("gesturestart", blockZoomGesture, {
-      passive: false,
-    });
-    document.addEventListener("gesturechange", blockZoomGesture, {
-      passive: false,
-    });
-    document.addEventListener("wheel", blockZoomWheel, { passive: false });
-    document.addEventListener("keydown", blockZoomKey);
-    return () => {
-      document.removeEventListener("copy", blockCopy);
-      document.removeEventListener("cut", blockCopy);
-      document.removeEventListener("contextmenu", blockContext);
-      document.removeEventListener("selectstart", blockSelection);
-      document.removeEventListener("gesturestart", blockZoomGesture);
-      document.removeEventListener("gesturechange", blockZoomGesture);
-      document.removeEventListener("wheel", blockZoomWheel);
-      document.removeEventListener("keydown", blockZoomKey);
-    };
+    // No global blocking of copy, cut, or zoom across the application.
   }, []);
   const [profile, setProfile] = useStore<any>("profile", null);
   const remoteProfile = trpc.app.profile.get.useQuery(undefined, {
@@ -5417,12 +5356,8 @@ function App() {
           والمالية.
         </p>
         <div className="auth-demo-links">
-          <Link href="/attendance">
-            <a className="secondary">عرض الحضور</a>
-          </Link>
-          <Link href="/finance">
-            <a className="secondary">عرض المالية</a>
-          </Link>
+          <Link href="/attendance" className="secondary">عرض الحضور</Link>
+          <Link href="/finance" className="secondary">عرض المالية</Link>
         </div>
         <button className="primary" onClick={() => startLogin()}>
           تسجيل الدخول
