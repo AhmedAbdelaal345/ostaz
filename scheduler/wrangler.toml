@@ -1,0 +1,6 @@
+name = "ostazi-reminder-scheduler"
+main = "cloudflare-worker.js"
+compatibility_date = "2026-11-11"
+
+[triggers]
+crons = ["* * * * *"]

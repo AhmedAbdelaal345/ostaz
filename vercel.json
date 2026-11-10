@@ -1,8 +1,14 @@
 {
   "version": 2,
-  "buildCommand": "vite build",
+  "buildCommand": "pnpm build",
   "outputDirectory": "dist/public",
   "framework": "vite",
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 60,
+      "regions": ["hnd1"]
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",

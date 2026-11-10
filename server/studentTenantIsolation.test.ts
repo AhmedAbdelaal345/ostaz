@@ -28,6 +28,6 @@ describe("حساب الطالب متعدد المساحات", () => {
   it("يلزم الطالب بمرجع المدرس في التسجيل والدخول بدل التخمين برقم هاتفه فقط", () => {
     expect(routers).toContain('teacherPhone: z.string().min(7).max(32)');
     expect(studentPortal).toContain('رقم المدرس المسجل في المنصة');
-    expect(studentPortal).toContain('mutate({ teacherPhone, phone, password })');
+    expect(studentPortal).toContain('mutate({ teacherPhone: teacherPhone.trim(), phone: phone.trim(), password })');
   });
 });

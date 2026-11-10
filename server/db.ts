@@ -34,14 +34,15 @@ export async function getDb() {
       if (sslParameter?.trimStart().startsWith("{")) {
         const ssl = parseSslOptions(sslParameter);
         databaseUrl.searchParams.delete("ssl");
-        _db = drizzle({ connection: { uri: databaseUrl.toString(), ssl } });
+        _db = drizzle({ connection: { uri: databaseUrl.toString(), ssl, connectionLimit: 2, enableKeepAlive: true } });
       } else {
         const isRemote = databaseUrl.hostname !== "localhost" && databaseUrl.hostname !== "127.0.0.1";
         const ssl = isRemote ? { rejectUnauthorized: true } : undefined;
-        _db = drizzle({ connection: { uri: databaseUrl.toString(), ssl } });
+        _db = drizzle({ connection: { uri: databaseUrl.toString(), ssl, connectionLimit: 2, enableKeepAlive: true } });
       }
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      const code = error && typeof error === "object" && "code" in error ? String(error.code) : "CONFIGURATION_ERROR";
+      console.warn("[Database] Connection initialization failed:", code);
       _db = null;
     }
   }
