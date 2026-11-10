@@ -4,6 +4,7 @@ import { dehydrate, hydrate, QueryClient, QueryClientProvider } from "@tanstack/
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
+import { Toaster } from "sonner";
 import superjson from "superjson";
 import { useLocation } from "wouter";
 import App from "./App";
@@ -206,6 +207,7 @@ createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
       <LanguageProvider><ErrorBoundary><DirectAccessGuard><BrandStartup><RootRouter /></BrandStartup></DirectAccessGuard></ErrorBoundary>
+      <Toaster position="top-center" richColors />
       <InstallGuide />
       <OfflineRuntime /></LanguageProvider>
     </QueryClientProvider>

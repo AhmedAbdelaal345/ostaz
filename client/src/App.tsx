@@ -43,7 +43,7 @@ import {
 import { shouldPromptLateAttendanceReview } from "../../shared/attendanceReminder";
 import { renameGroupWithStudentCount } from "../../shared/groupRename";
 import { useLanguage } from "./contexts/LanguageContext";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   Bell,
@@ -5305,7 +5305,6 @@ function GuestDemo() {
           </>
         )}
       </Shell>
-      <Toaster position="top-center" richColors />
     </>
   );
 }
@@ -5382,7 +5381,6 @@ function App() {
           </Route>
         </Switch>
       </Shell>
-      <Toaster position="top-center" richColors />
     </>
   );
 }
