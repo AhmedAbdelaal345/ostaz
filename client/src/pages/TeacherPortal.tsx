@@ -3,6 +3,7 @@ import { LogIn, Phone, ShieldCheck, UserPlus } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { navigateAfterTeacherLogin } from "@/lib/applicationRoutes";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   isValidAuthPassword,
@@ -21,23 +22,37 @@ export default function TeacherPortal() {
   const [password, setPassword] = useState("");
   const current = trpc.auth.me.useQuery(undefined, { retry: false });
   const register = trpc.teacherAuth.register.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      const navigated = await navigateAfterTeacherLogin(
+        async () => (await current.refetch()).data,
+        setLocation,
+      );
+      if (!navigated) {
+        toast.error(language === "ar" ? "تم قبول الطلب لكن تعذر التحقق من الجلسة. أعد المحاولة." : "The request succeeded, but the session could not be verified. Please try again.");
+        return;
+      }
       toast.success(language === "ar" ? "تم إنشاء حساب المعلم" : "Teacher account created");
-      window.location.assign("/");
     },
     onError: error => toast.error(error.message),
   });
   const login = trpc.teacherAuth.login.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      const navigated = await navigateAfterTeacherLogin(
+        async () => (await current.refetch()).data,
+        setLocation,
+      );
+      if (!navigated) {
+        toast.error(language === "ar" ? "تم قبول الطلب لكن تعذر التحقق من الجلسة. أعد المحاولة." : "The request succeeded, but the session could not be verified. Please try again.");
+        return;
+      }
       toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully");
-      window.location.assign("/");
     },
     onError: error => toast.error(error.message),
   });
 
   useEffect(() => {
-    if (current.data) window.location.assign("/");
-  }, [current.data]);
+    if (current.data) setLocation("/");
+  }, [current.data, setLocation]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -12,6 +12,8 @@ import { Link as WouterLink, Route, Switch, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "./const";
 import { trpc } from "@/lib/trpc";
+import NotFound from "@/pages/NotFound";
+import { isTeacherApplicationPath } from "@/lib/applicationRoutes";
 import { mergeTeacherProfile } from "../../shared/profileSettings";
 import { getNextGroupForDay, sortGroupsByTime } from "../../shared/dashboard";
 import {
@@ -5377,7 +5379,7 @@ function App() {
             <Page profile={profile} />
           </Route>
           <Route path="/:rest*">
-            <Page profile={profile} />
+            {isTeacherApplicationPath(location) ? <Page profile={profile} /> : <NotFound />}
           </Route>
         </Switch>
       </Shell>

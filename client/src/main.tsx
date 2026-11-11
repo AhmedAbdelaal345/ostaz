@@ -14,6 +14,8 @@ import StudentPortal from "./pages/StudentPortal";
 import ParentPortal from "./pages/ParentPortal";
 import TeacherPortal from "./pages/TeacherPortal";
 import PlatformLanding from "./pages/PlatformLanding";
+import NotFound from "./pages/NotFound";
+import { requiresTeacherSession, resolveRootRoute } from "./lib/applicationRoutes";
 import { OfflineRuntime } from "./components/OfflineRuntime";
 import { InstallGuide } from "./components/InstallGuide";
 import { enqueueTrpcRequest, flushOfflineQueue } from "./lib/offlineSync";
@@ -157,21 +159,23 @@ const EL_MISTER_LOGO = "/manus-storage/el-mister-icon-512_951cf40b.png";
 
 function RootRouter() {
   const [pathname] = useLocation();
-  if (pathname === "/platform") return <PlatformLanding />;
-  if (pathname.startsWith("/student/")) return <StudentPortal />;
-  if (pathname.startsWith("/parent/")) return <ParentPortal />;
-  if (pathname.startsWith("/teacher/")) return <TeacherPortal />;
-  if (/^\/(students|groups)\/\d+$/.test(pathname)) return <EntityProfile />;
-  return <App />;
+  switch (resolveRootRoute(pathname)) {
+    case "platform": return <PlatformLanding />;
+    case "student": return <StudentPortal />;
+    case "parent": return <ParentPortal />;
+    case "teacher": return <TeacherPortal />;
+    case "entity": return <EntityProfile />;
+    case "app": return <App />;
+    case "not-found": return <NotFound />;
+  }
 }
 
 function DirectAccessGuard({ children }: { children: React.ReactNode }) {
   const [pathname] = useLocation();
   const session = trpc.auth.me.useQuery(undefined, { retry: false, staleTime: 0, refetchOnMount: "always" });
   useEffect(() => {
-    const keepsOwnSession = pathname === "/platform" || pathname.startsWith("/student/") || pathname.startsWith("/parent/") || pathname.startsWith("/teacher/");
-    if (!keepsOwnSession && session.isFetchedAfterMount && !session.isFetching && !session.data) window.location.replace("/teacher/login");
-  }, [session.isFetchedAfterMount, session.isFetching, session.data]);
+    if (requiresTeacherSession(pathname) && session.isFetchedAfterMount && !session.isFetching && !session.isError && !session.data) window.location.replace("/teacher/login");
+  }, [pathname, session.isFetchedAfterMount, session.isFetching, session.data]);
   return <>{children}</>;
 }
 

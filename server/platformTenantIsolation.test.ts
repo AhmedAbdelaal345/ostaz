@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { resolveRootRoute } from "../client/src/lib/applicationRoutes";
 
 const main = readFileSync(new URL("../client/src/main.tsx", import.meta.url), "utf8");
 const landing = readFileSync(new URL("../client/src/pages/PlatformLanding.tsx", import.meta.url), "utf8");
@@ -10,8 +11,11 @@ const db = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
 describe("منصة الحسابات المستقلة", () => {
   it("يتيح بوابة المنصة العامة ويُبقي مسارات الحسابات المنفصلة واضحة", () => {
     expect(main).toContain("function RootRouter()");
-    expect(main).toContain('if (pathname === "/platform") return <PlatformLanding />');
-    expect(main).toContain('pathname === "/platform" || pathname.startsWith("/student/")');
+    expect(main).toContain("switch (resolveRootRoute(pathname))");
+    expect(resolveRootRoute("/platform")).toBe("platform");
+    expect(resolveRootRoute("/teacher/login")).toBe("teacher");
+    expect(resolveRootRoute("/student/login")).toBe("student");
+    expect(resolveRootRoute("/parent/login")).toBe("parent");
     expect(landing).toContain('setLocation("/teacher/register")');
     expect(landing).toContain('setLocation("/student/login")');
     expect(landing).toContain('setLocation("/parent/login")');
