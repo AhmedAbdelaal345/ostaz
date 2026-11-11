@@ -13,6 +13,12 @@ export function createApp() {
   const app = express();
   app.disable("x-powered-by");
 
+  // API responses can contain user-specific data and must not be cached by a CDN.
+  app.use("/api", (_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    next();
+  });
+
   // Retain the existing limits for local/non-Vercel deployments. Vercel's
   // platform request limit is lower and cannot be raised by Express.
   app.use(express.json({ limit: "50mb" }));

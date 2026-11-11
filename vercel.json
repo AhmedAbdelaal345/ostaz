@@ -9,9 +9,20 @@
       "regions": ["hnd1"]
     }
   },
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/:path((?!api(?:/|$)).*)",
       "destination": "/index.html"
     }
   ]

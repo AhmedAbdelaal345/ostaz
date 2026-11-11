@@ -25,6 +25,7 @@ describe("serverless Express application", () => {
     const health = await fetch(`${base}/api/health`);
     expect(health.status).toBe(200);
     expect(health.headers.get("content-type")).toContain("application/json");
+    expect(health.headers.get("cache-control")).toContain("no-store");
     expect(await health.json()).toEqual({ ok: true });
 
     const trpc = await fetch(`${base}/api/trpc/auth.me?input=${encodeURIComponent(JSON.stringify({ json: null }))}`);
