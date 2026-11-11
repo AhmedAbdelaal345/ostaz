@@ -20,7 +20,7 @@ Use the repository root as the project root and set:
 - Install command: `pnpm install --frozen-lockfile`
 - Node.js function region: Tokyo (`hnd1`), close to the TiDB cluster region
 
-The checked-in `vercel.json` sets the function duration/region and keeps the SPA fallback. The `/api/*` catch-all function takes API requests; Vercel serves the built frontend assets from `dist/public`.
+The checked-in `vercel.json` sets the function duration/region and keeps the SPA fallback. A wildcard rewrite routes `/api/*` to the fixed `/api/handler` function and forwards the original API path in `__vercel_path`; the handler restores that path before calling Express. This is necessary because plain Vercel `api/` functions do not use Next.js `[...path]` catch-all semantics. Vercel serves the built frontend assets from `dist/public`.
 
 ## Vercel environment variables
 
