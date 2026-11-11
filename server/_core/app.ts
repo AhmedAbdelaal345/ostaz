@@ -5,6 +5,7 @@ import { appRouter } from "../routers";
 import { runScheduledLessonReminders } from "../scheduledLessonReminders";
 import { runScheduledPersonalReminders } from "../scheduledPersonalReminders";
 import { createContext } from "./context";
+import { logServerError } from "./databaseDiagnostics";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 
@@ -41,6 +42,7 @@ export function createApp() {
   app.use("/api", (_req, res) => res.status(404).json({ error: "API route not found" }));
   app.use((error: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!req.path.startsWith("/api/")) return next(error);
+    logServerError(error, req, "express_api_error");
     const candidate = error as { status?: unknown; statusCode?: unknown };
     const statusValue = Number(candidate?.status ?? candidate?.statusCode);
     const status = Number.isInteger(statusValue) && statusValue >= 400 && statusValue <= 599 ? statusValue : 500;

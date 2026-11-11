@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import type { SslOptions } from "mysql2";
 import { InsertStudent, InsertStudyGroup, InsertTeacherProfile, InsertUser, accountSessions, assignments, assignmentSubmissions, assessments, attendance, automationSchedules, behaviorRecords, centerMembers, centerRooms, centers, changeLogs, financialTransactions, groupAnnouncements, groupDiscussionMessages, groupNotes, learningMaterials, lessonReminders, parentAccounts, parentStudentLinks, personalReminders, pushSubscriptions, quizAttempts, quizFocusEvents, rewardRedemptions, seatReservations, storeOrderItems, storeOrders, storeProducts, studentAccounts, studentDailyFollowUps, studentDeviceBindings, studentPointLedger, studentSubscriptionCredits, students, studyGroups, teacherAccounts, teacherProfiles, users, videoLessons, walletLedger, walletTopupCodes, weeklyQuizzes, yearWorkScores, yearWorkTerms } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { safeDatabaseTarget } from "./_core/databaseDiagnostics";
 import { getNextReminderDate, shouldDeliverPersonalReminder } from "../shared/personalReminder";
 import { requiresStudentSubscriptionCredit, rewardPointsCost, type RewardType } from "../shared/rewardPolicy";
 import { selectApplicableCredits } from "../shared/subscriptionCredit";
@@ -11,6 +12,7 @@ import { canStudentAccessGroup } from "../shared/learningAccess";
 import type { Workspace } from "../shared/workspace";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let missingDatabaseUrlLogged = false;
 function parseSslOptions(value: string): SslOptions {
   const parsed: unknown = JSON.parse(value.replace(/\\"/g, '"'));
   if (
@@ -27,6 +29,14 @@ function parseSslOptions(value: string): SslOptions {
 }
 
 export async function getDb() {
+  if (!_db && !process.env.DATABASE_URL && !missingDatabaseUrlLogged) {
+    missingDatabaseUrlLogged = true;
+    console.error("[Database] Connection unavailable:", {
+      target: safeDatabaseTarget(),
+      connectionStatus: "not_configured",
+      reason: "DATABASE_URL_MISSING",
+    });
+  }
   if (!_db && process.env.DATABASE_URL) {
     try {
       const databaseUrl = new URL(process.env.DATABASE_URL);
@@ -42,7 +52,7 @@ export async function getDb() {
       }
     } catch (error) {
       const code = error && typeof error === "object" && "code" in error ? String(error.code) : "CONFIGURATION_ERROR";
-      console.warn("[Database] Connection initialization failed:", code);
+      console.warn("[Database] Connection initialization failed:", { target: safeDatabaseTarget(), code });
       _db = null;
     }
   }
