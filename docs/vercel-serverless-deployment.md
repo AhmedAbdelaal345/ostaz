@@ -1,6 +1,6 @@
 # Vercel Hobby deployment
 
-This project now has a shared Express app for local development and Vercel Functions. Local development still starts the Express listener and Vite middleware; the Vercel API entry imports the app without starting a listener or registering jobs.
+This project now has a shared Express app for local development and Vercel Functions. Local development still starts the Express listener and Vite middleware; the Vercel API entry imports the generated `serverless/vercelHandler.mjs` bundle. `pnpm build` bundles local server modules into that ESM file while keeping npm packages external, avoiding extensionless local imports at runtime. The shared app does not start a listener or register jobs when used by the function.
 
 ## Hosting limits to account for
 

@@ -33,6 +33,15 @@ describe("serverless Express application", () => {
     expect(trpc.headers.get("content-type")).toContain("application/json");
     expect(await trpc.json()).toHaveProperty("result.data.json", null);
 
+    const invalidTeacherLogin = await fetch(`${base}/api/trpc/teacherAuth.login?batch=1`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ 0: { json: { phone: "", password: "" } } }),
+    });
+    expect(invalidTeacherLogin.status).toBe(400);
+    expect(invalidTeacherLogin.headers.get("content-type")).toContain("application/json");
+    expect((await invalidTeacherLogin.json())[0]).toHaveProperty("error.json");
+
     const missing = await fetch(`${base}/api/does-not-exist`);
     expect(missing.status).toBe(404);
     expect(missing.headers.get("content-type")).toContain("application/json");

@@ -6,6 +6,7 @@
 dist/
 build/
 *.dist
+/serverless/vercelHandler.mjs
 
 # Environment variables
 .env

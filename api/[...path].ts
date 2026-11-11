@@ -1,7 +1,5 @@
-import { createApp } from "../server/_core/app";
+import app from "../serverless/vercelHandler.mjs";
 
-// Vercel invokes this shared Express app for /api/* requests. It deliberately
-// does not import the local listener entry point or start a background task.
-const app = createApp();
-
+// The build emits the shared Express app as a self-contained ESM bundle. This
+// wrapper stays small and never starts the local listener or background jobs.
 export default app;
