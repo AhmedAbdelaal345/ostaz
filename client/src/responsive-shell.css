@@ -17,7 +17,198 @@ body:has(.student-portal),
   overflow-y: visible;
 }
 
+/* Let row action menus escape the list container instead of being clipped. */
+.table-card {
+  overflow: visible;
+}
+
+@media (min-width: 768px) and (max-width: 970px) {
+  .toolbar.single {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .toolbar.single .search {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .toolbar.single .result-count {
+    justify-self: start;
+  }
+
+  .table-head {
+    display: none;
+  }
+
+  .table-row {
+    display: grid;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 10px;
+    margin: 0 0 10px;
+    padding: 13px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: var(--surface);
+  }
+
+  .table-row .student-name {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .table-row > span:nth-child(2),
+  .table-row > span:nth-child(3),
+  .table-row > span:nth-child(4) {
+    display: flex;
+    grid-column: 1;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .table-row > span:nth-child(2)::before { content: "المجموعة"; }
+  .table-row > span:nth-child(3)::before { content: "الهاتف"; }
+  .table-row > span:nth-child(4)::before { content: "الدفع"; }
+
+  .table-row > span:nth-child(2)::before,
+  .table-row > span:nth-child(3)::before,
+  .table-row > span:nth-child(4)::before {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .table-row .menu-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    align-self: start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .table-row .row-menu {
+    top: calc(100% + 4px);
+    right: 0;
+    left: auto;
+    max-height: min(42dvh, 220px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 @media (max-width: 767px) {
+  .toolbar.single {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .toolbar.single .search {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .toolbar.single .result-count {
+    justify-self: start;
+  }
+
+  .table-card {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .table-head {
+    display: none;
+  }
+
+  .table-row {
+    display: grid;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 10px;
+    margin: 0 0 10px;
+    padding: 13px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+  }
+
+  .table-row .student-name {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .table-row > span:nth-child(2),
+  .table-row > span:nth-child(3),
+  .table-row > span:nth-child(4) {
+    display: flex;
+    grid-column: 1;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .table-row > span:nth-child(2)::before { content: "المجموعة"; }
+  .table-row > span:nth-child(3)::before { content: "الهاتف"; }
+  .table-row > span:nth-child(4)::before { content: "الدفع"; }
+
+  .table-row > span:nth-child(2)::before,
+  .table-row > span:nth-child(3)::before,
+  .table-row > span:nth-child(4)::before {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .table-row .menu-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    align-self: start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .table-row .row-menu {
+    top: calc(100% + 4px);
+    right: 0;
+    left: auto;
+    max-height: min(42dvh, 220px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .table-row .paid,
+  .table-row .due {
+    width: max-content;
+  }
+
+  .modal-backdrop {
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .modal.schedule-modal {
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100dvh - 24px);
+  }
+
   .app-shell.ios-shell {
     display: block;
     min-height: 100svh;
