@@ -187,10 +187,7 @@ function BrandStartup({ children }: { children: React.ReactNode }) {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
-    if (import.meta.env.DEV) {
-      await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(registration => registration.unregister())));
-      return;
-    }
+    if (import.meta.env.DEV) return;
     try {
       let reloadingForServiceWorker = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
@@ -199,7 +196,18 @@ if ("serviceWorker" in navigator) {
         window.location.reload();
       });
       const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      const activateWaitingWorker = () => registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+      registration.addEventListener("updatefound", () => {
+        const installingWorker = registration.installing;
+        installingWorker?.addEventListener("statechange", () => {
+          if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+            installingWorker.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+      });
+      activateWaitingWorker();
       await registration.update();
+      activateWaitingWorker();
       window.dispatchEvent(new Event("ostazi-service-worker-ready"));
     } catch (error) {
       console.warn("[PWA] تعذر تسجيل عامل الخدمة", error);

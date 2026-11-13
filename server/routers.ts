@@ -88,7 +88,23 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => { const cookieOptions = getSessionCookieOptions(ctx.req); ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 }); ctx.res.clearCookie(TEACHER_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 }); return { success: true } as const; }),
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      try {
+        const teacherSession = await getTeacherSession(ctx.req);
+        if (teacherSession?.sessionId) {
+          await revokeAccountSession({
+            id: teacherSession.sessionId,
+            accountType: "teacher",
+            accountId: teacherSession.accountId,
+          });
+        }
+      } finally {
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+        ctx.res.clearCookie(TEACHER_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
+      }
+      return { success: true } as const;
+    }),
   }),
   teacherAuth: router({
     register: publicProcedure.input(teacherRegistrationInput).mutation(async ({ ctx, input }) => { const phone = normalizeTeacherPhone(input.phone); const existing = await withDatabaseErrorLogging(() => getTeacherAccountByPhone(phone), ctx.req, "teacher_register_account_lookup_failed"); if (existing) throw new TRPCError({ code: "CONFLICT", message: "يوجد حساب معلم مسجل بهذا الرقم. استخدم تسجيل الدخول." }); const passwordHash = await hashStudentPassword(input.password); const account = await createPhoneTeacher({ name: input.name.trim(), phone, subject: input.subject.trim(), passwordHash }); const sessionId = await createAccountSession({ accountType: "teacher", accountId: account.id, deviceName: describeRequestDevice(ctx.req.headers["user-agent"]) }); const token = await createTeacherSession({ accountId: account.id, userId: account.userId, sessionId }); const cookieOptions = getSessionCookieOptions(ctx.req); ctx.res.cookie(TEACHER_SESSION_COOKIE, token, { ...cookieOptions, maxAge: TEACHER_SESSION_MAX_AGE_MS }); return { success: true, profile: await getTeacherProfile(account.userId) }; }),

@@ -1,60 +1,68 @@
-const CACHE = "el-mister-v16";
+const CACHE_PREFIX = "el-mister-";
+const CACHE = `${CACHE_PREFIX}v17`;
 const BRAND_ICON = "/manus-storage/el-mister-icon-192_c406f989.png";
-const APP_SHELL = ["/manifest.json", BRAND_ICON];
+const APP_SHELL = ["/", "/manifest.json", BRAND_ICON];
+
+function isApiRequest(request) {
+  const url = new URL(request.url);
+  return url.origin === self.location.origin && (url.pathname === "/api" || url.pathname.startsWith("/api/"));
+}
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)).catch(() => undefined));
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll(APP_SHELL).catch(() => undefined);
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
-      .then(() => self.clients.claim()),
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE)
+      .map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener("message", event => {
+  if (event.data?.type === "SKIP_WAITING") event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("fetch", event => {
-  if (self.location.hostname === "127.0.0.1" || self.location.hostname === "localhost") return;
-  if (event.request.method !== "GET") return;
-  if (event.request.mode === "navigate") {
+  const request = event.request;
+
+  // Leave all API traffic to the browser's normal network path. In particular,
+  // never match it from Cache Storage or send it through the SPA shell fallback.
+  if (isApiRequest(request)) return;
+  if (new URL(request.url).origin !== self.location.origin) return;
+  if (request.method !== "GET") return;
+
+  if (request.mode === "navigate") {
     event.respondWith((async () => {
       try {
-        const response = await fetch(event.request);
-        const cache = await caches.open(CACHE);
-        if (response.ok) await cache.put("/", response.clone());
-        return response;
-      } catch {
-        return (await caches.match("/")) || Response.error();
-      }
-    })());
-    return;
-  }
-  if (["script", "style", "worker"].includes(event.request.destination)) {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(event.request);
-        if (response.ok && new URL(event.request.url).origin === self.location.origin) {
+        const response = await fetch(request);
+        if (response.ok && response.headers.get("content-type")?.includes("text/html")) {
           const cache = await caches.open(CACHE);
-          await cache.put(event.request, response.clone());
+          await cache.put("/", response.clone());
         }
         return response;
       } catch {
-        return (await caches.match(event.request)) || Response.error();
+        const cache = await caches.open(CACHE);
+        return (await cache.match("/")) || Response.error();
       }
     })());
     return;
   }
+
   event.respondWith((async () => {
-    const cached = await caches.match(event.request);
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(request);
     if (cached) return cached;
     try {
-      const response = await fetch(event.request);
-      if (response.ok && new URL(event.request.url).origin === self.location.origin) {
-        const cache = await caches.open(CACHE);
-        await cache.put(event.request, response.clone());
-      }
+      const response = await fetch(request);
+      if (response.ok) await cache.put(request, response.clone());
       return response;
     } catch {
       return Response.error();
