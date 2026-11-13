@@ -21,6 +21,7 @@ import { InstallGuide } from "./components/InstallGuide";
 import { enqueueTrpcRequest, flushOfflineQueue } from "./lib/offlineSync";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import "./index.css";
+import "./responsive-shell.css";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { networkMode: "offlineFirst", staleTime: 60_000, retry: 1 } } });
 try {

@@ -1,0 +1,132 @@
+@media (max-width: 767px) {
+  .app-shell.ios-shell {
+    display: block;
+    min-height: 100svh;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 30;
+    width: 100%;
+    height: calc(60px + env(safe-area-inset-bottom));
+    padding: 5px 9px calc(5px + env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid var(--line);
+    background: #0b0d10;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar .brand,
+  .app-shell.ios-shell > .sidebar.ios-sidebar .date-chip,
+  .app-shell.ios-shell > .sidebar.ios-sidebar .sidebar-bottom {
+    display: none !important;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: center;
+    gap: 2px;
+    height: 100%;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar nav a {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-height: 47px;
+    padding: 4px 3px;
+    border-radius: 11px;
+    font-size: 9px;
+    line-height: 1.1;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar nav a span {
+    display: block;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar nav a svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar nav a.active {
+    background: var(--surface-3);
+    box-shadow: none;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar nav .sidebar-mobile-logout {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 2px;
+    min-height: 47px;
+    padding: 4px 3px;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--red);
+    font-size: 9px;
+    line-height: 1.1;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar nav .sidebar-mobile-logout svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .app-shell.ios-shell > .main {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 18px clamp(14px, 3vw, 24px) calc(102px + env(safe-area-inset-bottom));
+  }
+
+  .app-shell.ios-shell .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell.ios-shell .topbar {
+    gap: 8px;
+    margin: 0 -2px 18px;
+    padding: 8px 4px 10px;
+  }
+
+  .app-shell.ios-shell .topbar-controls {
+    min-width: 0;
+    gap: 5px;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell.ios-shell > .sidebar.ios-sidebar {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 3;
+    width: 244px;
+    height: 100vh;
+    padding: 28px 17px 20px;
+    border-top: 0;
+    border-right: 0;
+    border-left: 1px solid var(--line);
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar nav a span {
+    display: inline;
+  }
+
+  .app-shell.ios-shell > .main {
+    width: calc(100% - 244px);
+    max-width: none;
+    margin: 0 244px 0 0;
+  }
+
+  .app-shell.ios-shell[dir="ltr"] > .sidebar.ios-sidebar {
+    inset: 0 auto 0 0;
+    border-right: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .app-shell.ios-shell[dir="ltr"] > .main {
+    margin: 0 0 0 244px;
+  }
+}

@@ -62,6 +62,7 @@ import {
   Globe2,
   Home,
   LayoutGrid,
+  LogOut,
   Moon,
   MoreHorizontal,
   Plus,
@@ -129,6 +130,7 @@ import { TeacherStorePanel } from "./components/TeacherStorePanel";
 import { GroupQuickAttendance } from "./pages/EntityProfile";
 import "./topbar.css";
 import "./whatsapp-navigation-chrome.css";
+import "./sidebar-logout.css";
 import "./contextual-topbar.css";
 
 const nav = [
@@ -553,15 +555,18 @@ function Shell({
   children,
   profile,
   setProfile,
+  onLogout,
 }: {
   children: React.ReactNode;
   profile: any;
   setProfile: (p: any) => void;
+  onLogout?: () => Promise<void>;
 }) {
   const [location, setLocation] = useLocation();
   const [dark, setDark] = useState(true);
   const showProfile = location === "/profile";
   const { language, setLanguage, t, isRtl } = useLanguage();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [workspace] = useWorkspace();
   useGroupEndAlert();
   useEffect(() => {
@@ -583,6 +588,16 @@ function Shell({
     toast.success("تم تحميل النسخة الاحتياطية");
   };
   const profileMark = profile?.name?.match(/[ء-ي]/)?.[0] || "أ";
+  const handleLogout = async () => {
+    if (!onLogout || isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await onLogout();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (language === "ar" ? "تعذر تسجيل الخروج." : "Could not sign out."));
+      setIsLoggingOut(false);
+    }
+  };
   const isHomePage = location === "/";
   const navTitle = nav.find(item => item[0] === location)?.[1];
   const translatedTitle = isHomePage
@@ -642,6 +657,18 @@ function Shell({
                   ))}
               </Link>
             ))}
+            {onLogout && (
+              <button
+                type="button"
+                className="sidebar-mobile-logout"
+                onClick={() => void handleLogout()}
+                disabled={isLoggingOut}
+                aria-label={language === "ar" ? "تسجيل الخروج" : "Sign out"}
+              >
+                <LogOut size={18} />
+                <span>{isLoggingOut ? (language === "ar" ? "جارٍ الخروج" : "Signing out") : (language === "ar" ? "خروج" : "Sign out")}</span>
+              </button>
+            )}
           </nav>
           <div className="sidebar-bottom">
             <button
@@ -670,6 +697,12 @@ function Shell({
               </span>
               {t("settings")}
             </button>
+            {onLogout && (
+              <button type="button" className="sidebar-logout-button" onClick={() => void handleLogout()} disabled={isLoggingOut}>
+                <span className="icon-box"><LogOut size={17} /></span>
+                {isLoggingOut ? (language === "ar" ? "جارٍ تسجيل الخروج..." : "Signing out...") : (language === "ar" ? "تسجيل الخروج" : "Sign out")}
+              </button>
+            )}
           </div>
         </aside>
         <main className="main">
@@ -5367,7 +5400,7 @@ function App() {
     );
   return (
     <>
-      <Shell profile={profile} setProfile={setProfile}>
+      <Shell profile={profile} setProfile={setProfile} onLogout={auth.logout}>
         <Switch>
           <Route path="/">
             <Page profile={profile} />
