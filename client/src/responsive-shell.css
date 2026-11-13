@@ -1,3 +1,16 @@
+/* Keep long forms inside the viewport and let their contents scroll. */
+.modal-backdrop {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.modal.schedule-modal {
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
 @media (max-width: 767px) {
   .app-shell.ios-shell {
     display: block;
