@@ -144,7 +144,7 @@ describe("PWA worker request and update lifecycle", () => {
     return Promise.all(install.waits).then(() => {
       expect(worker.self.skipWaiting).toHaveBeenCalledOnce();
       expect(worker.cache.addAll).toHaveBeenCalledWith(expect.arrayContaining(["/", "/manifest.json"]));
-      expect(readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8")).toContain('const CACHE = `${CACHE_PREFIX}v17`');
+      expect(readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8")).toContain('const CACHE = `${CACHE_PREFIX}v18`');
       const entry = readFileSync(resolve(process.cwd(), "client/src/main.tsx"), "utf8");
       expect(entry).toContain('registration.addEventListener("updatefound"');
       expect(entry).toContain('registration.waiting?.postMessage({ type: "SKIP_WAITING" })');

@@ -1,20 +1,97 @@
-/* Keep long forms inside the viewport and let their contents scroll. */
+/* Clip horizontal spill without turning the page shell into a second vertical scroller. */
+html,
+body,
+#root,
+.app-shell,
+.main {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+body,
+#root,
+.app-shell,
+.main {
+  overflow-y: visible;
+}
+
+.app-shell,
+.auth-screen,
+.platform-landing {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.main {
+  min-height: 0;
+}
+
+.app-shell.ios-shell .panel,
+.app-shell.ios-shell .table-card,
+.app-shell.ios-shell .group-card,
+.app-shell.ios-shell .plan-card,
+.app-shell.ios-shell .widget,
+.app-shell.ios-shell .settings-accordion-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+main img,
+main video,
+main iframe,
+main canvas {
+  max-width: 100%;
+}
+
+/* Keep long forms inside the viewport; the dialog itself is the scroll area. */
 .modal-backdrop {
+  overscroll-behavior-y: none;
+}
+
+.modal-backdrop > .modal {
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow-y: auto;
-  overscroll-behavior-y: contain;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal.schedule-modal {
+  max-height: 92vh;
   max-height: 92dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
+}
+
+.student-card-modal {
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-slot="dialog-content"] {
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 body:has(.student-portal),
 #root:has(.student-portal) {
   overflow-x: clip;
   overflow-y: visible;
+}
+
+.student-portal {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* Let row action menus escape the list container instead of being clipped. */
@@ -100,6 +177,85 @@ body:has(.student-portal),
     max-height: min(42dvh, 220px);
     overflow-y: auto;
     overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell.ios-shell > .main {
+    padding-inline: 12px;
+  }
+
+  .app-shell.ios-shell .topbar-heading h1 {
+    font-size: clamp(1.2rem, 5vw, 1.45rem);
+  }
+
+  .stats-grid,
+  .finance-stats,
+  .context-report-stats,
+  .student-stat-grid,
+  .student-profile-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .modal-backdrop {
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+    padding-block: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-bottom));
+  }
+
+  .modal.schedule-modal,
+  .modal-backdrop > .modal,
+  .student-card-modal,
+  .teacher-profile-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - max(24px, env(safe-area-inset-top) + env(safe-area-inset-bottom) + 24px));
+  }
+
+  .modal-close,
+  .student-card-modal .modal-close,
+  .teacher-profile-modal .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+  .finance-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-shell.ios-shell .dashboard-grid,
+  .app-shell.ios-shell .finance-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell.ios-shell .stats-grid,
+  .app-shell.ios-shell .context-report-stats,
+  .app-shell.ios-shell .student-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell.ios-shell > .main {
+    padding-inline: clamp(18px, 3vw, 32px);
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .app-shell.ios-shell .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .app-shell.ios-shell > .main {
+    padding-inline: clamp(32px, 4vw, 64px);
+  }
+
+  .app-shell.ios-shell .group-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   }
 }
 
@@ -224,6 +380,7 @@ body:has(.student-portal),
     border: 0;
     border-top: 1px solid var(--line);
     background: #0b0d10;
+    overflow: visible;
   }
 
   .app-shell.ios-shell > .sidebar.ios-sidebar .brand,
@@ -289,6 +446,33 @@ body:has(.student-portal),
     max-width: none;
     margin: 0;
     padding: 18px clamp(14px, 3vw, 24px) calc(102px + env(safe-area-inset-bottom));
+    scroll-padding-block-end: calc(102px + env(safe-area-inset-bottom));
+  }
+
+  .app-shell.ios-shell .topbar h1 {
+    font-size: clamp(1.2rem, 4.5vw, 1.5rem);
+  }
+
+  .app-shell.ios-shell .topbar button,
+  .app-shell.ios-shell .sidebar nav a,
+  .app-shell.ios-shell .sidebar nav button {
+    min-height: 44px;
+  }
+
+  .app-shell.ios-shell .main input:not([type="checkbox"]):not([type="radio"]),
+  .app-shell.ios-shell .main select,
+  .app-shell.ios-shell .main textarea {
+    max-width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .app-shell.ios-shell .main .primary,
+  .app-shell.ios-shell .main .secondary,
+  .app-shell.ios-shell .main .icon-button,
+  .app-shell.ios-shell .main .more {
+    min-height: 44px;
   }
 
   .app-shell.ios-shell .dashboard-grid {
@@ -309,19 +493,31 @@ body:has(.student-portal),
 
 @media (min-width: 768px) {
   .app-shell.ios-shell > .sidebar.ios-sidebar {
+    display: flex;
+    flex-direction: column;
     position: fixed;
     inset: 0 0 0 auto;
     z-index: 3;
     width: 244px;
     height: 100vh;
+    height: 100dvh;
     padding: 28px 17px 20px;
     border-top: 0;
     border-right: 0;
     border-left: 1px solid var(--line);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .app-shell.ios-shell > .sidebar.ios-sidebar nav a span {
     display: inline;
+  }
+
+  .app-shell.ios-shell > .sidebar.ios-sidebar .sidebar-bottom {
+    position: static;
+    inset: auto;
+    margin-top: auto;
   }
 
   .app-shell.ios-shell > .main {
@@ -338,5 +534,31 @@ body:has(.student-portal),
 
   .app-shell.ios-shell[dir="ltr"] > .main {
     margin: 0 0 0 244px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell.ios-shell > .main {
+    padding-inline: 12px;
+  }
+
+  .app-shell.ios-shell .stats-grid,
+  .app-shell.ios-shell .context-report-stats,
+  .student-stat-grid,
+  .student-profile-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell.ios-shell .topbar-heading h1 {
+    font-size: clamp(1.2rem, 5vw, 1.45rem);
+  }
+
+  .modal.schedule-modal,
+  .modal-backdrop > .modal,
+  .student-card-modal,
+  .teacher-profile-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 24px);
   }
 }

@@ -1,11 +1,22 @@
 const CACHE_PREFIX = "el-mister-";
-const CACHE = `${CACHE_PREFIX}v17`;
+const CACHE = `${CACHE_PREFIX}v18`;
 const BRAND_ICON = "/manus-storage/el-mister-icon-192_c406f989.png";
 const APP_SHELL = ["/", "/manifest.json", BRAND_ICON];
 
 function isApiRequest(request) {
   const url = new URL(request.url);
   return url.origin === self.location.origin && (url.pathname === "/api" || url.pathname.startsWith("/api/"));
+}
+
+function isCacheableAsset(request, response) {
+  if (!response.ok || response.type === "opaque") return false;
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  if (!contentType || contentType.includes("text/html")) return false;
+  if (request.destination === "style") return contentType.includes("text/css");
+  if (request.destination === "script") return /javascript|ecmascript/.test(contentType);
+  if (request.destination === "font") return /font|woff|ttf|otf/.test(contentType);
+  if (request.destination === "image") return contentType.startsWith("image/");
+  return true;
 }
 
 self.addEventListener("install", event => {
@@ -59,10 +70,11 @@ self.addEventListener("fetch", event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(request);
-    if (cached) return cached;
+    if (cached && isCacheableAsset(request, cached)) return cached;
+    if (cached) await cache.delete(request);
     try {
       const response = await fetch(request);
-      if (response.ok) await cache.put(request, response.clone());
+      if (isCacheableAsset(request, response)) await cache.put(request, response.clone());
       return response;
     } catch {
       return Response.error();
