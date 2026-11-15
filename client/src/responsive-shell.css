@@ -23,6 +23,52 @@ body,
   min-height: 100dvh;
 }
 
+/* Match the student's responsive content behavior in the teacher workspace. */
+.app-shell.ios-shell {
+  overscroll-behavior-y: auto;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: pan-x pan-y;
+}
+
+.app-shell.ios-shell input,
+.app-shell.ios-shell textarea,
+.app-shell.ios-shell select,
+.app-shell.ios-shell [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.app-shell.ios-shell .panel,
+.app-shell.ios-shell .widget,
+.app-shell.ios-shell .group-card,
+.app-shell.ios-shell .plan-card,
+.app-shell.ios-shell .table-card,
+.app-shell.ios-shell .settings-accordion-card,
+.app-shell.ios-shell .dashboard-grid > *,
+.app-shell.ios-shell .stats-grid > *,
+.app-shell.ios-shell .finance-stats > *,
+.app-shell.ios-shell .group-grid > * {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  height: auto;
+  border-radius: clamp(0.875rem, 1.5vw, 1.25rem);
+}
+
+.app-shell.ios-shell .panel > *,
+.app-shell.ios-shell .widget > *,
+.app-shell.ios-shell .group-card > *,
+.app-shell.ios-shell .plan-card > *,
+.app-shell.ios-shell .dashboard-grid > * > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-shell.ios-shell > .main {
+  padding-block-end: 2rem;
+}
+
 .main {
   min-height: 0;
 }
@@ -713,8 +759,8 @@ html.light .auth-flow-student .auth-flow-mode button.active {
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 18px clamp(14px, 3vw, 24px) calc(102px + env(safe-area-inset-bottom));
-    scroll-padding-block-end: calc(102px + env(safe-area-inset-bottom));
+    padding: 18px clamp(14px, 3vw, 24px) calc(72px + env(safe-area-inset-bottom)) !important;
+    scroll-padding-block-end: calc(72px + env(safe-area-inset-bottom));
   }
 
   .app-shell.ios-shell .topbar h1 {

@@ -5372,17 +5372,49 @@ function GuestDemo() {
 function App() {
   const auth = useAuth();
   const [location] = useLocation();
-    // Accessibility compliance: allow copy, zoom, and standard navigation controls
+  // Keep copy/zoom restrictions scoped to the authenticated teacher workspace.
   useEffect(() => {
+    const isTeacherWorkspaceActive = () => Boolean(document.querySelector(".app-shell.ios-shell"));
     const isEditable = (target: EventTarget | null) => {
       if (!(target instanceof Element)) return false;
-      return target.matches(
-        "input, textarea, select, [contenteditable='true']"
-      ) || !!target.closest(
-        "input, textarea, select, [contenteditable='true']"
-      );
+      return target.matches("input, textarea, select, [contenteditable='true']") ||
+        Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
     };
-    // No global blocking of copy, cut, or zoom across the application.
+    const isInTeacherWorkspace = (target: EventTarget | null) => {
+      const workspace = document.querySelector(".app-shell.ios-shell");
+      return target instanceof Node && Boolean(workspace?.contains(target));
+    };
+    const preventCopy = (event: ClipboardEvent) => {
+      if (isTeacherWorkspaceActive() && !isEditable(event.target) && !isEditable(document.activeElement)) event.preventDefault();
+    };
+    const preventContextMenu = (event: MouseEvent) => {
+      if (isInTeacherWorkspace(event.target) && !isEditable(event.target)) event.preventDefault();
+    };
+    const preventZoomShortcut = (event: KeyboardEvent) => {
+      if (!isTeacherWorkspaceActive() || !(event.ctrlKey || event.metaKey)) return;
+      if (["+", "=", "-", "_", "0"].includes(event.key.toLowerCase())) event.preventDefault();
+    };
+    const preventWheelZoom = (event: WheelEvent) => {
+      if (isTeacherWorkspaceActive() && (event.ctrlKey || event.metaKey)) event.preventDefault();
+    };
+    const preventGestureZoom = (event: Event) => {
+      if (isInTeacherWorkspace(event.target)) event.preventDefault();
+    };
+
+    document.addEventListener("copy", preventCopy);
+    document.addEventListener("cut", preventCopy);
+    document.addEventListener("contextmenu", preventContextMenu);
+    document.addEventListener("keydown", preventZoomShortcut);
+    document.addEventListener("wheel", preventWheelZoom, { passive: false });
+    document.addEventListener("gesturestart", preventGestureZoom, { passive: false });
+    return () => {
+      document.removeEventListener("copy", preventCopy);
+      document.removeEventListener("cut", preventCopy);
+      document.removeEventListener("contextmenu", preventContextMenu);
+      document.removeEventListener("keydown", preventZoomShortcut);
+      document.removeEventListener("wheel", preventWheelZoom);
+      document.removeEventListener("gesturestart", preventGestureZoom);
+    };
   }, []);
   const [profile, setProfile] = useStore<any>("profile", null);
   const remoteProfile = trpc.app.profile.get.useQuery(undefined, {
