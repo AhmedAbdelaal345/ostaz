@@ -1,10 +1,12 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { LogIn, Phone, ShieldCheck, UserPlus } from "lucide-react";
+import { GraduationCap, LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { navigateAfterTeacherLogin } from "@/lib/applicationRoutes";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AuthFlowControls } from "@/components/AuthFlowControls";
+import { clearAuthPhoneDraft, readAuthPhoneDraft, saveAuthPhoneDraft } from "@/lib/authDraft";
 import {
   isValidAuthPassword,
   isValidAuthPhone,
@@ -18,8 +20,11 @@ export default function TeacherPortal() {
   const isRegister = location === "/teacher/register";
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(() => readAuthPhoneDraft().accountPhone || "");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [formError, setFormError] = useState("");
+  const [recoveryHint, setRecoveryHint] = useState("");
   const current = trpc.auth.me.useQuery(undefined, { retry: false });
   const register = trpc.teacherAuth.register.useMutation({
     onSuccess: async () => {
@@ -31,9 +36,10 @@ export default function TeacherPortal() {
         toast.error(language === "ar" ? "تم قبول الطلب لكن تعذر التحقق من الجلسة. أعد المحاولة." : "The request succeeded, but the session could not be verified. Please try again.");
         return;
       }
+      clearAuthPhoneDraft();
       toast.success(language === "ar" ? "تم إنشاء حساب المعلم" : "Teacher account created");
     },
-    onError: error => toast.error(error.message),
+    onError: error => { setFormError(error.message); toast.error(error.message); },
   });
   const login = trpc.teacherAuth.login.useMutation({
     onSuccess: async () => {
@@ -45,9 +51,10 @@ export default function TeacherPortal() {
         toast.error(language === "ar" ? "تم قبول الطلب لكن تعذر التحقق من الجلسة. أعد المحاولة." : "The request succeeded, but the session could not be verified. Please try again.");
         return;
       }
+      clearAuthPhoneDraft();
       toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully");
     },
-    onError: error => toast.error(error.message),
+    onError: error => { setFormError(error.message); toast.error(error.message); },
   });
 
   useEffect(() => {
@@ -56,21 +63,27 @@ export default function TeacherPortal() {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFormError("");
+    setRecoveryHint("");
     if (!isValidAuthPhone(phone)) {
-      toast.error(language === "ar" ? "أدخل رقم هاتف صحيحًا من 7 إلى 32 رقمًا." : "Enter a valid phone number with 7 to 32 digits.");
+      setFormError(language === "ar" ? "أدخل رقم هاتف صحيحًا من 7 إلى 32 رقمًا." : "Enter a valid phone number with 7 to 32 digits.");
       return;
     }
     if (!isValidAuthPassword(password)) {
-      toast.error(language === "ar" ? "يجب أن تكون كلمة المرور من 8 إلى 128 حرفًا." : "Password must be 8 to 128 characters.");
+      setFormError(language === "ar" ? "يجب أن تكون كلمة المرور من 8 إلى 128 حرفًا." : "Password must be 8 to 128 characters.");
       return;
     }
     if (isRegister) {
       if (!isValidRegistrationName(name)) {
-        toast.error(language === "ar" ? "اكتب اسمًا من حرفين إلى 160 حرفًا." : "Enter a name between 2 and 160 characters.");
+        setFormError(language === "ar" ? "اكتب اسمًا من حرفين إلى 160 حرفًا." : "Enter a name between 2 and 160 characters.");
         return;
       }
       if (!isValidRegistrationSubject(subject)) {
-        toast.error(language === "ar" ? "اكتب مادة من حرفين إلى 120 حرفًا." : "Enter a subject between 2 and 120 characters.");
+        setFormError(language === "ar" ? "اكتب مادة من حرفين إلى 120 حرفًا." : "Enter a subject between 2 and 120 characters.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setFormError(language === "ar" ? "كلمتا المرور غير متطابقتين." : "Passwords do not match.");
         return;
       }
       register.mutate({ name: name.trim(), subject: subject.trim(), phone: phone.trim(), password });
@@ -86,6 +99,20 @@ export default function TeacherPortal() {
         <button className="teacher-auth-switch" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>
           {language === "ar" ? "English" : "العربية"}
         </button>
+        <AuthFlowControls
+          role="teacher"
+          mode={isRegister ? "register" : "login"}
+          roleLabel={language === "ar" ? "نوع الحساب" : "Account type"}
+          roleName={language === "ar" ? "معلم" : "Teacher"}
+          loginLabel={language === "ar" ? "تسجيل الدخول" : "Log in"}
+          registerLabel={language === "ar" ? "إنشاء حساب" : "Register"}
+          switchRoleLabel={isRegister
+            ? (language === "ar" ? "إنشاء حساب طالب بدلًا من ذلك" : "Register as a Student instead")
+            : (language === "ar" ? "الدخول كطالب بدلًا من ذلك" : "Log in as a Student instead")}
+          roleIcon={<GraduationCap size={17} aria-hidden="true" />}
+          onModeChange={mode => setLocation(mode === "register" ? "/teacher/register" : "/teacher/login")}
+          onRoleChange={() => setLocation(isRegister ? "/student/register" : "/student/login")}
+        />
         <div className="teacher-avatar-mark">أ</div>
         <span className="teacher-auth-kicker">{language === "ar" ? "حساب المعلم" : "Teacher account"}</span>
         <h1>{isRegister ? (language === "ar" ? "أنشئ مساحة عملك" : "Create your workspace") : (language === "ar" ? "أهلًا بعودتك" : "Welcome back")}</h1>
@@ -102,20 +129,28 @@ export default function TeacherPortal() {
         </>}
         <label>
           {language === "ar" ? "رقم الهاتف" : "Phone number"}
-          <input type="tel" inputMode="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="01xxxxxxxxx" autoComplete="tel" required minLength={7} maxLength={32} />
+          <input type="tel" inputMode="tel" value={phone} onChange={event => { setPhone(event.target.value); saveAuthPhoneDraft({ accountPhone: event.target.value }); setFormError(""); }} placeholder="01xxxxxxxxx" autoComplete="tel" required minLength={7} maxLength={32} />
         </label>
         <label>
           {language === "ar" ? "كلمة المرور" : "Password"}
           <input type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder={language === "ar" ? "8 أحرف على الأقل" : "At least 8 characters"} autoComplete={isRegister ? "new-password" : "current-password"} required minLength={8} maxLength={128} />
         </label>
+        {isRegister && <label>
+          {language === "ar" ? "تأكيد كلمة المرور" : "Confirm password"}
+          <input type="password" value={confirmPassword} onChange={event => { setConfirmPassword(event.target.value); setFormError(""); }} placeholder={language === "ar" ? "أعد كتابة كلمة المرور" : "Enter your password again"} autoComplete="new-password" required minLength={8} maxLength={128} />
+        </label>}
+        {!isRegister && <button className="teacher-forgot-password" type="button" onClick={() => setRecoveryHint(language === "ar" ? "لا يتوفر استرداد آلي لكلمة المرور حاليًا. تواصل مع دعم المنصة." : "Automatic password reset is not available yet. Contact platform support.")}>
+          {language === "ar" ? "نسيت كلمة المرور؟" : "Forgot password?"}
+        </button>}
+        {recoveryHint && <p className="auth-form-hint" role="status">{recoveryHint}</p>}
+        {formError && <p className="auth-form-error" role="alert">{formError}</p>}
         <button type="submit" className="teacher-primary" disabled={isPending}>
-          {isPending ? (language === "ar" ? "جارٍ التحقق..." : "Please wait...") : isRegister ? <><UserPlus size={18}/>{language === "ar" ? "إنشاء الحساب" : "Create account"}</> : <><LogIn size={18}/>{language === "ar" ? "تسجيل الدخول" : "Sign in"}</>}
+          {isPending ? (language === "ar" ? "جارٍ التحقق..." : "Please wait...") : isRegister ? <><UserPlus size={18}/>{language === "ar" ? "إنشاء الحساب" : "Create account"}</> : <><LogIn size={18}/>{language === "ar" ? "تسجيل الدخول" : "Log in"}</>}
         </button>
         <button className="teacher-auth-switch" type="button" onClick={() => setLocation(isRegister ? "/teacher/login" : "/teacher/register")}>
-          {isRegister ? (language === "ar" ? "لديك حساب؟ سجّل الدخول" : "Already have an account? Sign in") : (language === "ar" ? "ليس لديك حساب؟ أنشئ حسابًا" : "No account? Create one")}
+          {isRegister ? (language === "ar" ? "لديك حساب؟ سجّل الدخول" : "Already have an account? Log in") : (language === "ar" ? "ليس لديك حساب؟ أنشئ حسابًا" : "Don't have an account? Register")}
         </button>
         <small><ShieldCheck size={14}/>{language === "ar" ? "رقم الهاتف وكلمة المرور يحميان مساحة المعلم وبيانات طلابه." : "Your phone number and password protect your workspace and student data."}</small>
-        <a className="teacher-student-link" href="/student/login"><Phone size={14}/>{language === "ar" ? "دخول الطالب" : "Student sign in"}</a>
         <a className="teacher-student-link" href="/platform">{language === "ar" ? "العودة إلى المنصة" : "Back to platform"}</a>
       </form>
     </main>

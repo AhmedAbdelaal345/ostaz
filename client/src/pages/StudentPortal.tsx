@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Award, BookOpen, Camera, CheckCircle2, Clock3, LockKeyhole, LogIn, LogOut, Pencil, ShieldCheck, UserRound } from "lucide-react";
+import { Award, BookOpen, Camera, CheckCircle2, Clock3, GraduationCap, LockKeyhole, LogIn, LogOut, Pencil, ShieldCheck, UserRound } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -12,6 +12,8 @@ import { StudentVideoHub } from "@/components/StudentVideoHub";
 import { StudentSeatReservation } from "@/components/StudentSeatReservation";
 import { StudentStoreHub } from "@/components/StudentStoreHub";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AuthFlowControls } from "@/components/AuthFlowControls";
+import { clearAuthPhoneDraft, readAuthPhoneDraft, saveAuthPhoneDraft } from "@/lib/authDraft";
 import { isValidAuthPassword, isValidAuthPhone } from "../../../shared/authValidation";
 
 type QuizQuestion = { id: string; text: string; points: number; options?: string[] };
@@ -30,16 +32,22 @@ function toPushKey(value: string) { const padded = `${value}${"=".repeat((4 - va
 export default function StudentPortal() {
   const { language, setLanguage, isRtl } = useLanguage();
   const [location, setLocation] = useLocation();
-  const [teacherPhone, setTeacherPhone] = useState("");
-  const [phone, setPhone] = useState("");
+  const [teacherPhone, setTeacherPhone] = useState(() => {
+    const draft = readAuthPhoneDraft();
+    return draft.teacherPhone || (draft.studentPhone ? "" : draft.accountPhone) || "";
+  });
+  const [phone, setPhone] = useState(() => readAuthPhoneDraft().studentPhone || "");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [formError, setFormError] = useState("");
+  const [recoveryHint, setRecoveryHint] = useState("");
   const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<string, string | number | boolean | null>>({});
   const [editingProfile, setEditingProfile] = useState(false);
   const student = trpc.studentAuth.me.useQuery(undefined, { retry: false, staleTime: 0, refetchOnMount: "always" });
   const quizzes = trpc.studentQuiz.available.useQuery(undefined, { enabled: Boolean(student.data), retry: false });
-  const register = trpc.studentAuth.register.useMutation({ onSuccess: () => { student.refetch(); setLocation("/student/profile"); toast.success("تم إنشاء حسابك وربطه بسجلك الدراسي"); }, onError: error => toast.error(error.message) });
-  const login = trpc.studentAuth.login.useMutation({ onSuccess: () => { student.refetch(); setLocation("/student/profile"); toast.success("مرحبًا بك في بروفايل الطالب"); }, onError: error => toast.error(error.message) });
+  const register = trpc.studentAuth.register.useMutation({ onSuccess: () => { clearAuthPhoneDraft(); student.refetch(); setLocation("/student/profile"); toast.success("تم إنشاء حسابك وربطه بسجلك الدراسي"); }, onError: error => { setFormError(error.message); toast.error(error.message); } });
+  const login = trpc.studentAuth.login.useMutation({ onSuccess: () => { clearAuthPhoneDraft(); student.refetch(); setLocation("/student/profile"); toast.success("مرحبًا بك في بروفايل الطالب"); }, onError: error => { setFormError(error.message); toast.error(error.message); } });
   const logout = trpc.studentAuth.logout.useMutation({ onSuccess: () => { student.refetch(); setLocation("/student/login"); } });
   const submit = trpc.studentQuiz.submit.useMutation({ onSuccess: data => { toast.success(data.needsManualGrading ? "تم تسليم الإجابات للمراجعة" : `تم رصد نتيجتك: ${data.score}/${data.maxScore}`); quizzes.refetch(); document.exitFullscreen?.().catch(() => undefined); setSelectedQuiz(null); setAnswers({}); }, onError: error => toast.error(error.message) });
   const startQuiz = trpc.studentQuiz.start.useMutation({ onSuccess: (data, variables) => { const quiz = quizzes.data?.find(item => item.id === variables.quizId); if (quiz) { setSelectedQuiz({ ...quiz, attemptId: data.id }); document.documentElement.requestFullscreen?.().catch(() => undefined); } }, onError: error => toast.error(error.message) });
@@ -69,9 +77,12 @@ export default function StudentPortal() {
   useEffect(() => { if (!student.data || location !== "/student/profile") return; const actions = document.querySelector(".student-profile-actions"); if (!actions || actions.querySelector(".student-seats-link")) return; const seatsButton = document.createElement("button"); seatsButton.type = "button"; seatsButton.className = "student-edit student-seats-link"; seatsButton.textContent = language === "ar" ? "حجز مقعد" : "Reserve seat"; seatsButton.addEventListener("click", () => setLocation("/student/seats")); actions.prepend(seatsButton); return () => seatsButton.remove(); }, [language, location, setLocation, student.data]);
   useEffect(() => { if (!student.data || location !== "/student/profile") return; const actions = document.querySelector(".student-profile-actions"); if (!actions || actions.querySelector(".student-store-link")) return; const storeButton = document.createElement("button"); storeButton.type = "button"; storeButton.className = "student-edit student-store-link"; storeButton.textContent = language === "ar" ? "المتجر" : "Store"; storeButton.addEventListener("click", () => setLocation("/student/store")); actions.prepend(storeButton); return () => storeButton.remove(); }, [language, location, setLocation, student.data]);
   const submitCredentials = () => {
-    if (!isValidAuthPhone(teacherPhone)) return toast.error(language === "ar" ? "أدخل رقم هاتف المدرس صحيحًا من 7 إلى 32 رقمًا." : "Enter a valid teacher phone number with 7 to 32 digits.");
-    if (!isValidAuthPhone(phone)) return toast.error(language === "ar" ? "أدخل رقم هاتف الطالب صحيحًا من 7 إلى 32 رقمًا." : "Enter a valid student phone number with 7 to 32 digits.");
-    if (!isValidAuthPassword(password)) return toast.error(language === "ar" ? "يجب أن تكون كلمة المرور من 8 إلى 128 حرفًا." : "Password must be 8 to 128 characters.");
+    setFormError("");
+    setRecoveryHint("");
+    if (!isValidAuthPhone(teacherPhone)) return setFormError(language === "ar" ? "أدخل رقم هاتف المدرس صحيحًا من 7 إلى 32 رقمًا." : "Enter a valid teacher phone number with 7 to 32 digits.");
+    if (!isValidAuthPhone(phone)) return setFormError(language === "ar" ? "أدخل رقم هاتف الطالب صحيحًا من 7 إلى 32 رقمًا." : "Enter a valid student phone number with 7 to 32 digits.");
+    if (!isValidAuthPassword(password)) return setFormError(language === "ar" ? "يجب أن تكون كلمة المرور من 8 إلى 128 حرفًا." : "Password must be 8 to 128 characters.");
+    if (isRegister && password !== confirmPassword) return setFormError(language === "ar" ? "كلمتا المرور غير متطابقتين." : "Passwords do not match.");
     (isRegister ? register : login).mutate({ teacherPhone: teacherPhone.trim(), phone: phone.trim(), password });
   };
   useEffect(() => { const attemptId = selectedQuiz?.attemptId as number | undefined; if (!attemptId) return; let reported = false; const lockQuiz = (eventType: "visibility_hidden" | "window_blur" | "fullscreen_exit") => { if (reported) return; reported = true; reportQuizFocus.mutate({ quizAttemptId: attemptId, eventType }); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined); setSelectedQuiz(null); setAnswers({}); quizzes.refetch(); toast.error(language === "ar" ? "أُغلق الاختبار وفق سياسة الخروج من صفحة الاختبار." : "The quiz was closed under the leave-page policy."); }; const onVisibility = () => { if (document.visibilityState === "hidden") lockQuiz("visibility_hidden"); }; const onBlur = () => lockQuiz("window_blur"); const onFullscreen = () => { if (!document.fullscreenElement) lockQuiz("fullscreen_exit"); }; document.addEventListener("visibilitychange", onVisibility); window.addEventListener("blur", onBlur); document.addEventListener("fullscreenchange", onFullscreen); return () => { document.removeEventListener("visibilitychange", onVisibility); window.removeEventListener("blur", onBlur); document.removeEventListener("fullscreenchange", onFullscreen); }; }, [selectedQuiz?.attemptId]);
@@ -83,7 +94,41 @@ export default function StudentPortal() {
     return <main className="student-portal" dir={isRtl ? "rtl" : "ltr"}><section className="student-quiz-sheet"><button type="button" className="student-back" onClick={() => { reportQuizFocus.mutate({ quizAttemptId: selectedQuiz.attemptId, eventType: "window_blur" }); document.exitFullscreen?.().catch(() => undefined); setSelectedQuiz(null); setAnswers({}); }}>عودة إلى البروفايل</button><span className="student-kicker">اختبار المجموعة</span><h1>{selectedQuiz.title}</h1><p>{selectedQuiz.instructions || "أجب عن جميع الأسئلة ثم سلّم الاختبار قبل انتهاء الوقت."}</p><div className="quiz-time"><Clock3 size={17}/><span>{open ? `${language === "ar" ? "متاح حتى" : "Available until"} ${new Date(selectedQuiz.endsAt).toLocaleString(language === "ar" ? "ar-EG" : "en-GB")}` : now < startsAt ? `${language === "ar" ? "يفتح" : "Opens"} ${new Date(selectedQuiz.startsAt).toLocaleString(language === "ar" ? "ar-EG" : "en-GB")}` : "انتهى وقت الاختبار"}</span></div><div className="quiz-focus-notice">{language === "ar" ? "يُسجَّل خروج الصفحة أو فقدان التركيز ويُغلق الاختبار وفق السياسة. هذا رصد داخل المتصفح، ولا يمنع تطبيقات أخرى أو تسجيل الشاشة." : "Leaving the page or losing focus is logged and closes the quiz under policy. This browser detection cannot block other apps or screen recording."}</div>{activeQuestions.map((question, index) => <article className="student-question" key={question.id}><b>{index + 1}. {question.text}</b><small>{question.points} درجة</small>{selectedQuiz.questionType === "mcq" && <div className="student-options">{question.options?.map((option, optionIndex) => <label key={option}><input type="radio" name={question.id} disabled={!open} checked={answers[question.id] === optionIndex} onChange={() => setAnswers(current => ({ ...current, [question.id]: optionIndex }))}/><span>{option}</span></label>)}</div>}{selectedQuiz.questionType === "true_false" && <div className="student-options two"><label><input type="radio" name={question.id} disabled={!open} checked={answers[question.id] === true} onChange={() => setAnswers(current => ({ ...current, [question.id]: true }))}/><span>صح</span></label><label><input type="radio" name={question.id} disabled={!open} checked={answers[question.id] === false} onChange={() => setAnswers(current => ({ ...current, [question.id]: false }))}/><span>خطأ</span></label></div>}{selectedQuiz.questionType === "essay" && <textarea disabled={!open} value={String(answers[question.id] || "")} onChange={event => setAnswers(current => ({ ...current, [question.id]: event.target.value }))} placeholder="اكتب إجابتك هنا"/>}</article>)}<button type="button" className="student-primary" disabled={!open || submit.isPending || Object.keys(answers).length < activeQuestions.length} onClick={() => submit.mutate({ quizId: selectedQuiz.id, answers })}>{submit.isPending ? "جارٍ التسليم..." : "تسليم الاختبار"}</button></section></main>;
   }
 
-  if (location === "/student/login" || location === "/student/register") return <main className="student-portal auth" dir={isRtl ? "rtl" : "ltr"}><section className="student-auth-card"><button className="student-link" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>{language === "ar" ? "English" : "العربية"}</button><div className="student-logo">أ</div><span className="student-kicker">{language === "ar" ? "بوابة الطالب" : "Student portal"}</span><h1>{isRegister ? (language === "ar" ? "إنشاء حساب الطالب" : "Create student account") : (language === "ar" ? "دخول الطالب" : "Student sign in")}</h1><p>{isRegister ? (language === "ar" ? "استخدم رقم المدرس المسجل في المنصة ثم رقم الهاتف الذي سجله لك المدرس، واختر كلمة المرور بنفسك." : "Use your teacher's platform phone, then the phone registered by your teacher, and choose a password.") : (language === "ar" ? "اكتب رقم المدرس ورقم هاتفك وكلمة المرور للوصول إلى مساحة مدرسك فقط." : "Enter your teacher phone, your phone number, and password to access only your teacher workspace.")}</p><label>{language === "ar" ? "رقم المدرس المسجل في المنصة" : "Teacher platform phone"}<input inputMode="tel" value={teacherPhone} onChange={event => setTeacherPhone(event.target.value)} placeholder="01xxxxxxxxx"/></label><label>{language === "ar" ? "رقم هاتف الطالب" : "Student phone number"}<input inputMode="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="01xxxxxxxxx"/></label><label>{language === "ar" ? "كلمة المرور" : "Password"}<input type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder={language === "ar" ? "8 أحرف على الأقل" : "At least 8 characters"}/></label><button type="button" className="student-primary" disabled={register.isPending || login.isPending} onClick={submitCredentials}>{isRegister ? <><UserRound size={17}/>{language === "ar" ? "إنشاء الحساب" : "Create account"}</> : <><LogIn size={17}/>{language === "ar" ? "دخول آمن" : "Secure sign in"}</>}</button><button type="button" className="student-link" onClick={() => setLocation(isRegister ? "/student/login" : "/student/register")}>{isRegister ? (language === "ar" ? "لديك حساب؟ سجّل الدخول" : "Already have an account? Sign in") : (language === "ar" ? "لا تملك حسابًا؟ أنشئ حسابك" : "No account? Create one")}</button><small><ShieldCheck size={14}/>{language === "ar" ? "لا تظهر لك سوى بياناتك المرتبطة بسجل مدرسك." : "You can only view data linked to your teacher record."}</small></section></main>;
+  if (location === "/student/login" || location === "/student/register") return (
+    <main className="student-portal auth" dir={isRtl ? "rtl" : "ltr"}>
+      <form className="student-auth-card" onSubmit={event => { event.preventDefault(); submitCredentials(); }}>
+        <button className="student-link" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>{language === "ar" ? "English" : "العربية"}</button>
+        <AuthFlowControls
+          role="student"
+          mode={isRegister ? "register" : "login"}
+          roleLabel={language === "ar" ? "نوع الحساب" : "Account type"}
+          roleName={language === "ar" ? "طالب" : "Student"}
+          loginLabel={language === "ar" ? "تسجيل الدخول" : "Log in"}
+          registerLabel={language === "ar" ? "إنشاء حساب" : "Register"}
+          switchRoleLabel={isRegister
+            ? (language === "ar" ? "إنشاء حساب معلم بدلًا من ذلك" : "Register as a Teacher instead")
+            : (language === "ar" ? "الدخول كمعلم بدلًا من ذلك" : "Log in as a Teacher instead")}
+          roleIcon={<BookOpen size={17} aria-hidden="true" />}
+          onModeChange={mode => setLocation(mode === "register" ? "/student/register" : "/student/login")}
+          onRoleChange={() => setLocation(isRegister ? "/teacher/register" : "/teacher/login")}
+        />
+        <div className="student-logo"><BookOpen size={25} aria-hidden="true" /></div>
+        <span className="student-kicker">{language === "ar" ? "بوابة الطالب" : "Student portal"}</span>
+        <h1>{isRegister ? (language === "ar" ? "إنشاء حساب الطالب" : "Create student account") : (language === "ar" ? "دخول الطالب" : "Student sign in")}</h1>
+        <p>{isRegister ? (language === "ar" ? "استخدم رقم المدرس المسجل في المنصة ثم رقم الهاتف الذي سجله لك المدرس، واختر كلمة المرور بنفسك." : "Use your teacher's platform phone, then the phone registered by your teacher, and choose a password.") : (language === "ar" ? "اكتب رقم المدرس ورقم هاتفك وكلمة المرور للوصول إلى مساحة مدرسك فقط." : "Enter your teacher phone, your phone number, and password to access only your teacher workspace.")}</p>
+        <label>{language === "ar" ? "رقم المدرس المسجل في المنصة" : "Teacher platform phone"}<input inputMode="tel" autoComplete="tel" value={teacherPhone} onChange={event => { setTeacherPhone(event.target.value); saveAuthPhoneDraft({ teacherPhone: event.target.value }); setFormError(""); }} placeholder="01xxxxxxxxx" required minLength={7} maxLength={32}/></label>
+        <label>{language === "ar" ? "رقم هاتف الطالب" : "Student phone number"}<input inputMode="tel" autoComplete="tel" value={phone} onChange={event => { setPhone(event.target.value); saveAuthPhoneDraft({ accountPhone: event.target.value, studentPhone: event.target.value }); setFormError(""); }} placeholder="01xxxxxxxxx" required minLength={7} maxLength={32}/></label>
+        <label>{language === "ar" ? "كلمة المرور" : "Password"}<input type="password" autoComplete={isRegister ? "new-password" : "current-password"} value={password} onChange={event => { setPassword(event.target.value); setFormError(""); }} placeholder={language === "ar" ? "8 أحرف على الأقل" : "At least 8 characters"} required minLength={8} maxLength={128}/></label>
+        {isRegister && <label>{language === "ar" ? "تأكيد كلمة المرور" : "Confirm password"}<input type="password" autoComplete="new-password" value={confirmPassword} onChange={event => { setConfirmPassword(event.target.value); setFormError(""); }} placeholder={language === "ar" ? "أعد كتابة كلمة المرور" : "Enter your password again"} required minLength={8} maxLength={128}/></label>}
+        {!isRegister && <button className="student-link student-forgot-password" type="button" onClick={() => setRecoveryHint(language === "ar" ? "تواصل مع معلمك ليعيد ضبط كلمة مرور حساب الطالب." : "Contact your teacher to reset your student account password.")}>{language === "ar" ? "نسيت كلمة المرور؟" : "Forgot password?"}</button>}
+        {recoveryHint && <p className="auth-form-hint" role="status">{recoveryHint}</p>}
+        {formError && <p className="auth-form-error" role="alert">{formError}</p>}
+        <button type="submit" className="student-primary" disabled={register.isPending || login.isPending}>{register.isPending || login.isPending ? (language === "ar" ? "جارٍ التحقق..." : "Please wait...") : isRegister ? <><UserRound size={17}/>{language === "ar" ? "إنشاء الحساب" : "Create account"}</> : <><LogIn size={17}/>{language === "ar" ? "تسجيل الدخول" : "Log in"}</>}</button>
+        <button type="button" className="student-link" onClick={() => setLocation(isRegister ? "/student/login" : "/student/register")}>{isRegister ? (language === "ar" ? "لديك حساب؟ سجّل الدخول" : "Already have an account? Log in") : (language === "ar" ? "ليس لديك حساب؟ أنشئ حسابك" : "Don't have an account? Register")}</button>
+        <small><ShieldCheck size={14}/>{language === "ar" ? "لا تظهر لك سوى بياناتك المرتبطة بسجل مدرسك." : "You can only view data linked to your teacher record."}</small>
+      </form>
+    </main>
+  );
   if (location === "/student/security") return <StudentAccountSecurityPanel onBack={() => setLocation("/student/profile")}/>;
   if (!student.data) return <main className="student-portal auth" dir={isRtl ? "rtl" : "ltr"}><section className="student-auth-card"><div className="student-logo">أ</div><p>جارٍ التحقق من جلسة الطالب...</p></section></main>;
   if (location === "/student/messages") return <StudentTeacherAssistant profile={student.data} onBack={() => setLocation("/student/profile")}/>;

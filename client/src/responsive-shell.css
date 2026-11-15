@@ -220,6 +220,247 @@ body:has(.student-portal),
   }
 }
 
+/* Shared login/register controls for both account roles. */
+.auth-flow-controls {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin-block: 14px 4px;
+}
+
+.auth-flow-role-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.auth-flow-role,
+.auth-flow-switch-role {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+
+.auth-flow-role {
+  padding-inline: 12px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.auth-flow-switch-role {
+  border: 0;
+  padding-inline: 10px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  text-align: end;
+  cursor: pointer;
+}
+
+.auth-flow-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--auth-border, rgba(255, 255, 255, .14));
+  border-radius: 13px;
+  background: var(--auth-tabs, rgba(255, 255, 255, .06));
+}
+
+.auth-flow-mode button {
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--auth-muted, #aab5c1);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-flow-mode button.active {
+  background: var(--auth-active, #fff);
+  color: var(--auth-active-text, #101820);
+}
+
+.auth-flow-student {
+  --auth-accent: #16a99a;
+  --auth-border: rgba(22, 169, 154, .34);
+  --auth-tabs: rgba(22, 169, 154, .08);
+  --auth-active: #16a99a;
+  --auth-active-text: #041b1a;
+  color: #168f84;
+}
+
+.auth-flow-teacher {
+  --auth-accent: #0a84ff;
+  --auth-border: rgba(10, 132, 255, .34);
+  --auth-tabs: rgba(10, 132, 255, .08);
+  --auth-active: #0a84ff;
+  --auth-active-text: #fff;
+  color: #0a84ff;
+}
+
+.student-auth-card .auth-flow-mode button.active,
+.teacher-auth-card .auth-flow-mode button.active {
+  color: var(--auth-active-text);
+}
+
+.student-auth-card .student-logo {
+  background: linear-gradient(145deg, #32d3bd, #078c83);
+  color: #06211e;
+}
+
+.teacher-auth-card .teacher-avatar-mark {
+  background: linear-gradient(145deg, #4aa9ff, #0868d4);
+}
+
+.teacher-forgot-password {
+  display: block;
+  min-height: 44px;
+  margin-inline-start: auto;
+  padding-inline: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--auth-accent, #0a84ff);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-form-error,
+.auth-form-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: 11px;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.auth-form-error {
+  border-color: rgba(224, 77, 93, .35);
+  background: rgba(224, 77, 93, .09);
+  color: #c3384d;
+}
+
+.auth-form-hint {
+  border-color: rgba(10, 132, 255, .25);
+  background: rgba(10, 132, 255, .07);
+  color: #1769aa;
+}
+
+.student-auth-card .auth-form-error,
+.student-auth-card .auth-form-hint {
+  margin: 0;
+}
+
+.student-auth-card input,
+.teacher-auth-card input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 16px;
+}
+
+.student-auth-card .student-primary,
+.teacher-auth-card .teacher-primary {
+  min-height: 48px;
+}
+
+.student-auth-card .student-link,
+.teacher-auth-card .teacher-auth-switch,
+.teacher-auth-card .teacher-student-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+html.light .teacher-portal,
+html.light .student-portal.auth {
+  background: var(--bg, #f5f5f5);
+  color: var(--text, #132332);
+}
+
+html.light .teacher-auth-card,
+html.light .student-portal.auth .student-auth-card {
+  border-color: var(--line, rgba(0, 0, 0, .14));
+  background: var(--surface, #fff);
+  color: var(--text, #132332);
+  box-shadow: 0 18px 55px rgba(15, 35, 55, .12);
+}
+
+html.light .teacher-auth-card h1,
+html.light .student-portal.auth .student-auth-card h1 {
+  color: var(--text, #132332);
+}
+
+html.light .teacher-auth-card p,
+html.light .student-portal.auth .student-auth-card p {
+  color: var(--muted, #607486);
+}
+
+html.light .teacher-auth-card label,
+html.light .student-portal.auth .student-auth-card label {
+  color: var(--text, #132332);
+}
+
+html.light .teacher-auth-card input,
+html.light .student-portal.auth .student-auth-card input {
+  border: 1px solid var(--line, rgba(0, 0, 0, .14));
+  background: var(--surface-2, #f0f0f0);
+  color: var(--text, #132332);
+}
+
+html.light .teacher-auth-card small,
+html.light .student-portal.auth .student-auth-card small {
+  color: var(--muted, #607486);
+}
+
+html.light .auth-flow-mode button {
+  color: #46596a;
+}
+
+html.light .auth-flow-student .auth-flow-mode button.active {
+  color: #041b1a;
+}
+
+@media (max-width: 480px) {
+  .teacher-portal {
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+  }
+
+  .student-auth-card,
+  .teacher-auth-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: clamp(18px, 6vw, 24px);
+  }
+
+  .auth-flow-role-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .auth-flow-switch-role {
+    margin-inline-start: auto;
+  }
+}
+
 @media (min-width: 481px) and (max-width: 767px) {
   .finance-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
