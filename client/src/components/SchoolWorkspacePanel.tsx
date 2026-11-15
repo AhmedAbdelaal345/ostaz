@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { buildSchoolTimeline, defaultSchoolSettings, formatSchoolCountdown, getSchoolDaySnapshot, schoolWeekDays, type SchoolLesson, type SchoolSettings, type WeeklyEvaluation } from "../../../shared/schoolDay";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useModalBehavior } from "@/hooks/useModalBehavior";
 
 type OcrEntry = { day: string; period: number; subject: string; classroom: string; kind: "lesson" | "period" };
 const dayFromDate = (date: Date) => ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"][date.getDay()] || "الأحد";
@@ -11,10 +12,12 @@ const safeSettings = (value?: string | null): SchoolSettings => { try { const pa
 const safeEvaluations = (value?: string | null): WeeklyEvaluation[] => { try { return value ? JSON.parse(value) : []; } catch { return []; } };
 
 function OcrImagePreview({ imageDataUrl, fileName, busy, cancel, send }: { imageDataUrl: string; fileName: string; busy: boolean; cancel: () => void; send: () => void }) {
+  useModalBehavior(cancel);
   return <div className="modal-backdrop school-ocr-modal"><section className="modal school-ocr-preview"><button className="modal-close" onClick={cancel}><X size={18}/></button><span className="modal-kicker">معاينة قبل القراءة</span><h2>تأكد من وضوح الجدول</h2><p>لن تُرسل الصورة للذكاء الاصطناعي إلا بعد التأكيد. يمكنك إلغاء العملية واختيار صورة أخرى.</p><figure><img src={imageDataUrl} alt="معاينة جدول المدرسة"/><figcaption><ImageIcon size={15}/>{fileName || "صورة الجدول"}</figcaption></figure><div className="school-ocr-actions"><button className="secondary" onClick={cancel}>اختيار صورة أخرى</button><button className="primary" disabled={busy} onClick={send}><Sparkles size={16}/>{busy ? "جارٍ القراءة..." : "إرسال للذكاء الاصطناعي"}</button></div></section></div>;
 }
 
 function OcrReviewDialog({ entries, close, apply }: { entries: OcrEntry[]; close: () => void; apply: (entries: OcrEntry[]) => void }) {
+  useModalBehavior(close);
   const [rows, setRows] = useState(entries);
   const update = (index: number, key: keyof OcrEntry, value: string | number) => setRows(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, [key]: value } : row));
   const add = () => setRows(current => [...current, { day: schoolWeekDays[0], period: current.length + 1, subject: "", classroom: "", kind: "lesson" }]);

@@ -36,6 +36,7 @@ import {
 import { formatRemainingLessonTime } from "../../shared/tracker";
 import type { Workspace } from "../../shared/workspace";
 import { useWorkspace } from "./hooks/useWorkspace";
+import { useModalBehavior } from "./hooks/useModalBehavior";
 import { renderMessageTemplate } from "../../shared/messageTemplate";
 import {
   displayStudentCode,
@@ -776,6 +777,7 @@ function ProfileModal({
   setProfile: (p: any) => void;
   close: () => void;
 }) {
+  useModalBehavior(close);
   const saveProfile = trpc.app.profile.save.useMutation();
   const uploadAvatar = trpc.app.profile.uploadAvatar.useMutation();
   const configurePhoneLogin = trpc.teacherAuth.configure.useMutation();
@@ -836,9 +838,9 @@ function ProfileModal({
     }
   };
   return (
-    <div className="modal-backdrop">
-      <div className="modal teacher-profile-modal">
-        <button className="modal-close" onClick={close}>
+    <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}>
+      <div className="modal teacher-profile-modal" role="dialog" aria-modal="true">
+        <button type="button" className="modal-close" onClick={close} aria-label="إغلاق">
           <X size={18} />
         </button>
         <div className="teacher-profile-identity">
@@ -979,6 +981,7 @@ function StudentCard({
   student: Student;
   close: () => void;
 }) {
+  useModalBehavior(close);
   const [qr, setQr] = useState("");
   const groupsQuery = trpc.app.groups.list.useQuery(undefined, {
     retry: false,
@@ -1016,9 +1019,9 @@ function StudentCard({
       .catch(() => setQr(""));
   }, [code]);
   return (
-    <div className="modal-backdrop">
-      <div className="student-card-modal">
-        <button className="modal-close" onClick={close}>
+    <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}>
+      <div className="student-card-modal" role="dialog" aria-modal="true">
+        <button type="button" className="modal-close" onClick={close} aria-label="إغلاق">
           <X size={18} />
         </button>
         <div className="student-card-print" id="student-card-print">
@@ -4025,6 +4028,7 @@ function ClockPicker({
 
 function FormModal({ type, close, onSubmit, groups = [], initial }: any) {
   const [saving, setSaving] = useState(false);
+  useModalBehavior(() => { if (!saving) close(); });
   const existingSchedule =
     type === "group" && initial ? scheduleForGroup(initial) : [];
   const [name, setName] = useState(initial?.name || "");
@@ -4111,15 +4115,25 @@ function FormModal({ type, close, onSubmit, groups = [], initial }: any) {
   const groupFee = Number(selectedGroup?.fee || 0);
   const remaining = Math.max(0, groupFee - (Number(paidAmount) || 0));
   return (
-    <div className="modal-backdrop">
-      <div className="modal schedule-modal">
-        <button className="modal-close" onClick={close}>
-          <X size={18} />
-        </button>
-        <div className="modal-kicker">
-          {initial ? "تعديل البيانات" : "إضافة جديد"}
-        </div>
-        <h2>{type === "group" ? "مجموعة دراسية" : "طالب جديد"}</h2>
+    <div
+      className="modal-backdrop"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget && !saving) close();
+      }}
+    >
+      <section className="modal schedule-modal" role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title">
+        <header className="modal-header">
+          <button type="button" className="modal-close" onClick={close} disabled={saving} aria-label="إغلاق">
+            <X size={18} />
+          </button>
+          <div>
+            <div className="modal-kicker">
+              {initial ? "تعديل البيانات" : "إضافة جديد"}
+            </div>
+            <h2 id="schedule-modal-title">{type === "group" ? "مجموعة دراسية" : "طالب جديد"}</h2>
+          </div>
+        </header>
+        <div className="modal-body">
         <label>
           {type === "group" ? "اسم المجموعة" : "اسم الطالب"}
           <input
@@ -4368,7 +4382,10 @@ function FormModal({ type, close, onSubmit, groups = [], initial }: any) {
             </label>
           </>
         )}
+        </div>
+        <footer className="modal-footer">
         <button
+          type="button"
           className="primary wide"
           disabled={saving}
           onClick={async () => {
@@ -4423,7 +4440,8 @@ function FormModal({ type, close, onSubmit, groups = [], initial }: any) {
         >
           {saving ? "جارٍ الحفظ..." : "حفظ البيانات"}
         </button>
-      </div>
+        </footer>
+      </section>
     </div>
   );
 }
