@@ -121,6 +121,9 @@ import { PerformanceLeaderboard } from "./components/PerformanceLeaderboard";
 import { TeacherSocialProfile } from "./components/TeacherSocialProfile";
 import { MaterialsLibrary } from "./components/MaterialsLibrary";
 import { PersonalRemindersPanel } from "./components/PersonalRemindersPanel";
+import { LocalReminderScheduler } from "./components/LocalReminderScheduler";
+import { getAppServiceWorkerRegistration, isNotificationSupported, showAppNotification } from "@/lib/browserNotifications";
+import { useLocalNotificationPreference } from "@/lib/localNotificationPreference";
 import { TeacherRewardsPanel } from "./components/TeacherRewardsPanel";
 import { TeacherLearningHub } from "./components/TeacherLearningHub";
 import { TeacherVideoHub } from "./components/TeacherVideoHub";
@@ -4554,27 +4557,28 @@ function toPushKey(value: string) {
 function PushEnableButton() {
   const key = trpc.app.push.publicKey.useQuery(undefined, { retry: false });
   const subscribe = trpc.app.push.subscribe.useMutation();
+  const unsubscribe = trpc.app.push.unsubscribe.useMutation();
   const test = trpc.app.push.test.useMutation();
   const [working, setWorking] = useState(false);
-  const [permission, setPermission] = useState<NotificationPermission>(() =>
-    "Notification" in window ? Notification.permission : "default"
+  const [testSending, setTestSending] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(() =>
+    isNotificationSupported() ? Notification.permission : "unsupported"
   );
+  const [remindersEnabled, setRemindersEnabled] = useLocalNotificationPreference();
   const [deliveryStatus, setDeliveryStatus] = useState<{
     delivered: number;
     failed: number;
     subscriptions: number;
   } | null>(null);
-  const isIos =
-    typeof navigator !== "undefined" &&
-    /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isStandalone =
-    typeof window !== "undefined" &&
+  const { t, language } = useLanguage();
+  const isIos = typeof navigator !== "undefined" &&
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+  const isStandalone = typeof window !== "undefined" &&
     (window.matchMedia?.("(display-mode: standalone)").matches ||
       Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
-  const saveSubscription = async (
-    registration: ServiceWorkerRegistration,
-    refresh = false
-  ) => {
+
+  const saveSubscription = async (registration: ServiceWorkerRegistration, refresh = false) => {
     let subscription = await registration.pushManager.getSubscription();
     if (refresh && subscription) {
       await subscription.unsubscribe();
@@ -4594,103 +4598,124 @@ function PushEnableButton() {
       contentEncoding: "aes128gcm",
     });
   };
+
   const enable = async () => {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window))
-      return toast.error("هذا المتصفح لا يدعم إشعارات Push");
-    if (Notification.permission === "denied")
-      return toast.error(
-        "الإشعارات مرفوضة من المتصفح. فعّلها من إعدادات الموقع ثم أعد المحاولة."
-      );
-    if (!key.data?.publicKey)
-      return toast.error("مفاتيح الإشعارات غير جاهزة حاليًا");
+    if (!isNotificationSupported()) return;
+    if (Notification.permission === "denied") return;
     setWorking(true);
     try {
+      // Permission is requested only in response to this explicit user action.
       const nextPermission = await Notification.requestPermission();
       setPermission(nextPermission);
-      if (nextPermission !== "granted")
-        return toast.error("لم يتم السماح بالإشعارات");
-      const registration =
-        (await navigator.serviceWorker.getRegistration("/")) ||
-        (await navigator.serviceWorker.register("/sw.js", { scope: "/" }));
-      await navigator.serviceWorker.ready;
-      await saveSubscription(registration);
-      let result = await test.mutateAsync();
-      if (!result.delivered) {
-        await saveSubscription(registration, true);
-        result = await test.mutateAsync();
+      if (nextPermission !== "granted") return;
+      setRemindersEnabled(true);
+      // Web Push is optional for local reminders; it enables the existing server scheduler.
+      if (key.data?.publicKey && "PushManager" in window) {
+        const registration = await getAppServiceWorkerRegistration();
+        await saveSubscription(registration);
+        let result = await test.mutateAsync();
+        if (!result.delivered) {
+          await saveSubscription(registration, true);
+          result = await test.mutateAsync();
+        }
+        setDeliveryStatus(result);
       }
-      setDeliveryStatus(result);
-      if (result.delivered)
-        toast.success(
-          "تم إرسال اختبار Push إلى الجهاز. تحقّق من ظهوره على الهاتف قبل الاعتماد على التذكيرات الخلفية."
-        );
-      else
-        toast.error(
-          "لم يصل اختبار Push إلى الجهاز. تحقّق من إذن إشعارات iPhone وتثبيت التطبيق على الشاشة الرئيسية ثم أعد التفعيل."
-        );
+      toast.success(language === "ar" ? "تم تفعيل الإشعارات لهذا الجهاز." : "Notifications enabled for this device.");
     } catch {
-      toast.error(
-        "تعذر تفعيل الإشعارات على هذا الجهاز. تأكد من السماح بالإشعارات وتثبيت التطبيق إن كان iPhone."
-      );
+      toast.error(language === "ar" ? "تم السماح بالإشعارات، لكن تعذر إعداد التذكيرات الخلفية." : "Permission was granted, but background reminders could not be configured.");
     } finally {
       setWorking(false);
     }
   };
+
+  const toggleReminders = async () => {
+    if (!isNotificationSupported() || Notification.permission !== "granted") return;
+    setWorking(true);
+    try {
+      if (remindersEnabled) {
+        const registration = await navigator.serviceWorker.getRegistration("/");
+        const subscription = await registration?.pushManager.getSubscription();
+        if (subscription) {
+          await unsubscribe.mutateAsync({ endpoint: subscription.endpoint });
+          await subscription.unsubscribe();
+        }
+        setRemindersEnabled(false);
+      } else {
+        setRemindersEnabled(true);
+        if (key.data?.publicKey && "PushManager" in window) {
+          const registration = await getAppServiceWorkerRegistration();
+          await saveSubscription(registration);
+        }
+      }
+    } catch {
+      toast.error(language === "ar" ? "تعذر تحديث إعداد التذكيرات. حاول مرة أخرى." : "Could not update the reminder setting. Please try again.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const sendTestNotification = async () => {
+    setTestSending(true);
+    try {
+      await showAppNotification({
+        title: language === "ar" ? "إشعار تجريبي" : "Test notification",
+        body: language === "ar" ? "تم إعداد إشعارات هذا الجهاز بنجاح." : "Notifications are working on this device.",
+        tag: "el-mister-notification-test",
+        language,
+      });
+      toast.success(language === "ar" ? "تم إرسال الإشعار التجريبي." : "Test notification sent.");
+    } catch {
+      toast.error(language === "ar" ? "تعذر عرض الإشعار. تحقق من إذن المتصفح." : "Could not display the notification. Check browser permission.");
+    } finally {
+      setTestSending(false);
+    }
+  };
+
+  useEffect(() => {
+    const refreshPermission = () => setPermission(isNotificationSupported() ? Notification.permission : "unsupported");
+    document.addEventListener("visibilitychange", refreshPermission);
+    window.addEventListener("focus", refreshPermission);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshPermission);
+      window.removeEventListener("focus", refreshPermission);
+    };
+  }, []);
+
   const pushReady = Boolean(key.data?.publicKey);
-  const { t, language } = useLanguage();
   return (
     <>
       <SectionTitle kicker={t("notifications")} title={t("pushTitle")} />
       <p>{t("pushHint")}</p>
-      <div className="push-permission-state">
-        {t("permission")}:{" "}
-        <b>
-          {permission === "granted"
-            ? t("enabled")
-            : permission === "denied"
-              ? t("blocked")
-              : t("waiting")}
-        </b>
+      <div className={`push-permission-state ${permission === "granted" ? "is-enabled" : ""}`} role="status">
+        <b>{permission === "granted" ? "✓ " : ""}{language === "ar" ? "حالة إذن الإشعارات:" : "Notification permission:"}</b>{" "}
+        {permission === "unsupported" ? (language === "ar" ? "غير مدعوم" : "Not supported")
+          : permission === "granted" ? (language === "ar" ? "مفعّل" : "Enabled")
+          : permission === "denied" ? (language === "ar" ? "محظور" : "Blocked")
+          : (language === "ar" ? "غير مفعّل" : "Not enabled")}
       </div>
-      {deliveryStatus && (
-        <div className="integration-note">
-          {language === "ar"
-            ? `نتيجة اختبار الخادم: قُبل ${deliveryStatus.delivered} من ${deliveryStatus.subscriptions} اشتراك${deliveryStatus.failed ? `، وفشل ${deliveryStatus.failed}` : ""}. قبول الخادم لا يضمن الظهور إذا كانت إشعارات النظام محجوبة.`
-            : `Server test: accepted ${deliveryStatus.delivered} of ${deliveryStatus.subscriptions} subscription(s)${deliveryStatus.failed ? `; ${deliveryStatus.failed}` : ""}. Acceptance does not guarantee display if system notifications are blocked.`}
-        </div>
-      )}
-      {isIos && !isStandalone && (
-        <div className="integration-note">
-          لاختبار تنبيه عند إغلاق التطبيق على iPhone: افتح قائمة المشاركة في
-          Safari ثم اختر «إضافة إلى الشاشة الرئيسية»، وافتح النسخة المثبتة وفعّل
-          الإشعارات منها.
-        </div>
-      )}
-      {key.isError && (
-        <div className="integration-note">{t("pushNeedsSetup")}</div>
-      )}
-      <button
-        className="primary"
-        disabled={
-          working || key.isLoading || key.isError || permission === "denied"
-        }
-        onClick={enable}
-      >
-        <Bell size={16} />
-        {working
-          ? permission === "granted"
-            ? t("updatePush")
-            : t("enablePush")
-          : !pushReady
-            ? t("pushUnavailable")
-            : permission === "granted"
-              ? t("updatePush")
-              : t("enablePush")}
-      </button>
+      {permission === "default" && <button className="primary" disabled={working} onClick={enable}>{language === "ar" ? "تفعيل الإشعارات" : "Enable notifications"}</button>}
+      {permission === "denied" && <div className="integration-note">{language === "ar" ? "افتح إعدادات الموقع في المتصفح واسمح بالإشعارات، ثم ارجع إلى هذه الصفحة." : "Allow notifications in this site's browser settings, then return to this page."}</div>}
+      {permission === "granted" && <div className="notification-preference-row">
+        <span>{language === "ar" ? "تذكيرات التطبيق" : "App reminders"}</span>
+        <button type="button" role="switch" aria-checked={remindersEnabled} aria-label={language === "ar" ? "تفعيل تذكيرات التطبيق" : "Enable app reminders"} className={`notification-toggle ${remindersEnabled ? "is-on" : ""}`} disabled={working} onClick={toggleReminders}><span /></button>
+        <button type="button" className="secondary" disabled={testSending} onClick={sendTestNotification}>{testSending ? (language === "ar" ? "جارٍ الإرسال…" : "Sending…") : (language === "ar" ? "إرسال إشعار تجريبي" : "Send test notification")}</button>
+      </div>}
+      {deliveryStatus && <div className="integration-note">
+        {language === "ar"
+          ? `نتيجة اختبار الخادم: قُبل ${deliveryStatus.delivered} من ${deliveryStatus.subscriptions} اشتراك${deliveryStatus.failed ? `، وفشل ${deliveryStatus.failed}` : ""}. قبول الخادم لا يضمن الظهور إذا كانت إشعارات النظام محجوبة.`
+          : `Server test: accepted ${deliveryStatus.delivered} of ${deliveryStatus.subscriptions} subscription(s)${deliveryStatus.failed ? `; ${deliveryStatus.failed}` : ""}. Acceptance does not guarantee display if system notifications are blocked.`}
+      </div>}
+      {isIos && !isStandalone && permission !== "unsupported" && <div className="integration-note">
+        {language === "ar"
+          ? "على iPhone يتطلب دعم الإشعارات تثبيت التطبيق من Safari عبر «إضافة إلى الشاشة الرئيسية» (iOS 16.4 أو أحدث)، ثم فتح النسخة المثبتة."
+          : "On iPhone, install this app from Safari using Add to Home Screen (iOS 16.4+) and open the installed app to use notifications."}
+      </div>}
+      {key.isError && <div className="integration-note">{t("pushNeedsSetup")}</div>}
+      {permission === "granted" && !pushReady && <p className="integration-note">{language === "ar" ? "التذكيرات تعمل أثناء فتح التطبيق. لم يتم إعداد خدمة Push للتذكيرات عند إغلاقه." : "Reminders work while the app is open. Background Push delivery is not configured."}</p>}
+      {permission === "granted" && pushReady && <button className="secondary" disabled={working || key.isLoading || key.isError} onClick={enable}><Bell size={16} />{language === "ar" ? "تحديث اشتراك Push" : "Refresh Push subscription"}</button>}
     </>
   );
 }
-
 function SettingsPage({
   profile,
   groups,
@@ -5400,6 +5425,7 @@ function App() {
     );
   return (
     <>
+      <LocalReminderScheduler />
       <Shell profile={profile} setProfile={setProfile} onLogout={auth.logout}>
         <Switch>
           <Route path="/">
