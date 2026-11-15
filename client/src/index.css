@@ -370,11 +370,6 @@ html,body,.app-shell,.ios-shell,.main{background:#000!important}.app-shell{backg
   word-break: normal;
 }
 
-.student-portal .student-profile-actions {
-  flex-wrap: wrap;
-  max-width: 100%;
-}
-
 .student-portal .student-stat-grid {
   grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
@@ -403,8 +398,6 @@ html,body,.app-shell,.ios-shell,.main{background:#000!important}.app-shell{backg
   overflow-wrap: anywhere;
 }
 
-.student-portal .student-quiz-list button,
-.student-portal .student-profile-actions > button,
 .student-portal .student-profile-head .student-back,
 .student-portal .student-profile-head .student-logout {
   min-width: 44px;
@@ -445,10 +438,6 @@ html,body,.app-shell,.ios-shell,.main{background:#000!important}.app-shell{backg
     align-items: flex-start;
   }
 
-  .student-portal .student-profile-actions {
-    width: 100%;
-  }
-
   .student-portal .student-quiz-list article {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
@@ -487,44 +476,57 @@ html,body,.app-shell,.ios-shell,.main{background:#000!important}.app-shell{backg
   border-radius: 1.25rem;
 }
 
-.student-portal .student-profile-actions {
-  display: flex;
-  gap: 0.5rem;
+.student-portal {
+  padding-inline: clamp(0.75rem, 3vw, 1.25rem);
 }
 
-.student-portal .student-profile-actions > button {
-  justify-content: center;
+.student-portal .student-dashboard {
+  width: 100%;
+  max-width: 58rem;
+  margin-inline: auto;
+}
+
+.student-portal .student-panel,
+.student-portal .student-assistant-card,
+.student-portal .student-profile-head,
+.student-portal .student-quiz-sheet {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
-  min-height: 44px;
-  border-radius: 0.75rem;
-  padding-inline: 0.75rem;
-  overflow-wrap: anywhere;
+  height: auto;
+  border-radius: clamp(1rem, 2vw, 1.5rem);
 }
 
-.student-portal .student-suggestion-list button {
-  flex: 1 1 10rem;
-  min-width: 0;
-  min-height: 44px;
-  line-height: 1.5;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  border-radius: 0.75rem;
+.student-portal .student-panel,
+.student-portal .student-assistant-card,
+.student-portal .student-quiz-sheet {
+  padding: clamp(0.875rem, 2.5vw, 1.25rem);
 }
 
-.student-portal .student-chat-compose input,
-.student-portal .student-chat-compose .student-primary {
-  min-height: 44px;
+.student-portal .student-chat-thread {
+  max-height: clamp(12rem, 42dvh, 20rem);
+  min-height: 8rem;
 }
 
-@media (max-width: 480px) {
-  .student-portal .student-profile-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
+.student-portal .learning-hub-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .student-portal .student-dashboard {
+    max-width: 68rem;
   }
+}
 
-  .student-portal .student-profile-actions > button {
-    width: 100%;
-    padding-inline: 0.5rem;
+@media (min-width: 1280px) {
+  .student-portal .student-dashboard {
+    max-width: 76rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .student-portal .learning-hub-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
