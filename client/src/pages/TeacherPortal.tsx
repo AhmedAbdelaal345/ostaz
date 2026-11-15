@@ -7,6 +7,7 @@ import { navigateAfterTeacherLogin } from "@/lib/applicationRoutes";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AuthFlowControls } from "@/components/AuthFlowControls";
 import { clearAuthPhoneDraft, readAuthPhoneDraft, saveAuthPhoneDraft } from "@/lib/authDraft";
+import { localizeAuthMessage } from "@/lib/authMessages";
 import {
   isValidAuthPassword,
   isValidAuthPhone,
@@ -39,7 +40,7 @@ export default function TeacherPortal() {
       clearAuthPhoneDraft();
       toast.success(language === "ar" ? "تم إنشاء حساب المعلم" : "Teacher account created");
     },
-    onError: error => { setFormError(error.message); toast.error(error.message); },
+    onError: error => { const message = localizeAuthMessage(error.message, language); setFormError(message); toast.error(message); },
   });
   const login = trpc.teacherAuth.login.useMutation({
     onSuccess: async () => {
@@ -54,7 +55,7 @@ export default function TeacherPortal() {
       clearAuthPhoneDraft();
       toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully");
     },
-    onError: error => { setFormError(error.message); toast.error(error.message); },
+    onError: error => { const message = localizeAuthMessage(error.message, language); setFormError(message); toast.error(message); },
   });
 
   useEffect(() => {
@@ -94,9 +95,9 @@ export default function TeacherPortal() {
 
   const isPending = register.isPending || login.isPending;
   return (
-    <main className="teacher-portal" dir={isRtl ? "rtl" : "ltr"}>
+    <main className="teacher-portal" dir={isRtl ? "rtl" : "ltr"} data-no-legacy-translate="true">
       <form className="teacher-auth-card" onSubmit={submit}>
-        <button className="teacher-auth-switch" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>
+        <button className="teacher-auth-switch" type="button" aria-label={language === "ar" ? "Switch language to English" : "تغيير اللغة إلى العربية"} onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>
           {language === "ar" ? "English" : "العربية"}
         </button>
         <AuthFlowControls
@@ -147,11 +148,7 @@ export default function TeacherPortal() {
         <button type="submit" className="teacher-primary" disabled={isPending}>
           {isPending ? (language === "ar" ? "جارٍ التحقق..." : "Please wait...") : isRegister ? <><UserPlus size={18}/>{language === "ar" ? "إنشاء الحساب" : "Create account"}</> : <><LogIn size={18}/>{language === "ar" ? "تسجيل الدخول" : "Log in"}</>}
         </button>
-        <button className="teacher-auth-switch" type="button" onClick={() => setLocation(isRegister ? "/teacher/login" : "/teacher/register")}>
-          {isRegister ? (language === "ar" ? "لديك حساب؟ سجّل الدخول" : "Already have an account? Log in") : (language === "ar" ? "ليس لديك حساب؟ أنشئ حسابًا" : "Don't have an account? Register")}
-        </button>
         <small><ShieldCheck size={14}/>{language === "ar" ? "رقم الهاتف وكلمة المرور يحميان مساحة المعلم وبيانات طلابه." : "Your phone number and password protect your workspace and student data."}</small>
-        <a className="teacher-student-link" href="/platform">{language === "ar" ? "العودة إلى المنصة" : "Back to platform"}</a>
       </form>
     </main>
   );

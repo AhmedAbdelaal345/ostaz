@@ -100,6 +100,9 @@ function LegacyTextLocalization() {
       textNodes.forEach(current => {
         const parent = current.parentElement;
         if (!parent || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName) || parent.closest("[contenteditable='true']")) return;
+        // Auth screens render language-dependent text directly in React. Do not
+        // let the legacy DOM translator overwrite those controlled text nodes.
+        if (parent.closest("[data-no-legacy-translate='true']")) return;
         const source = (current as Text & { __elMisterSource?: string }).__elMisterSource ?? current.nodeValue ?? "";
         (current as Text & { __elMisterSource?: string }).__elMisterSource = source;
         const next = translateLegacyText(source, language);
@@ -107,6 +110,7 @@ function LegacyTextLocalization() {
       });
       const elements = root instanceof Element ? [root, ...Array.from(root.querySelectorAll<HTMLElement>("[placeholder], [aria-label], [title], [alt]"))] : root.parentElement ? [root.parentElement] : [];
       elements.forEach(element => {
+        if (element.closest("[data-no-legacy-translate='true']")) return;
         const saved = originalAttributes.get(element) ?? new Map<string, string>();
         ["placeholder", "aria-label", "title", "alt"].forEach(attribute => {
           const currentValue = element.getAttribute(attribute);

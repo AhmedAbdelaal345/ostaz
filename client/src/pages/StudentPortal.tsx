@@ -14,6 +14,7 @@ import { StudentStoreHub } from "@/components/StudentStoreHub";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AuthFlowControls } from "@/components/AuthFlowControls";
 import { clearAuthPhoneDraft, readAuthPhoneDraft, saveAuthPhoneDraft } from "@/lib/authDraft";
+import { localizeAuthMessage } from "@/lib/authMessages";
 import { isValidAuthPassword, isValidAuthPhone } from "../../../shared/authValidation";
 
 type QuizQuestion = { id: string; text: string; points: number; options?: string[] };
@@ -46,8 +47,8 @@ export default function StudentPortal() {
   const [editingProfile, setEditingProfile] = useState(false);
   const student = trpc.studentAuth.me.useQuery(undefined, { retry: false, staleTime: 0, refetchOnMount: "always" });
   const quizzes = trpc.studentQuiz.available.useQuery(undefined, { enabled: Boolean(student.data), retry: false });
-  const register = trpc.studentAuth.register.useMutation({ onSuccess: () => { clearAuthPhoneDraft(); student.refetch(); setLocation("/student/profile"); toast.success("تم إنشاء حسابك وربطه بسجلك الدراسي"); }, onError: error => { setFormError(error.message); toast.error(error.message); } });
-  const login = trpc.studentAuth.login.useMutation({ onSuccess: () => { clearAuthPhoneDraft(); student.refetch(); setLocation("/student/profile"); toast.success("مرحبًا بك في بروفايل الطالب"); }, onError: error => { setFormError(error.message); toast.error(error.message); } });
+  const register = trpc.studentAuth.register.useMutation({ onSuccess: () => { clearAuthPhoneDraft(); student.refetch(); setLocation("/student/profile"); toast.success(language === "ar" ? "تم إنشاء حسابك وربطه بسجلك الدراسي" : "Your account was created and linked to your student record"); }, onError: error => { const message = localizeAuthMessage(error.message, language); setFormError(message); toast.error(message); } });
+  const login = trpc.studentAuth.login.useMutation({ onSuccess: () => { clearAuthPhoneDraft(); student.refetch(); setLocation("/student/profile"); toast.success(language === "ar" ? "مرحبًا بك في بروفايل الطالب" : "Welcome to your student profile"); }, onError: error => { const message = localizeAuthMessage(error.message, language); setFormError(message); toast.error(message); } });
   const logout = trpc.studentAuth.logout.useMutation({ onSuccess: () => { student.refetch(); setLocation("/student/login"); } });
   const submit = trpc.studentQuiz.submit.useMutation({ onSuccess: data => { toast.success(data.needsManualGrading ? "تم تسليم الإجابات للمراجعة" : `تم رصد نتيجتك: ${data.score}/${data.maxScore}`); quizzes.refetch(); document.exitFullscreen?.().catch(() => undefined); setSelectedQuiz(null); setAnswers({}); }, onError: error => toast.error(error.message) });
   const startQuiz = trpc.studentQuiz.start.useMutation({ onSuccess: (data, variables) => { const quiz = quizzes.data?.find(item => item.id === variables.quizId); if (quiz) { setSelectedQuiz({ ...quiz, attemptId: data.id }); document.documentElement.requestFullscreen?.().catch(() => undefined); } }, onError: error => toast.error(error.message) });
@@ -95,9 +96,9 @@ export default function StudentPortal() {
   }
 
   if (location === "/student/login" || location === "/student/register") return (
-    <main className="student-portal auth" dir={isRtl ? "rtl" : "ltr"}>
+      <main className="student-portal auth" dir={isRtl ? "rtl" : "ltr"} data-no-legacy-translate="true">
       <form className="student-auth-card" onSubmit={event => { event.preventDefault(); submitCredentials(); }}>
-        <button className="student-link" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>{language === "ar" ? "English" : "العربية"}</button>
+        <button className="student-link" type="button" aria-label={language === "ar" ? "Switch language to English" : "تغيير اللغة إلى العربية"} onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>{language === "ar" ? "English" : "العربية"}</button>
         <AuthFlowControls
           role="student"
           mode={isRegister ? "register" : "login"}
@@ -124,7 +125,6 @@ export default function StudentPortal() {
         {recoveryHint && <p className="auth-form-hint" role="status">{recoveryHint}</p>}
         {formError && <p className="auth-form-error" role="alert">{formError}</p>}
         <button type="submit" className="student-primary" disabled={register.isPending || login.isPending}>{register.isPending || login.isPending ? (language === "ar" ? "جارٍ التحقق..." : "Please wait...") : isRegister ? <><UserRound size={17}/>{language === "ar" ? "إنشاء الحساب" : "Create account"}</> : <><LogIn size={17}/>{language === "ar" ? "تسجيل الدخول" : "Log in"}</>}</button>
-        <button type="button" className="student-link" onClick={() => setLocation(isRegister ? "/student/login" : "/student/register")}>{isRegister ? (language === "ar" ? "لديك حساب؟ سجّل الدخول" : "Already have an account? Log in") : (language === "ar" ? "ليس لديك حساب؟ أنشئ حسابك" : "Don't have an account? Register")}</button>
         <small><ShieldCheck size={14}/>{language === "ar" ? "لا تظهر لك سوى بياناتك المرتبطة بسجل مدرسك." : "You can only view data linked to your teacher record."}</small>
       </form>
     </main>
