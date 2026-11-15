@@ -546,9 +546,10 @@ html,body,.app-shell,.ios-shell,.main{background:#000!important}.app-shell{backg
 }
 
 .student-portal .student-profile-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   width: 100%;
   min-width: 0;
@@ -557,12 +558,15 @@ html,body,.app-shell,.ios-shell,.main{background:#000!important}.app-shell{backg
 
 .student-portal .student-profile-actions > * {
   box-sizing: border-box;
-  width: 100%;
+  flex: 0 1 auto;
+  width: auto;
   min-width: 0;
   max-width: 100%;
   min-height: 44px;
   justify-content: center;
   text-align: center;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.7rem;
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -615,9 +619,9 @@ html,body,.app-shell,.ios-shell,.main{background:#000!important}.app-shell{backg
 }
 
 @media (max-width: 380px) {
-  .student-portal .student-profile-actions,
   .student-portal .student-suggestion-list,
   .student-portal .student-chat-compose {
     grid-template-columns: minmax(0, 1fr);
   }
+
 }
