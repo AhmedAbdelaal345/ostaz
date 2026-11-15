@@ -68,6 +68,49 @@ export default function StudentPortal() {
   const isRegister = location === "/student/register";
   const activeQuestions = useMemo(() => selectedQuiz ? (selectedQuiz.questions || []) as QuizQuestion[] : [], [selectedQuiz]);
 
+  useEffect(() => {
+    const isStudentPortalActive = () => Boolean(document.querySelector(".student-portal"));
+    const getStudentPageTarget = (target: EventTarget | null) => {
+      if (!(target instanceof Node)) return null;
+      const page = document.querySelector(".student-portal");
+      return page?.contains(target) ? page : null;
+    };
+    const isEditable = (target: EventTarget | null) =>
+      target instanceof Element && Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+    const preventPageCopy = (event: ClipboardEvent) => {
+      if (isStudentPortalActive() && !isEditable(event.target) && !isEditable(document.activeElement)) event.preventDefault();
+    };
+    const preventPageContextMenu = (event: MouseEvent) => {
+      if (getStudentPageTarget(event.target) && !isEditable(event.target)) event.preventDefault();
+    };
+    const preventPageZoomShortcuts = (event: KeyboardEvent) => {
+      if (!isStudentPortalActive() || !(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (["+", "=", "-", "_", "0"].includes(key)) event.preventDefault();
+    };
+    const preventPageWheelZoom = (event: WheelEvent) => {
+      if (isStudentPortalActive() && (event.ctrlKey || event.metaKey)) event.preventDefault();
+    };
+    const preventIosGestureZoom = (event: Event) => {
+      if (isStudentPortalActive() && getStudentPageTarget(event.target)) event.preventDefault();
+    };
+
+    document.addEventListener("copy", preventPageCopy);
+    document.addEventListener("cut", preventPageCopy);
+    document.addEventListener("contextmenu", preventPageContextMenu);
+    document.addEventListener("keydown", preventPageZoomShortcuts);
+    document.addEventListener("wheel", preventPageWheelZoom, { passive: false });
+    document.addEventListener("gesturestart", preventIosGestureZoom, { passive: false });
+    return () => {
+      document.removeEventListener("copy", preventPageCopy);
+      document.removeEventListener("cut", preventPageCopy);
+      document.removeEventListener("contextmenu", preventPageContextMenu);
+      document.removeEventListener("keydown", preventPageZoomShortcuts);
+      document.removeEventListener("wheel", preventPageWheelZoom);
+      document.removeEventListener("gesturestart", preventIosGestureZoom);
+    };
+  }, []);
+
   useEffect(() => { if (student.isFetchedAfterMount && !student.isFetching && !student.data && (location === "/student/profile" || location === "/student/security" || location === "/student/messages" || location === "/student/community" || location === "/student/videos" || location === "/student/seats" || location === "/student/store" || location === "/student/materials" || location === "/student/rewards")) setLocation("/student/login"); }, [location, setLocation, student.data, student.isFetchedAfterMount, student.isFetching]);
   useEffect(() => { if (!student.data) return; const key = "el-mister-browser-device-id"; let deviceId = localStorage.getItem(key); if (!deviceId) { deviceId = crypto.randomUUID(); localStorage.setItem(key, deviceId); } bindBrowser.mutate({ deviceId, deviceName: navigator.userAgent.slice(0, 180) || "Browser" }); }, [student.data?.student.id]);
   useEffect(() => { if (!student.data || location !== "/student/profile") return; const actions = document.querySelector(".student-profile-actions"); if (!actions || actions.querySelector(".student-security-link")) return; const securityButton = document.createElement("button"); securityButton.type = "button"; securityButton.className = "student-edit student-security-link"; securityButton.textContent = language === "ar" ? "الأجهزة" : "Devices"; securityButton.addEventListener("click", () => setLocation("/student/security")); const messageButton = document.createElement("button"); messageButton.type = "button"; messageButton.className = "student-edit student-message-link"; messageButton.textContent = language === "ar" ? "رسائل" : "Messages"; messageButton.addEventListener("click", () => setLocation("/student/messages")); actions.prepend(securityButton); actions.prepend(messageButton); return () => { securityButton.remove(); messageButton.remove(); }; }, [language, location, setLocation, student.data]);

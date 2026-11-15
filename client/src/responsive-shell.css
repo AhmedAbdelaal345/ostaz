@@ -89,9 +89,36 @@ body:has(.student-portal),
 }
 
 .student-portal {
-  overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  overscroll-behavior-y: auto !important;
   touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.student-portal input,
+.student-portal textarea,
+.student-portal select,
+.student-portal [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+html:has(.student-portal),
+body:has(.student-portal),
+#root:has(.student-portal) {
+  height: auto !important;
+  min-height: 100%;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  overscroll-behavior-y: auto !important;
 }
 
 /* Let row action menus escape the list container instead of being clipped. */
