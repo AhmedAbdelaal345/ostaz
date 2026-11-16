@@ -1017,3 +1017,41 @@ html.light .auth-flow-student .auth-flow-mode button.active {
 .schedule-modal .modal-footer .wide {
   margin-top: 0;
 }
+
+/* Keep surfaces tied to the theme tokens; the dark palette must not override light mode. */
+html[data-theme="light"] body,
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] .main {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+html[data-theme="light"] .hero {
+  background: linear-gradient(110deg, #eaf4fb 0%, #f5f8fb 54%, #edf3f8 100%);
+  border-color: rgba(23, 105, 170, .2);
+  box-shadow: 0 16px 44px rgba(20, 50, 75, .08);
+}
+
+html[data-theme="light"] .hero p,
+html[data-theme="light"] .hero-label {
+  color: var(--muted);
+}
+
+html[data-theme="light"] .hero-visual img {
+  mix-blend-mode: multiply;
+  opacity: .12;
+}
+
+html[data-theme="light"] .brand-startup {
+  background: rgba(245, 247, 250, .96);
+  color: var(--text);
+}
+
+html[data-theme="light"] .brand-startup-card {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+html[data-theme="light"] .primary {
+  color: #09253b;
+}

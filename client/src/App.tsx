@@ -37,6 +37,7 @@ import { formatRemainingLessonTime } from "../../shared/tracker";
 import type { Workspace } from "../../shared/workspace";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { useModalBehavior } from "./hooks/useModalBehavior";
+import { useTheme, type ThemeMode } from "./contexts/ThemeContext";
 import { renderMessageTemplate } from "../../shared/messageTemplate";
 import {
   displayStudentCode,
@@ -567,15 +568,12 @@ function Shell({
   onLogout?: () => Promise<void>;
 }) {
   const [location, setLocation] = useLocation();
-  const [dark, setDark] = useState(true);
+  const { theme, toggleTheme } = useTheme();
   const showProfile = location === "/profile";
   const { language, setLanguage, t, isRtl } = useLanguage();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [workspace] = useWorkspace();
   useGroupEndAlert();
-  useEffect(() => {
-    document.documentElement.classList.toggle("light", !dark);
-  }, [dark]);
   const backup = () => {
     const data = {
       profile,
@@ -683,11 +681,11 @@ function Shell({
               </span>
               {language === "ar" ? t("english") : t("arabic")}
             </button>
-            <button onClick={() => setDark(!dark)}>
+            <button onClick={toggleTheme}>
               <span className="icon-box">
-                {dark ? <Sun size={17} /> : <Moon size={17} />}
+                {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
               </span>
-              {dark ? t("lightMode") : t("darkMode")}
+              {theme === "dark" ? t("lightMode") : t("darkMode")}
             </button>
             <button onClick={backup}>
               <span className="icon-box">
@@ -4744,6 +4742,7 @@ function SettingsPage({
   const saveProfileRemote = trpc.app.profile.save.useMutation();
   const [workspace] = useWorkspace();
   const { language, setLanguage, t, isRtl } = useLanguage();
+  const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const [location, setLocation] = useLocation();
   const activeTab = location.match(/^\/settings\/([^/]+)$/)?.[1] || null;
   const [message, setMessage] = useState(
@@ -4751,9 +4750,7 @@ function SettingsPage({
       localStorage.getItem("ostazi-message") ||
       "مرحبًا {اسم الطالب}، نذكّرك بموعد حصتك القادمة مع أستاذ {اسم المعلم} يوم {التاريخ}."
   );
-  const [viewMode, setViewMode] = useState(
-    () => localStorage.getItem("ostazi-mode") || "ليلي"
-  );
+  const viewMode = themeMode === "light" ? "عادي" : themeMode === "system" ? "أوتوماتيك" : "ليلي";
   const [payment, setPayment] = useState(() =>
     JSON.parse(
       localStorage.getItem("ostazi-payment") ||
@@ -4769,7 +4766,14 @@ function SettingsPage({
   useEffect(() => {
     if (!profile) return;
     if (profile.messageTemplate) setMessage(profile.messageTemplate);
-    if (profile.displayMode) setViewMode(profile.displayMode);
+    if (profile.displayMode) {
+      const savedTheme: ThemeMode = profile.displayMode === "عادي"
+        ? "light"
+        : profile.displayMode === "أوتوماتيك"
+          ? "system"
+          : "dark";
+      setThemeMode(savedTheme);
+    }
     setPayment({
       bank: profile.paymentBank || "",
       wallet: profile.paymentWallet || "",
@@ -5217,13 +5221,7 @@ function SettingsPage({
               className={viewMode === mode ? "selected" : ""}
               key={mode}
               onClick={() => {
-                setViewMode(mode);
-                localStorage.setItem("ostazi-mode", mode);
-                const isLight =
-                  mode === "عادي" ||
-                  (mode === "أوتوماتيك" &&
-                    window.matchMedia("(prefers-color-scheme: light)").matches);
-                document.documentElement.classList.toggle("light", isLight);
+                setThemeMode(mode === "عادي" ? "light" : mode === "أوتوماتيك" ? "system" : "dark");
                 saveProfileRemote.mutate(
                   {
                     name: profile?.name || "المعلم",

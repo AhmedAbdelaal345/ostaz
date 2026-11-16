@@ -20,6 +20,7 @@ import { OfflineRuntime } from "./components/OfflineRuntime";
 import { InstallGuide } from "./components/InstallGuide";
 import { enqueueTrpcRequest, flushOfflineQueue } from "./lib/offlineSync";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import "./index.css";
 import "./responsive-shell.css";
 
@@ -217,12 +218,14 @@ if ("serviceWorker" in navigator) {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <trpc.Provider client={trpcClient} queryClient={queryClient}>
-    <QueryClientProvider client={queryClient}>
-      <LanguageProvider><ErrorBoundary><DirectAccessGuard><BrandStartup><RootRouter /></BrandStartup></DirectAccessGuard></ErrorBoundary>
-      <Toaster position="top-center" richColors />
-      <InstallGuide />
-      <OfflineRuntime /></LanguageProvider>
-    </QueryClientProvider>
-  </trpc.Provider>
+  <ThemeProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <LanguageProvider><ErrorBoundary><DirectAccessGuard><BrandStartup><RootRouter /></BrandStartup></DirectAccessGuard></ErrorBoundary>
+        <Toaster position="top-center" richColors />
+        <InstallGuide />
+        <OfflineRuntime /></LanguageProvider>
+      </QueryClientProvider>
+    </trpc.Provider>
+  </ThemeProvider>
 );

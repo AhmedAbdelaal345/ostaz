@@ -8,11 +8,31 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>El Mister | المستر</title>
     <meta name="theme-color" content="#000000" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="إدارة يومك الدراسي بسهولة مع El Mister / المستر." />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("ostazi-theme");
+          if (!saved) {
+            var legacy = localStorage.getItem("ostazi-mode");
+            saved = legacy === "عادي" ? "light" : legacy === "أوتوماتيك" ? "system" : "dark";
+          }
+          var light = saved === "light" || (saved === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
+          var theme = light ? "light" : "dark";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.classList.toggle("light", light);
+          document.documentElement.classList.toggle("dark", !light);
+          document.documentElement.style.colorScheme = theme;
+          document.querySelector('meta[name="theme-color"]').content = light ? "#f5f5f5" : "#000000";
+          document.querySelector('meta[name="color-scheme"]').content = theme;
+        } catch (_) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/manus-storage/el-mister-icon-512_951cf40b.png" type="image/png" sizes="512x512" />
     <link rel="apple-touch-icon" href="/manus-storage/el-mister-icon-180_e6c4f152.png" sizes="180x180" />
@@ -23,6 +43,10 @@
       #app-startup-mark { width: 52px; height: 52px; display: grid; place-items: center; margin: 0 auto 14px; border-radius: 17px; background: #12253d; color: #67b6ff; font-size: 28px; font-weight: 800; }
       #app-startup p { color: #a9b4c3; line-height: 1.6; margin: 0; font-size: 14px; }
       #app-recover { margin-top: 16px; border: 0; border-radius: 12px; padding: 11px 16px; background: #52a9ff; color: #04111f; font-weight: 700; cursor: pointer; }
+      html[data-theme="light"], html[data-theme="light"] body { background: #f5f7fa; color: #15212c; }
+      html[data-theme="light"] #app-startup-card { border-color: #d6e0e9; background: #fff; }
+      html[data-theme="light"] #app-startup-mark { background: #e5f0f8; color: #1769aa; }
+      html[data-theme="light"] #app-startup p { color: #536474; }
     </style>
   </head>
 
