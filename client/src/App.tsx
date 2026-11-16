@@ -1347,6 +1347,7 @@ function FinancePanel({
   onCreate: (input: any) => void;
   onSettle: (id: number) => void;
 }) {
+  const { language } = useLanguage();
   const [kind, setKind] = useState<"subscription" | "expense">("subscription");
   const [scopeFilter, setScopeFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
@@ -1392,6 +1393,8 @@ function FinancePanel({
       row.dueDate &&
       new Date(row.dueDate) < new Date()
   );
+  const locale = language === "ar" ? "ar-EG" : "en-GB";
+  const formatAmount = (value: number) => new Intl.NumberFormat(locale).format(value);
   const submit = () => {
     if (!amount || Number(amount) <= 0)
       return toast.error("اكتب مبلغًا صحيحًا");
@@ -1517,21 +1520,21 @@ function FinancePanel({
       <div className="finance-stats">
         <Stat
           label="إيرادات محصلة"
-          value={`${income.toLocaleString()} ج.م`}
+          value={`${formatAmount(income)} ${language === "ar" ? "ج.م" : "EGP"}`}
           note="اشتراكات مسددة"
           icon={CircleDollarSign}
           tone="green"
         />
         <Stat
           label="المصروفات"
-          value={`${expenses.toLocaleString()} ج.م`}
+          value={`${formatAmount(expenses)} ${language === "ar" ? "ج.م" : "EGP"}`}
           note="تشغيلية"
           icon={WalletCards}
           tone="red"
         />
         <Stat
           label="صافي الخزينة"
-          value={`${(income - expenses).toLocaleString()} ج.م`}
+          value={`${formatAmount(income - expenses)} ${language === "ar" ? "ج.م" : "EGP"}`}
           note="إيرادات ناقص مصروفات"
           icon={BarChart3}
           tone="gold"
@@ -1666,12 +1669,12 @@ function FinancePanel({
                         : "اشتراك طالب")}{" "}
                     ·{" "}
                     {row.dueDate
-                      ? new Date(row.dueDate).toLocaleDateString("ar-EG")
-                      : "بدون استحقاق"}
+                      ? new Date(row.dueDate).toLocaleDateString(locale)
+                      : language === "ar" ? "بدون استحقاق" : "No due date"}
                   </small>
                 </div>
                 <strong className={row.paidAt ? "paid" : "remaining"}>
-                  {Number(row.amount).toLocaleString()} ج.م
+                  {formatAmount(Number(row.amount))} {language === "ar" ? "ج.م" : "EGP"}
                 </strong>
                 {row.kind === "subscription" && !row.paidAt ? (
                   <button
@@ -2200,6 +2203,8 @@ function AssessmentPanel({
   );
 }
 function GroupDailyStats({ detail }: { detail: any }) {
+  const { language } = useLanguage();
+  const locale = language === "ar" ? "ar-EG" : "en-GB";
   const todayKey = new Date().toISOString().slice(0, 10);
   const todayAttendance = (detail.attendance || []).filter(
     (row: any) => new Date(row.lessonDate).toISOString().slice(0, 10) === todayKey
@@ -2218,7 +2223,7 @@ function GroupDailyStats({ detail }: { detail: any }) {
           <span className="eyebrow">ملخص اليوم</span>
           <b>{detail.group.name}</b>
         </div>
-        <small>{new Date().toLocaleDateString("ar-EG")}</small>
+        <small>{new Date().toLocaleDateString(locale)}</small>
       </div>
       <div className="group-daily-stats-grid">
         <span className="stat-present"><b>{count("present")}</b><small>حاضر</small></span>
@@ -2620,7 +2625,7 @@ function Page({ profile }: { profile: any }) {
           title="الحضور السريع"
           action={
             <span className="live-pill">
-              <i /> اليوم · {todayDate.toLocaleDateString("ar-EG")}
+              <i /> {language === "ar" ? "اليوم" : "Today"} · {todayDate.toLocaleDateString(language === "ar" ? "ar-EG" : "en-GB")}
             </span>
           }
         />
@@ -4451,6 +4456,9 @@ function GroupCollections({
   group: Group;
   students: Student[];
 }) {
+  const { language } = useLanguage();
+  const locale = language === "ar" ? "ar-EG" : "en-GB";
+  const formatAmount = (value: number) => new Intl.NumberFormat(locale).format(value);
   const utils = trpc.useUtils();
   const collectSubscription = trpc.app.finance.collectSubscription.useMutation({
     onSuccess: () => {
@@ -4496,7 +4504,7 @@ function GroupCollections({
           <span className="eyebrow">التحصيل</span>
           <b>
             {group.collectionPeriod === "term" ? "رسوم الترم" : "رسوم شهرية"}:{" "}
-            {Number(group.fee).toLocaleString()} ج.م
+            {formatAmount(Number(group.fee))} {language === "ar" ? "ج.م" : "EGP"}
           </b>
         </div>
         <span>{groupStudents.length} طالب</span>
@@ -4524,10 +4532,10 @@ function GroupCollections({
               <div>
                 <b>{student.name}</b>
                 <small>
-                  دفع {Number(student.paidAmount || 0).toLocaleString()} ج.م ·{" "}
+                  {language === "ar" ? "دفع" : "Paid"} {formatAmount(Number(student.paidAmount || 0))} {language === "ar" ? "ج.م" : "EGP"} ·{" "}
                   {remaining
-                    ? `متبقي ${remaining.toLocaleString()} ج.م`
-                    : "مكتمل السداد"}
+                    ? `${language === "ar" ? "متبقي" : "Remaining"} ${formatAmount(remaining)} ${language === "ar" ? "ج.م" : "EGP"}`
+                    : language === "ar" ? "مكتمل السداد" : "Paid in full"}
                 </small>
               </div>
               <div>

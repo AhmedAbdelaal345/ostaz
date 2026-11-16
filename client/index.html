@@ -15,6 +15,14 @@
     <script>
       (function () {
         try {
+          var requestedLanguage = new URLSearchParams(window.location.search).get("lang");
+          var savedLanguage = localStorage.getItem("el-mister-language");
+          var language = requestedLanguage === "en" || requestedLanguage === "ar"
+            ? requestedLanguage
+            : savedLanguage === "en" ? "en" : "ar";
+          document.documentElement.lang = language;
+          document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+          document.documentElement.dataset.language = language;
           var saved = localStorage.getItem("ostazi-theme");
           if (!saved) {
             var legacy = localStorage.getItem("ostazi-mode");
@@ -30,6 +38,9 @@
           document.querySelector('meta[name="color-scheme"]').content = theme;
         } catch (_) {
           document.documentElement.dataset.theme = "dark";
+          document.documentElement.lang = "ar";
+          document.documentElement.dir = "rtl";
+          document.documentElement.dataset.language = "ar";
         }
       })();
     </script>

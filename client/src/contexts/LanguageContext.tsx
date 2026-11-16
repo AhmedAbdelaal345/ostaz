@@ -73,7 +73,9 @@ Object.assign(legacyEnglishText, {
   "المحصّل": "Collected", "بطاقة الاشتراك": "Subscription card", "بيانات المجموعة والدفع": "Group and payment details", "متبقي": "Outstanding", "غير مضاف": "Not added", "تاريخ الانضمام": "Joined", "نوع الاشتراك": "Subscription type", "قيمة الاشتراك": "Subscription fee", "المبلغ المدفوع": "Paid amount", "المبلغ المتبقي": "Outstanding amount", "رسالة الاشتراك": "Subscription message", "تذكير بالمبلغ": "Payment reminder", "الرسوم الشهرية": "Monthly fee", "بيانات التواصل": "Contact details", "البيانات الدراسية": "Academic details", "العمر": "Age", "الصف الدراسي": "Grade", "آخر الحضور": "Latest attendance", "السجل المالي": "Financial ledger"
 });
 
-const originalAttributes = new WeakMap<Element, Map<string, string>>();
+type TranslationSnapshot = { source: string; translated: string };
+const originalText = new WeakMap<Text, TranslationSnapshot>();
+const originalAttributes = new WeakMap<Element, Map<string, TranslationSnapshot>>();
 
 function translateLegacyText(source: string, language: AppLanguage) {
   if (language === "ar") return source;
@@ -91,11 +93,11 @@ function LegacyTextLocalization() {
     let frame = 0;
     const pendingRoots = new Set<Node>();
     const apply = (root: Node) => {
-      const textNodes: Node[] = root.nodeType === Node.TEXT_NODE ? [root] : [];
+      const textNodes: Text[] = root.nodeType === Node.TEXT_NODE ? [root as Text] : [];
       if (root.nodeType !== Node.TEXT_NODE) {
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
         let current: Node | null;
-        while ((current = walker.nextNode())) textNodes.push(current);
+        while ((current = walker.nextNode())) textNodes.push(current as Text);
       }
       textNodes.forEach(current => {
         const parent = current.parentElement;
@@ -103,21 +105,33 @@ function LegacyTextLocalization() {
         // Auth screens render language-dependent text directly in React. Do not
         // let the legacy DOM translator overwrite those controlled text nodes.
         if (parent.closest("[data-no-legacy-translate='true']")) return;
-        const source = (current as Text & { __elMisterSource?: string }).__elMisterSource ?? current.nodeValue ?? "";
-        (current as Text & { __elMisterSource?: string }).__elMisterSource = source;
-        const next = translateLegacyText(source, language);
+        const currentValue = current.nodeValue ?? "";
+        let snapshot = originalText.get(current);
+        // React may reuse a text node for new copy (for example, a loading
+        // button changing to a success label). Capture that new source instead
+        // of translating the stale text from the previous render.
+        if (!snapshot || currentValue !== snapshot.translated) {
+          snapshot = { source: currentValue, translated: currentValue };
+        }
+        const next = translateLegacyText(snapshot.source, language);
+        snapshot.translated = next;
+        originalText.set(current, snapshot);
         if (current.nodeValue !== next) current.nodeValue = next;
       });
       const elements = root instanceof Element ? [root, ...Array.from(root.querySelectorAll<HTMLElement>("[placeholder], [aria-label], [title], [alt]"))] : root.parentElement ? [root.parentElement] : [];
       elements.forEach(element => {
         if (element.closest("[data-no-legacy-translate='true']")) return;
-        const saved = originalAttributes.get(element) ?? new Map<string, string>();
+        const saved = originalAttributes.get(element) ?? new Map<string, TranslationSnapshot>();
         ["placeholder", "aria-label", "title", "alt"].forEach(attribute => {
           const currentValue = element.getAttribute(attribute);
           if (currentValue === null) return;
-          const source = saved.get(attribute) ?? currentValue;
-          saved.set(attribute, source);
-          const next = translateLegacyText(source, language);
+          let snapshot = saved.get(attribute);
+          if (!snapshot || currentValue !== snapshot.translated) {
+            snapshot = { source: currentValue, translated: currentValue };
+          }
+          const next = translateLegacyText(snapshot.source, language);
+          snapshot.translated = next;
+          saved.set(attribute, snapshot);
           if (currentValue !== next) element.setAttribute(attribute, next);
         });
         originalAttributes.set(element, saved);
@@ -144,7 +158,13 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<AppLanguage>(() => {
     const requested = new URLSearchParams(window.location.search).get("lang");
-    const initial = requested === "en" || requested === "ar" ? requested : localStorage.getItem("el-mister-language") === "en" ? "en" : "ar";
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("el-mister-language");
+    } catch {
+      // The URL or Arabic default still works when storage is unavailable.
+    }
+    const initial = requested === "en" || requested === "ar" ? requested : saved === "en" ? "en" : "ar";
     document.documentElement.lang = initial;
     document.documentElement.dir = initial === "ar" ? "rtl" : "ltr";
     document.documentElement.dataset.language = initial;
@@ -155,7 +175,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = nextLanguage;
     document.documentElement.dir = isRtl ? "rtl" : "ltr";
     document.documentElement.dataset.language = nextLanguage;
-    localStorage.setItem("el-mister-language", nextLanguage);
+    try {
+      localStorage.setItem("el-mister-language", nextLanguage);
+    } catch {
+      // Keep the choice for the current session when storage is unavailable.
+    }
     setLanguageState(nextLanguage);
   };
   useEffect(() => {
@@ -163,7 +187,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = language;
     document.documentElement.dir = isRtl ? "rtl" : "ltr";
     document.documentElement.dataset.language = language;
-    localStorage.setItem("el-mister-language", language);
+    try {
+      localStorage.setItem("el-mister-language", language);
+    } catch {
+      // Keep the current DOM language even when storage is unavailable.
+    }
   }, [language]);
   const value = useMemo(() => ({ language, setLanguage, t: (key: TranslationKey) => dictionary[language][key], isRtl: language === "ar" }), [language]);
   return <LanguageContext.Provider value={value}>{children}<LegacyTextLocalization /></LanguageContext.Provider>;
