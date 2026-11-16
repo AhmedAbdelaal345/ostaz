@@ -1068,6 +1068,7 @@ html[data-theme="light"] .primary {
 /* Legacy phone and workspace rules define dark cards directly, so explicitly
    map those shared card surfaces back to the active light theme tokens. */
 html.light .stats-grid .stat,
+html.light .finance-stats .stat,
 html.light .widget,
 html.light .widget-primary,
 html.light .widget-alert,
@@ -1122,6 +1123,8 @@ html.light .teacher-social-profile {
 
 html.light .stats-grid .stat span,
 html.light .stats-grid .stat small,
+html.light .finance-stats .stat span,
+html.light .finance-stats .stat small,
 html.light .widget-meta,
 html.light .settings-tabs button,
 html.light .settings-accordion-trigger,
@@ -1132,6 +1135,7 @@ html.light .roster-student {
 }
 
 html.light .stats-grid .stat strong,
+html.light .finance-stats .stat strong,
 html.light .widget-meta b,
 html.light .widget-title,
 html.light .plan-card strong,
@@ -1143,6 +1147,41 @@ html.light .settings-tabs button,
 html.light .settings-page .settings-tabs button {
   background: var(--surface-2) !important;
   border-color: var(--line) !important;
+}
+
+html.light .search,
+html.light .filters,
+html.light .mode-switch,
+html.light .workspace-switcher,
+html.light .context-report-tabs {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+  color: var(--muted);
+}
+
+html.light .search input,
+html.light .search input::placeholder,
+html.light .filters button,
+html.light .mode-switch button,
+html.light .workspace-switcher button,
+html.light .context-report-tabs button {
+  color: var(--muted);
+}
+
+html.light .filters button.selected,
+html.light .mode-switch button.selected,
+html.light .workspace-switcher button.active,
+html.light .context-report-tabs button.active {
+  background: var(--blue-dim) !important;
+  border-color: var(--blue) !important;
+  color: var(--blue) !important;
+}
+
+html.light .sidebar.ios-sidebar nav a.active,
+html.light .sidebar.ios-sidebar nav a.active svg {
+  background: var(--blue-dim) !important;
+  color: var(--blue) !important;
+  text-shadow: none !important;
 }
 
 html.light .settings-tabs button.selected,
