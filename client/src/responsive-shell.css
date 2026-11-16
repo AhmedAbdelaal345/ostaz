@@ -1021,9 +1021,18 @@ html.light .auth-flow-student .auth-flow-mode button.active {
 /* Keep surfaces tied to the theme tokens; the dark palette must not override light mode. */
 html[data-theme="light"] body,
 html[data-theme="light"] .app-shell,
-html[data-theme="light"] .main {
+html[data-theme="light"] .main,
+html[data-theme="light"] .ios-shell,
+html[data-theme="light"] .student-portal:not(.auth),
+html[data-theme="light"] .entity-profile {
   background-color: var(--bg);
   color: var(--text);
+}
+
+html[data-theme="light"] .ios-shell,
+html[data-theme="light"] .student-portal:not(.auth),
+html[data-theme="light"] .entity-profile {
+  background-image: none !important;
 }
 
 html[data-theme="light"] .hero {
@@ -1054,4 +1063,143 @@ html[data-theme="light"] .brand-startup-card {
 
 html[data-theme="light"] .primary {
   color: #09253b;
+}
+
+/* Legacy phone and workspace rules define dark cards directly, so explicitly
+   map those shared card surfaces back to the active light theme tokens. */
+html.light .stats-grid .stat,
+html.light .widget,
+html.light .widget-primary,
+html.light .widget-alert,
+html.light .panel,
+html.light .table-card,
+html.light .group-card,
+html.light .plan-card,
+html.light .plan-banner,
+html.light .day-column,
+html.light .empty,
+html.light .settings-tabs,
+html.light .settings-accordion-card,
+html.light .settings-accordion-card.open,
+html.light .settings-detail-content,
+html.light .today-summary,
+html.light .today-details,
+html.light .schedule-picker,
+html.light .group-student-row,
+html.light .group-attendance-roster,
+html.light .roster-student,
+html.light .student-assistant-card,
+html.light .student-panel,
+html.light .student-quiz-sheet,
+html.light .student-stat-grid article,
+html.light .student-question,
+html.light .entity-summary article,
+html.light .entity-detail-grid > article,
+html.light .entity-profile.auth-gate section,
+html.light .center-admin-stats article,
+html.light .center-team-form,
+html.light .leader-rank,
+html.light .performance-meter,
+html.light .year-work-entry,
+html.light .context-report-stats article,
+html.light .group-communication,
+html.light .school-countdowns article,
+html.light .school-workspace-head,
+html.light .group-live-widget,
+html.light .group-live-stats article,
+html.light .student-payment-details div,
+html.light .student-card-print,
+html.light .install-guide,
+html.light .install-guide-steps li,
+html.light .install-guide-android,
+html.light .teacher-social-profile {
+  background: var(--surface) !important;
+  background-image: none !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 8px 24px rgba(20, 40, 60, .07) !important;
+  color: var(--text);
+}
+
+html.light .stats-grid .stat span,
+html.light .stats-grid .stat small,
+html.light .widget-meta,
+html.light .settings-tabs button,
+html.light .settings-accordion-trigger,
+html.light .inline-student-list span,
+html.light .group-student-row,
+html.light .roster-student {
+  color: var(--muted);
+}
+
+html.light .stats-grid .stat strong,
+html.light .widget-meta b,
+html.light .widget-title,
+html.light .plan-card strong,
+html.light .settings-accordion-trigger b {
+  color: var(--text);
+}
+
+html.light .settings-tabs button,
+html.light .settings-page .settings-tabs button {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+}
+
+html.light .settings-tabs button.selected,
+html.light .settings-page .settings-tabs button.selected {
+  background: var(--blue-dim) !important;
+  border-color: var(--blue) !important;
+  box-shadow: inset -3px 0 var(--blue) !important;
+  color: var(--blue) !important;
+}
+
+html.light .settings-accordion-content {
+  border-color: var(--line);
+}
+
+html.light .student-logout,
+html.light .student-back,
+html.light .entity-profile-head button {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+  color: var(--text) !important;
+}
+
+html.light .roster-actions button,
+html.light .weekday-grid button,
+html.light .secondary {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+  color: var(--text);
+}
+
+html.light .settings-page input,
+html.light .settings-page select,
+html.light .settings-page textarea,
+html.light .finance-form input,
+html.light .finance-form select,
+html.light .settings-single-form input,
+html.light .settings-single-form textarea,
+html.light .entity-academic-form input {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+  color: var(--text) !important;
+}
+
+html.light .roster-actions button.selected.present {
+  color: var(--green);
+}
+
+html.light .roster-actions button.selected.late {
+  color: var(--gold);
+}
+
+html.light .roster-actions button.selected.absent {
+  color: var(--red);
+}
+
+html.light .primary,
+html.light .plan-card .primary {
+  background: var(--blue) !important;
+  color: #09253b !important;
 }
